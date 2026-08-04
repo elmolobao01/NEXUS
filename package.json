@@ -1,17 +1,19 @@
 {
   "name": "nexus-foundation",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "validate": "node scripts/validate-structure.mjs"
   },
   "dependencies": {
-    "next": "15.5.21",
+    "next": "15.5.7",
     "react": "19.0.0",
     "react-dom": "19.0.0"
+  },
+  "engines": {
+    "node": ">=20.11.0"
   }
 }
