@@ -9,7 +9,9 @@ const required = [
   "src/app/globals.css",
   "src/app/api/health/route.js",
   "src/components/layout/nexus-shell.jsx",
-  "src/design-system/temas/index.js"
+  "src/design-system/temas/index.js",
+  "src/core/clientes/catalogo.js",
+  "public/branding/nexus-logo.png"
 ];
 
 const missing = required.filter((path) => !existsSync(path));
@@ -24,4 +26,4 @@ if (!pkg.scripts?.build || !pkg.dependencies?.next) {
   process.exit(1);
 }
 
-console.log("Estrutura NEXUS Foundation 1.1 validada com sucesso.");
+console.log("Estrutura NEXUS Foundation 1.2 validada com sucesso.");
