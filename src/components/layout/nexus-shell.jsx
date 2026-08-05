@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { portfolioThemes } from "@/design-system/temas";
-import { clientesIniciais, modulosComerciais, planosComerciais } from "@/core/clientes/catalogo";
+import { clientesIniciais, modulosComerciais, planosComerciais } from "../../core/clientes/catalogo";
 
 const navItems = [
   "Visão geral",
