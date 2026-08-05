@@ -1,7 +1,5 @@
-import { NexusShell } from "@/components/layout/nexus-shell";
-
-export const dynamic = "force-static";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <NexusShell />;
+  redirect("/login");
 }

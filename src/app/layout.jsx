@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "NEXUS Foundation",
-  description: "Fundação oficial da plataforma NEXUS",
+  title: "NEXUS",
+  description: "Ecossistema inteligente de soluções",
 };
 
 export default function RootLayout({ children }) {
