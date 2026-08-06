@@ -1,52 +1,73 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const RECURSOS = [
-  { icon: "⌘", title: "Gestão integrada", text: "Pessoas, unidades e processos." },
-  { icon: "⚙", title: "Automação", text: "Rotinas operacionais inteligentes." },
-  { icon: "◫", title: "Indicadores", text: "Decisões orientadas por dados." },
-  { icon: "◇", title: "Multiempresa", text: "Ambientes isolados e escaláveis." },
+const recursos = [
+  {
+    icon: "⌘",
+    title: "Gestão integrada",
+    description: "Pessoas, unidades e processos.",
+  },
+  {
+    icon: "⚙",
+    title: "Automação",
+    description: "Rotinas operacionais inteligentes.",
+  },
+  {
+    icon: "◫",
+    title: "Indicadores",
+    description: "Decisões orientadas por dados.",
+  },
+  {
+    icon: "◇",
+    title: "Multiempresa",
+    description: "Ambientes isolados e escaláveis.",
+  },
 ];
+
+function identificarDestino(email) {
+  const emailNormalizado = email.trim().toLowerCase();
+
+  // Simulação temporária até a integração com Supabase Auth e RBAC.
+  // Contas internas da NEXUS seguem para o Centro de Controle.
+  if (
+    emailNormalizado.endsWith("@nexus.com.br") ||
+    emailNormalizado.includes("elmolobao") ||
+    emailNormalizado.includes("root")
+  ) {
+    return "/admin";
+  }
+
+  return "/portal";
+}
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [ambiente, setAmbiente] = useState("cliente");
+  const [email, setEmail] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
-
-  const contexto = useMemo(
-    () =>
-      ambiente === "admin"
-        ? {
-            titulo: "Centro Administrativo NEXUS",
-            descricao:
-              "Gestão comercial, operacional e tecnológica do ecossistema.",
-            destino: "/admin",
-          }
-        : {
-            titulo: "Portal da sua Organização",
-            descricao:
-              "Acesse os módulos, unidades e recursos contratados.",
-            destino: "/portal",
-          },
-    [ambiente]
-  );
+  const [mensagem, setMensagem] = useState("");
 
   function handleSubmit(event) {
     event.preventDefault();
+    setMensagem("");
     setCarregando(true);
-    window.setTimeout(() => router.push(contexto.destino), 400);
+
+    const destino = identificarDestino(email);
+
+    window.setTimeout(() => {
+      router.push(destino);
+    }, 450);
   }
 
   return (
-    <main className="nexus-login-page nexus-login-v2">
+    <main className="nexus-login-page nexus-login-inteligente">
       <section className="nexus-login-visual" aria-label="Apresentação NEXUS">
         <div className="nexus-grid-glow" aria-hidden="true" />
-        <div className="nexus-login-orb nexus-login-orb-one" />
-        <div className="nexus-login-orb nexus-login-orb-two" />
+        <div className="nexus-login-orb nexus-login-orb-one" aria-hidden="true" />
+        <div className="nexus-login-orb nexus-login-orb-two" aria-hidden="true" />
 
         <header className="nexus-login-brand">
           <div className="nexus-login-logo-box nexus-logo-premium">
@@ -58,6 +79,7 @@ export default function LoginScreen() {
               priority
             />
           </div>
+
           <div>
             <strong>NEXUS</strong>
             <span>Ecossistema Inteligente de Gestão Operacional</span>
@@ -68,20 +90,20 @@ export default function LoginScreen() {
           <p className="nexus-login-kicker">
             ECOSSISTEMA INTELIGENTE DE GESTÃO OPERACIONAL
           </p>
-          <h1>Uma plataforma. Todos os seus processos.</h1>
+
+          <h1>Uma plataforma que se adapta ao seu negócio.</h1>
+
           <p className="nexus-login-lead">
-            O NEXUS integra pessoas, processos, indicadores e automações em um
-            único ecossistema, adaptável a diferentes segmentos e estruturas
-            organizacionais.
+            Transformando operações complexas em decisões inteligentes.
           </p>
 
           <div className="nexus-login-benefits nexus-benefits-v2">
-            {RECURSOS.map((recurso) => (
+            {recursos.map((recurso) => (
               <article className="nexus-login-benefit" key={recurso.title}>
                 <span aria-hidden="true">{recurso.icon}</span>
                 <div>
                   <strong>{recurso.title}</strong>
-                  <p>{recurso.text}</p>
+                  <p>{recurso.description}</p>
                 </div>
               </article>
             ))}
@@ -91,7 +113,9 @@ export default function LoginScreen() {
         <footer className="nexus-login-visual-footer nexus-login-footer-v2">
           <div>
             <strong>NEXUS Foundation 1.4</strong>
-            <span>LGPD • SSL • Backup automático • Multiempresa</span>
+            <span>
+              LGPD • SSL • Backup automático • Multiempresa • 99,9% de disponibilidade
+            </span>
           </div>
           <span>© 2026 NEXUS Platform</span>
         </footer>
@@ -105,44 +129,12 @@ export default function LoginScreen() {
           </div>
 
           <h2>Bem-vindo ao NEXUS</h2>
-          <p className="nexus-login-card-description">
-            Escolha o ambiente e informe suas credenciais.
+          <p className="nexus-login-concept">
+            Um novo conceito em gestão operacional.
           </p>
-
-          <div
-            className="nexus-environment-selector"
-            role="group"
-            aria-label="Ambiente de acesso"
-          >
-            <button
-              type="button"
-              className={ambiente === "cliente" ? "is-selected" : ""}
-              onClick={() => setAmbiente("cliente")}
-            >
-              <span className="nexus-environment-icon" aria-hidden="true">◫</span>
-              <span>
-                <strong>Cliente</strong>
-                <small>Acessar minha organização</small>
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className={ambiente === "admin" ? "is-selected" : ""}
-              onClick={() => setAmbiente("admin")}
-            >
-              <span className="nexus-environment-icon" aria-hidden="true">◇</span>
-              <span>
-                <strong>Administração</strong>
-                <small>Gestão interna do NEXUS</small>
-              </span>
-            </button>
-          </div>
-
-          <div className="nexus-login-context">
-            <strong>{contexto.titulo}</strong>
-            <span>{contexto.descricao}</span>
-          </div>
+          <p className="nexus-login-card-description">
+            Acesse sua conta para continuar.
+          </p>
 
           <form className="nexus-login-form" onSubmit={handleSubmit}>
             <label htmlFor="email">E-mail</label>
@@ -154,6 +146,8 @@ export default function LoginScreen() {
                 type="email"
                 placeholder="nome@empresa.com.br"
                 autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 required
               />
             </div>
@@ -173,6 +167,7 @@ export default function LoginScreen() {
                 type="button"
                 className="nexus-password-toggle"
                 onClick={() => setMostrarSenha((valor) => !valor)}
+                aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
               >
                 {mostrarSenha ? "Ocultar" : "Mostrar"}
               </button>
@@ -183,29 +178,40 @@ export default function LoginScreen() {
                 <input type="checkbox" name="manterConectado" />
                 <span>Manter conectado</span>
               </label>
+
               <button type="button" className="nexus-link-button">
                 Esqueci minha senha
               </button>
             </div>
 
-            <button className="nexus-login-submit" type="submit" disabled={carregando}>
-              {carregando ? "Acessando..." : "Acessar plataforma"}
+            {mensagem ? (
+              <p className="nexus-login-message" role="alert">
+                {mensagem}
+              </p>
+            ) : null}
+
+            <button
+              className="nexus-login-submit"
+              type="submit"
+              disabled={carregando}
+            >
+              {carregando ? "Identificando seu ambiente..." : "Iniciar sessão"}
               {!carregando && <span aria-hidden="true">→</span>}
             </button>
           </form>
 
           <div className="nexus-login-divider">
-            <span>acesso corporativo</span>
+            <span>ou continue com</span>
           </div>
 
           <div className="nexus-login-providers">
-            <button type="button">Microsoft</button>
-            <button type="button">Google</button>
+            <button type="button">Entrar com Microsoft</button>
+            <button type="button">Entrar com Google</button>
           </div>
 
           <p className="nexus-login-demo-note">
-            Ambiente demonstrativo. A autenticação definitiva utilizará
-            Supabase Auth, validação de sessão no servidor e políticas RLS.
+            O NEXUS identificará automaticamente sua organização, perfil,
+            módulos contratados e ambiente de trabalho.
           </p>
         </div>
       </section>
