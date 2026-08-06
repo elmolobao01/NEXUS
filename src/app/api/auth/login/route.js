@@ -5,7 +5,7 @@ import {
   PROFILE_COOKIE,
   getCookieMaxAge,
   getRedirectForProfile,
-} from "../../../../lib/auth/config";
+} from "../config";
 
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
@@ -23,29 +23,23 @@ function getDemoIdentity(email) {
   ) {
     return {
       accessToken: `demo-root-${Date.now()}`,
-      refreshToken: "",
       profile: "NEXUS_ROOT",
       organizationId: "nexus-platform",
-      userId: "demo-root",
     };
   }
 
   if (email.includes("admin")) {
     return {
       accessToken: `demo-admin-${Date.now()}`,
-      refreshToken: "",
       profile: "CLIENT_ADMIN",
       organizationId: "org-demo",
-      userId: "demo-admin",
     };
   }
 
   return {
     accessToken: `demo-user-${Date.now()}`,
-    refreshToken: "",
     profile: "OPERATOR",
     organizationId: "org-demo",
-    userId: "demo-user",
   };
 }
 
@@ -74,11 +68,11 @@ async function authenticateWithSupabase(email, password) {
   const authData = await authResponse.json();
 
   if (!authResponse.ok || !authData.access_token) {
-    throw new Error(authData?.error_description || authData?.msg || "INVALID_CREDENTIALS");
+    throw new Error("INVALID_CREDENTIALS");
   }
 
   const profileResponse = await fetch(
-    `${url}/rest/v1/nexus_user_profiles?user_id=eq.${authData.user.id}&select=user_id,profile,organization_id,active&limit=1`,
+    `${url}/rest/v1/nexus_user_profiles?user_id=eq.${authData.user.id}&select=profile,organization_id,active&limit=1`,
     {
       headers: {
         apikey: anonKey,
@@ -97,10 +91,8 @@ async function authenticateWithSupabase(email, password) {
 
   return {
     accessToken: authData.access_token,
-    refreshToken: authData.refresh_token || "",
     profile: profile.profile,
     organizationId: profile.organization_id || "",
-    userId: authData.user.id,
   };
 }
 
@@ -125,13 +117,9 @@ export async function POST(request) {
       );
     }
 
-    let identity;
-
-    if (isDemoEnabled()) {
-      identity = getDemoIdentity(email);
-    } else {
-      identity = await authenticateWithSupabase(email, password);
-    }
+    const identity = isDemoEnabled()
+      ? getDemoIdentity(email)
+      : await authenticateWithSupabase(email, password);
 
     const response = NextResponse.json({
       ok: true,
@@ -175,7 +163,7 @@ export async function POST(request) {
       return NextResponse.json(
         {
           message:
-            "Autenticação ainda não configurada. Cadastre as variáveis do Supabase ou habilite NEXUS_DEMO_AUTH=true.",
+            "Autenticação não configurada. Cadastre o Supabase ou habilite NEXUS_DEMO_AUTH=true.",
         },
         { status: 503 }
       );
