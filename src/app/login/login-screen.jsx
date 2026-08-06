@@ -3,6 +3,9 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { autenticarUsuario } from "../../lib/auth";
+import { criarSessaoDemonstrativa } from "../../lib/session";
+import { resolverDestinoDoPerfil } from "../../lib/profile-router";
 
 const recursos = [
   {
@@ -27,39 +30,38 @@ const recursos = [
   },
 ];
 
-function identificarDestino(email) {
-  const emailNormalizado = email.trim().toLowerCase();
-
-  // Simulação temporária até a integração com Supabase Auth e RBAC.
-  // Contas internas da NEXUS seguem para o Centro de Controle.
-  if (
-    emailNormalizado.endsWith("@nexus.com.br") ||
-    emailNormalizado.includes("elmolobao") ||
-    emailNormalizado.includes("root")
-  ) {
-    return "/admin";
-  }
-
-  return "/portal";
-}
-
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [manterConectado, setManterConectado] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [mensagem, setMensagem] = useState("");
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setMensagem("");
     setCarregando(true);
 
-    const destino = identificarDestino(email);
+    try {
+      const identidade = await autenticarUsuario({ email, senha });
 
-    window.setTimeout(() => {
+      criarSessaoDemonstrativa({
+        identidade,
+        manterConectado,
+      });
+
+      const destino = resolverDestinoDoPerfil(identidade);
       router.push(destino);
-    }, 450);
+    } catch (error) {
+      setMensagem(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível iniciar a sessão."
+      );
+      setCarregando(false);
+    }
   }
 
   return (
@@ -139,7 +141,7 @@ export default function LoginScreen() {
           <form className="nexus-login-form" onSubmit={handleSubmit}>
             <label htmlFor="email">E-mail</label>
             <div className="nexus-login-input-wrap">
-              <span aria-hidden="true">@</span>
+              <span aria-hidden="true">✉</span>
               <input
                 id="email"
                 name="email"
@@ -154,13 +156,15 @@ export default function LoginScreen() {
 
             <label htmlFor="senha">Senha</label>
             <div className="nexus-login-input-wrap">
-              <span aria-hidden="true">●</span>
+              <span aria-hidden="true">⌾</span>
               <input
                 id="senha"
                 name="senha"
                 type={mostrarSenha ? "text" : "password"}
                 placeholder="Digite sua senha"
                 autoComplete="current-password"
+                value={senha}
+                onChange={(event) => setSenha(event.target.value)}
                 required
               />
               <button
@@ -175,7 +179,12 @@ export default function LoginScreen() {
 
             <div className="nexus-login-options">
               <label className="nexus-checkbox">
-                <input type="checkbox" name="manterConectado" />
+                <input
+                  type="checkbox"
+                  name="manterConectado"
+                  checked={manterConectado}
+                  onChange={(event) => setManterConectado(event.target.checked)}
+                />
                 <span>Manter conectado</span>
               </label>
 
@@ -210,7 +219,7 @@ export default function LoginScreen() {
           </div>
 
           <p className="nexus-login-demo-note">
-            O NEXUS identificará automaticamente sua organização, perfil,
+            O NEXUS identifica automaticamente sua organização, perfil,
             módulos contratados e ambiente de trabalho.
           </p>
         </div>
