@@ -1,6 +1,4 @@
-import { ClientPortalShell } from "../../components/client/client-portal-shell";
-
-export const metadata = { title: "Portal do Cliente | NEXUS" };
+import ClientPortalShell from "./client-portal-shell";
 
 export default function PortalPage() {
   return <ClientPortalShell />;
