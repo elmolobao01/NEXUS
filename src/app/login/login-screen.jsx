@@ -3,9 +3,6 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { autenticarUsuario } from "./auth";
-import { criarSessaoDemonstrativa } from "./session";
-import { resolverDestinoDoPerfil } from "./profile-router";
 
 const recursos = [
   { icon: "⌘", title: "Gestão integrada", description: "Pessoas, unidades e processos." },
@@ -29,9 +26,24 @@ export default function LoginScreen() {
     setCarregando(true);
 
     try {
-      const identidade = await autenticarUsuario({ email, senha });
-      criarSessaoDemonstrativa({ identidade, manterConectado });
-      router.push(resolverDestinoDoPerfil(identidade));
+      const resposta = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          senha,
+          manterConectado,
+        }),
+      });
+
+      const dados = await resposta.json();
+
+      if (!resposta.ok) {
+        throw new Error(dados?.message || "Não foi possível iniciar a sessão.");
+      }
+
+      router.replace(dados.redirectTo || "/portal");
+      router.refresh();
     } catch (error) {
       setMensagem(
         error instanceof Error
@@ -89,7 +101,7 @@ export default function LoginScreen() {
 
         <footer className="nexus-login-visual-footer nexus-login-footer-v2">
           <div>
-            <strong>NEXUS Foundation 1.4</strong>
+            <strong>NEXUS Foundation 1.5</strong>
             <span>
               LGPD • SSL • Backup automático • Multiempresa • 99,9% de disponibilidade
             </span>
@@ -167,13 +179,13 @@ export default function LoginScreen() {
             </div>
 
             {mensagem ? (
-              <p className="nexus-login-message" role="alert">
+              <p className="nexus-auth-feedback" role="alert">
                 {mensagem}
               </p>
             ) : null}
 
             <button
-              className="nexus-login-submit"
+              className={`nexus-login-submit ${carregando ? "is-loading" : ""}`}
               type="submit"
               disabled={carregando}
             >
@@ -181,15 +193,6 @@ export default function LoginScreen() {
               {!carregando && <span aria-hidden="true">→</span>}
             </button>
           </form>
-
-          <div className="nexus-login-divider">
-            <span>ou continue com</span>
-          </div>
-
-          <div className="nexus-login-providers">
-            <button type="button">Entrar com Microsoft</button>
-            <button type="button">Entrar com Google</button>
-          </div>
 
           <p className="nexus-login-demo-note">
             O NEXUS identifica automaticamente sua organização, perfil,
