@@ -2,7 +2,7 @@ import LoginScreen from "./login-screen";
 
 export const metadata = {
   title: "Acesso | NEXUS",
-  description: "Acesso seguro ao ecossistema NEXUS.",
+  description: "Ecossistema Inteligente de Gestão Operacional.",
 };
 
 export default function LoginPage() {
