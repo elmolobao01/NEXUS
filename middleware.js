@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  AUTH_COOKIE,
+  PROFILE_COOKIE,
+} from "./src/lib/auth/config";
 
-const AUTH_COOKIE = "nexus_session";
-const PROFILE_COOKIE = "nexus_profile";
 const ADMIN_PROFILES = new Set(["NEXUS_ROOT", "NEXUS_ADMIN"]);
 
 export function middleware(request) {
