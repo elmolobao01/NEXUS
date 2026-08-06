@@ -1,7 +1,5 @@
-import { NexusShell } from "../../components/layout/nexus-shell";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Administração NEXUS" };
-
-export default function AdminPage() {
-  return <NexusShell />;
+export default function HomePage() {
+  redirect("/login");
 }
