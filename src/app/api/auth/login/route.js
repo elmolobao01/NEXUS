@@ -1,11 +1,26 @@
 import { NextResponse } from "next/server";
-import {
-  AUTH_COOKIE,
-  ORG_COOKIE,
-  PROFILE_COOKIE,
-  getCookieMaxAge,
-  getRedirectForProfile,
-} from "../config";
+
+const AUTH_COOKIE = "nexus_session";
+const PROFILE_COOKIE = "nexus_profile";
+const ORG_COOKIE = "nexus_organization";
+
+const PROFILE_ROUTES = {
+  NEXUS_ROOT: "/admin",
+  NEXUS_ADMIN: "/admin",
+  CLIENT_ADMIN: "/portal",
+  MANAGER: "/portal",
+  SUPERVISOR: "/portal",
+  OPERATOR: "/portal",
+  VIEWER: "/portal",
+};
+
+function getRedirectForProfile(profile) {
+  return PROFILE_ROUTES[profile] || "/portal";
+}
+
+function getCookieMaxAge(remember) {
+  return remember ? 60 * 60 * 24 * 30 : 60 * 60 * 8;
+}
 
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
@@ -159,7 +174,7 @@ export async function POST(request) {
     const message =
       error instanceof Error ? error.message : "AUTHENTICATION_FAILED";
 
-    if (message === "SUPABASE_NOT_CONFIGURED") {
+    if (message == "SUPABASE_NOT_CONFIGURED") {
       return NextResponse.json(
         {
           message:
@@ -169,7 +184,7 @@ export async function POST(request) {
       );
     }
 
-    if (message === "PROFILE_NOT_AUTHORIZED") {
+    if (message == "PROFILE_NOT_AUTHORIZED") {
       return NextResponse.json(
         { message: "Usuário sem perfil ativo no NEXUS." },
         { status: 403 }
