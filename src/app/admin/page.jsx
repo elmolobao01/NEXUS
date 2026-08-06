@@ -1,5 +1,10 @@
-import { redirect } from "next/navigation";
+import ControlCenter from "./control-center";
 
-export default function HomePage() {
-  redirect("/login");
+export const metadata = {
+  title: "Centro de Controle | NEXUS",
+  description: "Administração do Ecossistema NEXUS.",
+};
+
+export default function AdminPage() {
+  return <ControlCenter />;
 }
