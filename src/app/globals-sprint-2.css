@@ -1,0 +1,670 @@
+
+/* =========================================================
+   NEXUS SPRINT 2 — BRAND EXPERIENCE E CENTRO DE CONTROLE
+   Cole este bloco ao final de src/app/globals.css
+   ========================================================= */
+
+.nexus-login-v2 .nexus-login-brand span {
+  max-width: 340px;
+  line-height: 1.35;
+}
+
+.nexus-logo-premium {
+  width: 88px;
+  height: 88px;
+  border-radius: 24px;
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, .32),
+    0 0 32px rgba(56, 189, 248, .18);
+}
+
+.nexus-logo-premium img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nexus-grid-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .34;
+  background:
+    linear-gradient(90deg, transparent 49.8%, rgba(56,189,248,.1) 50%, transparent 50.2%),
+    linear-gradient(transparent 49.8%, rgba(56,189,248,.08) 50%, transparent 50.2%);
+  background-size: 120px 120px;
+  mask-image: radial-gradient(circle at 50% 50%, #000, transparent 72%);
+  animation: nexusGridMove 20s linear infinite;
+}
+
+@keyframes nexusGridMove {
+  to { transform: translate3d(60px, 60px, 0); }
+}
+
+.nexus-benefits-v2 .nexus-login-benefit {
+  align-items: flex-start;
+}
+
+.nexus-benefits-v2 .nexus-login-benefit > span {
+  flex: 0 0 30px;
+}
+
+.nexus-benefits-v2 .nexus-login-benefit strong {
+  color: #fff;
+  font-size: 13px;
+}
+
+.nexus-benefits-v2 .nexus-login-benefit p {
+  margin-top: 3px;
+  color: #a9c5df;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.nexus-login-footer-v2 {
+  align-items: flex-end;
+}
+
+.nexus-login-footer-v2 div strong,
+.nexus-login-footer-v2 div span {
+  display: block;
+}
+
+.nexus-login-footer-v2 div strong {
+  color: #eaf6ff;
+  font-size: 11px;
+}
+
+.nexus-login-footer-v2 div span {
+  margin-top: 4px;
+  font-size: 9px;
+}
+
+.nexus-login-card-v2 {
+  animation: nexusCardEnter .55s ease both;
+}
+
+@keyframes nexusCardEnter {
+  from { opacity: 0; transform: translateY(12px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.nexus-login-context {
+  margin: -11px 0 23px;
+  padding: 13px 15px;
+  border: 1px solid #dce7f8;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #f5f9ff, #eef6ff);
+}
+
+.nexus-login-context strong,
+.nexus-login-context span {
+  display: block;
+}
+
+.nexus-login-context strong {
+  color: #1e3a5f;
+  font-size: 12px;
+}
+
+.nexus-login-context span {
+  margin-top: 4px;
+  color: #6b7d92;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* Centro de Controle */
+
+.nexus-control-center {
+  --cc-primary: #2165e8;
+  --cc-primary-dark: #1748ab;
+  --cc-ink: #101828;
+  --cc-muted: #667085;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  background: #f3f6fa;
+  color: var(--cc-ink);
+}
+
+.nexus-control-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px 18px;
+  color: #eaf3ff;
+  background:
+    radial-gradient(circle at 20% 5%, rgba(55, 138, 255, .28), transparent 28%),
+    linear-gradient(180deg, #071a30 0%, #092847 55%, #0a365f 100%);
+  border-right: 1px solid rgba(255,255,255,.08);
+}
+
+.nexus-control-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 4px 8px 24px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+
+.nexus-control-brand img {
+  border-radius: 14px;
+}
+
+.nexus-control-brand strong,
+.nexus-control-brand span {
+  display: block;
+}
+
+.nexus-control-brand strong {
+  letter-spacing: .16em;
+}
+
+.nexus-control-brand span {
+  margin-top: 3px;
+  color: #94b4d3;
+  font-size: 10px;
+}
+
+.nexus-control-sidebar nav {
+  display: grid;
+  gap: 5px;
+  margin-top: 22px;
+}
+
+.nexus-control-sidebar nav button {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 11px;
+  color: #a9c2db;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nexus-control-sidebar nav button:hover,
+.nexus-control-sidebar nav button.is-active {
+  color: #fff;
+  background: rgba(56, 139, 255, .18);
+}
+
+.nexus-control-sidebar nav button.is-active {
+  box-shadow: inset 3px 0 0 #48b8ff;
+}
+
+.nexus-control-sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 13px;
+  background: rgba(255,255,255,.045);
+}
+
+.nexus-online-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #35d07f;
+  box-shadow: 0 0 14px rgba(53,208,127,.6);
+}
+
+.nexus-control-sidebar-footer strong,
+.nexus-control-sidebar-footer small {
+  display: block;
+}
+
+.nexus-control-sidebar-footer strong {
+  font-size: 10px;
+}
+
+.nexus-control-sidebar-footer small {
+  margin-top: 3px;
+  color: #8eabc7;
+  font-size: 8px;
+}
+
+.nexus-control-content {
+  min-width: 0;
+  padding: 0 32px 42px;
+}
+
+.nexus-control-header {
+  min-height: 86px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 22px;
+  border-bottom: 1px solid #dfe6ef;
+}
+
+.nexus-control-header p,
+.nexus-control-header h1 {
+  margin: 0;
+}
+
+.nexus-control-header p {
+  color: #52708e;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+
+.nexus-control-header h1 {
+  margin-top: 4px;
+  font-size: 24px;
+  letter-spacing: -.035em;
+}
+
+.nexus-control-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nexus-icon-button {
+  width: 39px;
+  height: 39px;
+  border: 1px solid #d9e2ed;
+  border-radius: 12px;
+  background: #fff;
+  color: #245ba2;
+  font-weight: 800;
+}
+
+.nexus-user-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 11px 6px 7px;
+  border: 1px solid #d9e2ed;
+  border-radius: 13px;
+  background: #fff;
+  text-align: left;
+}
+
+.nexus-user-button > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #e8f1ff;
+  color: #215aae;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.nexus-user-button strong,
+.nexus-user-button small {
+  display: block;
+}
+
+.nexus-user-button strong {
+  font-size: 10px;
+}
+
+.nexus-user-button small {
+  margin-top: 2px;
+  color: #8491a3;
+  font-size: 8px;
+}
+
+.nexus-control-hero {
+  margin: 28px 0 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 25px;
+  padding: 28px;
+  border-radius: 22px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 80% 20%, rgba(70, 190, 255, .22), transparent 24%),
+    linear-gradient(135deg, #071b31, #0c4072);
+  box-shadow: 0 20px 45px rgba(8, 37, 65, .15);
+}
+
+.nexus-control-eyebrow {
+  color: #66ccff;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .13em;
+}
+
+.nexus-control-hero h2 {
+  max-width: 640px;
+  margin: 8px 0 8px;
+  font-size: clamp(26px, 3vw, 40px);
+  letter-spacing: -.045em;
+}
+
+.nexus-control-hero p {
+  max-width: 680px;
+  margin: 0;
+  color: #bad0e4;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.nexus-control-hero-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.nexus-button-primary,
+.nexus-button-secondary {
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 11px;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.nexus-button-primary {
+  border: 0;
+  color: #fff;
+  background: #2876f0;
+}
+
+.nexus-button-secondary {
+  color: #e7f3ff;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.07);
+}
+
+.nexus-control-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.nexus-control-metric-card,
+.nexus-control-panel {
+  border: 1px solid #dfe6ef;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(23, 43, 77, .045);
+}
+
+.nexus-control-metric-card {
+  min-height: 150px;
+  padding: 18px;
+  border-radius: 17px;
+}
+
+.nexus-control-metric-icon {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: #2165e8;
+  background: #eaf2ff;
+  font-weight: 850;
+}
+
+.nexus-control-metric-card p {
+  margin: 16px 0 7px;
+  color: #68778a;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.nexus-control-metric-card strong {
+  display: block;
+  font-size: 23px;
+  letter-spacing: -.04em;
+}
+
+.nexus-control-metric-card > span {
+  display: block;
+  margin-top: 8px;
+  color: #3d8f66;
+  font-size: 9px;
+}
+
+.nexus-control-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, .7fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.nexus-control-panel {
+  padding: 21px;
+  border-radius: 18px;
+}
+
+.nexus-panel-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.nexus-panel-title span,
+.nexus-panel-title h3 {
+  display: block;
+  margin: 0;
+}
+
+.nexus-panel-title span {
+  color: #77899b;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+
+.nexus-panel-title h3 {
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+.nexus-panel-title select,
+.nexus-client-panel-header input {
+  min-height: 36px;
+  border: 1px solid #dce4ed;
+  border-radius: 10px;
+  background: #fff;
+  color: #4d5f73;
+  font-size: 9px;
+}
+
+.nexus-panel-title select {
+  padding: 0 10px;
+}
+
+.nexus-fake-chart {
+  height: 220px;
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(10px, 3vw, 30px);
+  padding: 25px 10px 0;
+  border-bottom: 1px solid #e3e9f0;
+  background:
+    linear-gradient(#f1f4f8 1px, transparent 1px);
+  background-size: 100% 25%;
+}
+
+.nexus-chart-column {
+  min-width: 24px;
+  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.nexus-chart-column > span {
+  width: min(100%, 44px);
+  border-radius: 9px 9px 3px 3px;
+  background: linear-gradient(180deg, #42b7ff, #2365e8);
+  box-shadow: 0 8px 20px rgba(35,101,232,.16);
+}
+
+.nexus-chart-column small {
+  color: #7c8998;
+  font-size: 8px;
+}
+
+.nexus-operation-list {
+  display: grid;
+  gap: 3px;
+  margin-top: 16px;
+}
+
+.nexus-operation-list > div {
+  min-height: 43px;
+  display: grid;
+  grid-template-columns: 9px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.nexus-operation-list p {
+  margin: 0;
+  color: #506175;
+  font-size: 10px;
+}
+
+.nexus-operation-list strong {
+  font-size: 11px;
+}
+
+.nexus-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.nexus-status-dot.sucesso { background: #33b878; }
+.nexus-status-dot.atencao { background: #ef9f31; }
+.nexus-status-dot.informacao { background: #3c88ef; }
+
+.nexus-client-panel {
+  margin-top: 14px;
+}
+
+.nexus-client-panel-header input {
+  width: min(100%, 310px);
+  padding: 0 12px;
+}
+
+.nexus-client-table-wrap {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.nexus-client-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.nexus-client-table th,
+.nexus-client-table td {
+  padding: 13px 10px;
+  border-bottom: 1px solid #e8edf3;
+  text-align: left;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.nexus-client-table th {
+  color: #758598;
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.nexus-contract-status {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.nexus-contract-status.ativo {
+  color: #207852;
+  background: #e8f8f0;
+}
+
+.nexus-contract-status.implantacao {
+  color: #9a621d;
+  background: #fff4df;
+}
+
+@media (max-width: 1100px) {
+  .nexus-control-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nexus-control-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 780px) {
+  .nexus-control-center {
+    grid-template-columns: 1fr;
+  }
+
+  .nexus-control-sidebar {
+    position: relative;
+    height: auto;
+  }
+
+  .nexus-control-sidebar nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nexus-control-content {
+    padding: 0 17px 30px;
+  }
+
+  .nexus-control-header,
+  .nexus-control-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 540px) {
+  .nexus-control-metrics,
+  .nexus-control-sidebar nav {
+    grid-template-columns: 1fr;
+  }
+
+  .nexus-control-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .nexus-client-panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nexus-client-panel-header input {
+    width: 100%;
+  }
+}
