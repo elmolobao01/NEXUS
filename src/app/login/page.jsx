@@ -1,6 +1,4 @@
-import { LoginScreen } from "../../components/auth/login-screen";
-
-export const metadata = { title: "Acesso | NEXUS" };
+import LoginScreen from "./login-screen";
 
 export default function LoginPage() {
   return <LoginScreen />;
