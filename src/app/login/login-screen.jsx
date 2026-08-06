@@ -3,31 +3,15 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { autenticarUsuario } from "../../lib/auth";
-import { criarSessaoDemonstrativa } from "../../lib/session";
-import { resolverDestinoDoPerfil } from "../../lib/profile-router";
+import { autenticarUsuario } from "./auth";
+import { criarSessaoDemonstrativa } from "./session";
+import { resolverDestinoDoPerfil } from "./profile-router";
 
 const recursos = [
-  {
-    icon: "⌘",
-    title: "Gestão integrada",
-    description: "Pessoas, unidades e processos.",
-  },
-  {
-    icon: "⚙",
-    title: "Automação",
-    description: "Rotinas operacionais inteligentes.",
-  },
-  {
-    icon: "◫",
-    title: "Indicadores",
-    description: "Decisões orientadas por dados.",
-  },
-  {
-    icon: "◇",
-    title: "Multiempresa",
-    description: "Ambientes isolados e escaláveis.",
-  },
+  { icon: "⌘", title: "Gestão integrada", description: "Pessoas, unidades e processos." },
+  { icon: "⚙", title: "Automação", description: "Rotinas operacionais inteligentes." },
+  { icon: "◫", title: "Indicadores", description: "Decisões orientadas por dados." },
+  { icon: "◇", title: "Multiempresa", description: "Ambientes isolados e escaláveis." },
 ];
 
 export default function LoginScreen() {
@@ -46,14 +30,8 @@ export default function LoginScreen() {
 
     try {
       const identidade = await autenticarUsuario({ email, senha });
-
-      criarSessaoDemonstrativa({
-        identidade,
-        manterConectado,
-      });
-
-      const destino = resolverDestinoDoPerfil(identidade);
-      router.push(destino);
+      criarSessaoDemonstrativa({ identidade, manterConectado });
+      router.push(resolverDestinoDoPerfil(identidade));
     } catch (error) {
       setMensagem(
         error instanceof Error
@@ -81,7 +59,6 @@ export default function LoginScreen() {
               priority
             />
           </div>
-
           <div>
             <strong>NEXUS</strong>
             <span>Ecossistema Inteligente de Gestão Operacional</span>
@@ -92,9 +69,7 @@ export default function LoginScreen() {
           <p className="nexus-login-kicker">
             ECOSSISTEMA INTELIGENTE DE GESTÃO OPERACIONAL
           </p>
-
           <h1>Uma plataforma que se adapta ao seu negócio.</h1>
-
           <p className="nexus-login-lead">
             Transformando operações complexas em decisões inteligentes.
           </p>
@@ -171,7 +146,6 @@ export default function LoginScreen() {
                 type="button"
                 className="nexus-password-toggle"
                 onClick={() => setMostrarSenha((valor) => !valor)}
-                aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
               >
                 {mostrarSenha ? "Ocultar" : "Mostrar"}
               </button>
@@ -181,7 +155,6 @@ export default function LoginScreen() {
               <label className="nexus-checkbox">
                 <input
                   type="checkbox"
-                  name="manterConectado"
                   checked={manterConectado}
                   onChange={(event) => setManterConectado(event.target.checked)}
                 />
