@@ -1,10 +1,10 @@
-import ControlCenter from "./control-center";
+import RootControlCenter from "./root-control-center";
 
 export const metadata = {
-  title: "Centro de Controle | NEXUS",
-  description: "Administração do Ecossistema NEXUS.",
+  title: "Centro de Controle ROOT | NEXUS",
+  description: "Gestão executiva, comercial e operacional do ecossistema NEXUS.",
 };
 
 export default function AdminPage() {
-  return <ControlCenter />;
+  return <RootControlCenter />;
 }
