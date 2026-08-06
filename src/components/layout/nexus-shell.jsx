@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { portfolioThemes } from "@/design-system/temas";
+import { portfolioThemes } from "../../design-system/temas";
 import { clientesIniciais, modulosComerciais, planosComerciais } from "../../core/clientes/catalogo";
 
 const navItems = [
@@ -168,13 +168,13 @@ export function NexusShell() {
 
   return <main className={`app-shell theme-${portfolio}`} style={cssVars}>
     <aside className="sidebar">
-      <div className="brand-block"><img src="/branding/nexus-logo.png" alt="NEXUS" className="brand-logo" /><div><strong>NEXUS</strong><span>Foundation 1.2</span></div></div>
+      <div className="brand-block"><img src="/branding/nexus-logo.png" alt="NEXUS" className="brand-logo" /><div><strong>NEXUS Administração</strong><span>Gestão interna da plataforma</span></div></div>
       <nav className="navigation" aria-label="Navegação principal">{navItems.map((item) => <button className={activeSection === item ? "nav-item active" : "nav-item"} key={item} type="button" onClick={() => setActiveSection(item)}><span className="nav-dot" />{item}</button>)}</nav>
       <div className="portfolio-picker"><label htmlFor="portfolio">Identidade do portfólio</label><select id="portfolio" value={portfolio} onChange={(event) => setPortfolio(event.target.value)}>{Object.entries(portfolioThemes).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></div>
       <div className="sidebar-status"><span className="status-light" /><div><strong>Fundação operacional</strong><small>Com gestão comercial inicial</small></div></div>
     </aside>
     <section className="workspace">
-      <header className="topbar"><div><span className="eyebrow">Ecossistema inteligente de soluções</span><h1>{activeSection === "Visão geral" ? theme.name : activeSection}</h1></div><div className="topbar-actions"><button type="button" className="ghost-button">Documentação</button><button type="button" className="primary-button">Iniciar configuração</button></div></header>
+      <header className="topbar"><div><span className="eyebrow">Painel gerencial interno</span><h1>{activeSection === "Visão geral" ? theme.name : activeSection}</h1></div><div className="topbar-actions"><a className="ghost-button link-button" href="/portal">Visualizar portal do cliente</a><a className="primary-button link-button" href="/login">Sair</a></div></header>
       {content}
     </section>
   </main>;
