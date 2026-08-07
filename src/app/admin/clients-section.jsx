@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import "./clients-responsaveis.css";
 
 const SEGMENTOS = [
   "Governamental",
@@ -18,6 +19,15 @@ const STATUS = [
   { value: "prospect", label: "Prospect" },
 ];
 
+const TIPOS_RESPONSAVEL = [
+  "Administrativo",
+  "Financeiro",
+  "Contratual",
+  "Técnico",
+  "Implantação",
+  "Outro",
+];
+
 const FORM_INICIAL = {
   legalName: "",
   tradeName: "",
@@ -30,8 +40,101 @@ const FORM_INICIAL = {
   notes: "",
 };
 
-function statusLabel(value) {
-  return STATUS.find((item) => item.value === value)?.label || value;
+function novoResponsavel(principal = false) {
+  return {
+    localId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    name: "",
+    role: "",
+    types: [],
+    email: "",
+    phone: "",
+    whatsapp: "",
+    samePhone: false,
+    principal,
+  };
+}
+
+function onlyDigits(value = "") {
+  return String(value).replace(/\D/g, "");
+}
+
+function formatCpf(value = "") {
+  const digits = onlyDigits(value).slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+}
+
+function formatCnpj(value = "") {
+  const digits = onlyDigits(value).slice(0, 14);
+  return digits
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2");
+}
+
+function formatDocument(value, type) {
+  if (type === "CPF") return formatCpf(value);
+  if (type === "CNPJ") return formatCnpj(value);
+  return onlyDigits(value);
+}
+
+function formatPhone(value = "") {
+  const digits = onlyDigits(value).slice(0, 11);
+  if (digits.length <= 10) {
+    return digits
+      .replace(/^(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+function isValidCpf(value) {
+  const cpf = onlyDigits(value);
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  for (let t = 9; t < 11; t += 1) {
+    let sum = 0;
+    for (let i = 0; i < t; i += 1) {
+      sum += Number(cpf[i]) * ((t + 1) - i);
+    }
+    let digit = (sum * 10) % 11;
+    if (digit === 10) digit = 0;
+    if (digit !== Number(cpf[t])) return false;
+  }
+
+  return true;
+}
+
+function isValidCnpj(value) {
+  const cnpj = onlyDigits(value);
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+
+  const calc = (base) => {
+    let factor = base.length - 7;
+    let total = 0;
+    for (const digit of base) {
+      total += Number(digit) * factor--;
+      if (factor < 2) factor = 9;
+    }
+    const rest = total % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+
+  const d1 = calc(cnpj.slice(0, 12));
+  const d2 = calc(cnpj.slice(0, 12) + d1);
+  return cnpj.endsWith(`${d1}${d2}`);
+}
+
+function isValidDocument(value, type) {
+  if (!value) return true;
+  if (type === "CPF") return isValidCpf(value);
+  if (type === "CNPJ") return isValidCnpj(value);
+  return onlyDigits(value).length > 0;
 }
 
 function formatDate(value) {
@@ -39,7 +142,7 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("pt-BR").format(new Date(value));
 }
 
-export default function ClientsSection({ openRequest = 0 }) {
+export default function ClientsSection() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,6 +153,7 @@ export default function ClientsSection({ openRequest = 0 }) {
   const [status, setStatus] = useState("Todos");
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
+  const [responsaveis, setResponsaveis] = useState([]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -72,7 +176,6 @@ export default function ClientsSection({ openRequest = 0 }) {
       const response = await fetch(`/api/admin/clientes?${params.toString()}`, {
         cache: "no-store",
       });
-
       const data = await response.json();
 
       if (!response.ok) {
@@ -89,16 +192,111 @@ export default function ClientsSection({ openRequest = 0 }) {
     }
   }
 
+  function abrirCadastro() {
+    setForm(FORM_INICIAL);
+    setResponsaveis([]);
+    setMessage("");
+    setModalOpen(true);
+  }
+
+  function adicionarResponsavel() {
+    setResponsaveis((current) => [
+      ...current,
+      novoResponsavel(current.length === 0),
+    ]);
+  }
+
+  function removerResponsavel(localId) {
+    setResponsaveis((current) => {
+      const removing = current.find((item) => item.localId === localId);
+      const next = current.filter((item) => item.localId !== localId);
+
+      if (removing?.principal && next.length > 0) {
+        next[0] = { ...next[0], principal: true };
+      }
+
+      return next;
+    });
+  }
+
+  function atualizarResponsavel(localId, patch) {
+    setResponsaveis((current) =>
+      current.map((item) =>
+        item.localId === localId ? { ...item, ...patch } : item
+      )
+    );
+  }
+
+  function definirPrincipal(localId) {
+    setResponsaveis((current) =>
+      current.map((item) => ({
+        ...item,
+        principal: item.localId === localId,
+      }))
+    );
+  }
+
+  function alternarTipo(localId, tipo) {
+    setResponsaveis((current) =>
+      current.map((item) => {
+        if (item.localId !== localId) return item;
+        const exists = item.types.includes(tipo);
+        return {
+          ...item,
+          types: exists
+            ? item.types.filter((value) => value !== tipo)
+            : [...item.types, tipo],
+        };
+      })
+    );
+  }
+
   async function createClient(event) {
     event.preventDefault();
-    setSaving(true);
     setMessage("");
+
+    if (!isValidDocument(form.documentNumber, form.documentType)) {
+      setMessage(`Informe um ${form.documentType} válido.`);
+      setMessageType("error");
+      return;
+    }
+
+    const incomplete = responsaveis.find(
+      (item) =>
+        !item.name.trim() ||
+        !item.role.trim() ||
+        item.types.length === 0 ||
+        !item.email.trim()
+    );
+
+    if (incomplete) {
+      setMessage(
+        "Complete Nome, Função/Cargo, Tipo de responsável e E-mail de todos os responsáveis adicionados."
+      );
+      setMessageType("error");
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const response = await fetch("/api/admin/clientes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          documentNumber: onlyDigits(form.documentNumber),
+          phone: onlyDigits(form.phone),
+          responsaveis: responsaveis.map((item) => ({
+            name: item.name.trim(),
+            role: item.role.trim(),
+            types: item.types,
+            email: item.email.trim().toLowerCase(),
+            phone: onlyDigits(item.phone),
+            whatsapp: onlyDigits(item.samePhone ? item.phone : item.whatsapp),
+            principal: Boolean(item.principal),
+          })),
+        }),
       });
 
       const data = await response.json();
@@ -109,6 +307,7 @@ export default function ClientsSection({ openRequest = 0 }) {
 
       setModalOpen(false);
       setForm(FORM_INICIAL);
+      setResponsaveis([]);
       setMessage("Cliente cadastrado com sucesso.");
       setMessageType("success");
       await loadClients();
@@ -149,14 +348,19 @@ export default function ClientsSection({ openRequest = 0 }) {
     }
   }
 
-  const summary = useMemo(() => {
-    return {
-      total: clients.length,
-      active: clients.filter((item) => item.status === "active").length,
-      implementation: clients.filter((item) => item.status === "implementation").length,
-      suspended: clients.filter((item) => item.status === "suspended").length,
-    };
-  }, [clients]);
+  const summary = useMemo(() => ({
+    total: clients.length,
+    active: clients.filter((item) => item.status === "active").length,
+    implementation: clients.filter((item) => item.status === "implementation").length,
+    suspended: clients.filter((item) => item.status === "suspended").length,
+  }), [clients]);
+
+  const documentPlaceholder =
+    form.documentType === "CPF"
+      ? "000.000.000-00"
+      : form.documentType === "CNPJ"
+        ? "00.000.000/0000-00"
+        : "Somente números";
 
   return (
     <>
@@ -173,7 +377,7 @@ export default function ClientsSection({ openRequest = 0 }) {
         <button
           type="button"
           className="root2-button primary"
-          onClick={() => setModalOpen(true)}
+          onClick={abrirCadastro}
         >
           + Novo cliente
         </button>
@@ -255,11 +459,15 @@ export default function ClientsSection({ openRequest = 0 }) {
                   <td>{client.segment}</td>
                   <td>
                     <strong>{client.document_type || "—"}</strong>
-                    <small>{client.document_number || "Não informado"}</small>
+                    <small>
+                      {client.document_number
+                        ? formatDocument(client.document_number, client.document_type)
+                        : "Não informado"}
+                    </small>
                   </td>
                   <td>
                     <strong>{client.email || "—"}</strong>
-                    <small>{client.phone || "Sem telefone"}</small>
+                    <small>{client.phone ? formatPhone(client.phone) : "Sem telefone"}</small>
                   </td>
                   <td>{formatDate(client.created_at)}</td>
                   <td>
@@ -269,9 +477,7 @@ export default function ClientsSection({ openRequest = 0 }) {
                       onChange={(event) => updateStatus(client.id, event.target.value)}
                     >
                       {STATUS.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
+                        <option key={item.value} value={item.value}>{item.label}</option>
                       ))}
                     </select>
                   </td>
@@ -280,9 +486,7 @@ export default function ClientsSection({ openRequest = 0 }) {
 
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="root2-table-state">
-                    Carregando clientes…
-                  </td>
+                  <td colSpan="6" className="root2-table-state">Carregando clientes…</td>
                 </tr>
               ) : null}
 
@@ -300,14 +504,19 @@ export default function ClientsSection({ openRequest = 0 }) {
 
       {modalOpen ? (
         <div className="root2-modal-backdrop" role="presentation">
-          <section className="root2-modal" role="dialog" aria-modal="true" aria-labelledby="novo-cliente-title">
+          <section
+            className="root2-modal root2-modal-client-v11"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="novo-cliente-title"
+          >
             <header>
               <div>
                 <span>NOVO CLIENTE</span>
                 <h2 id="novo-cliente-title">Cadastrar organização</h2>
                 <p>
-                  O cadastro cria automaticamente a organização vinculada ao
-                  cliente no núcleo multiempresa do NEXUS.
+                  Cadastre a organização e, opcionalmente, todos os responsáveis
+                  que atuarão no relacionamento com o NEXUS.
                 </p>
               </div>
               <button type="button" onClick={() => setModalOpen(false)} aria-label="Fechar">
@@ -340,7 +549,13 @@ export default function ClientsSection({ openRequest = 0 }) {
                   <span>Tipo de documento</span>
                   <select
                     value={form.documentType}
-                    onChange={(event) => setForm({ ...form, documentType: event.target.value })}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        documentType: event.target.value,
+                        documentNumber: "",
+                      })
+                    }
                   >
                     <option>CNPJ</option>
                     <option>CPF</option>
@@ -351,10 +566,23 @@ export default function ClientsSection({ openRequest = 0 }) {
                 <label>
                   <span>Documento</span>
                   <input
-                    value={form.documentNumber}
-                    onChange={(event) => setForm({ ...form, documentNumber: event.target.value })}
-                    placeholder="Somente identificação"
+                    inputMode="numeric"
+                    value={formatDocument(form.documentNumber, form.documentType)}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        documentNumber: onlyDigits(event.target.value),
+                      })
+                    }
+                    placeholder={documentPlaceholder}
+                    maxLength={form.documentType === "CPF" ? 14 : form.documentType === "CNPJ" ? 18 : 30}
                   />
+                  {form.documentNumber &&
+                  !isValidDocument(form.documentNumber, form.documentType) ? (
+                    <small className="nexus-field-error">
+                      {form.documentType} inválido.
+                    </small>
+                  ) : null}
                 </label>
 
                 <label>
@@ -381,7 +609,7 @@ export default function ClientsSection({ openRequest = 0 }) {
                 </label>
 
                 <label>
-                  <span>E-mail</span>
+                  <span>E-mail institucional</span>
                   <input
                     type="email"
                     value={form.email}
@@ -391,10 +619,13 @@ export default function ClientsSection({ openRequest = 0 }) {
                 </label>
 
                 <label>
-                  <span>Telefone</span>
+                  <span>Telefone institucional</span>
                   <input
-                    value={form.phone}
-                    onChange={(event) => setForm({ ...form, phone: event.target.value })}
+                    inputMode="tel"
+                    value={formatPhone(form.phone)}
+                    onChange={(event) =>
+                      setForm({ ...form, phone: onlyDigits(event.target.value) })
+                    }
                     placeholder="(00) 00000-0000"
                   />
                 </label>
@@ -405,10 +636,188 @@ export default function ClientsSection({ openRequest = 0 }) {
                     value={form.notes}
                     onChange={(event) => setForm({ ...form, notes: event.target.value })}
                     placeholder="Informações comerciais ou de implantação"
-                    rows="4"
+                    rows="3"
                   />
                 </label>
               </div>
+
+              <section className="nexus-responsaveis-section">
+                <div className="nexus-responsaveis-heading">
+                  <div>
+                    <span>RESPONSÁVEIS</span>
+                    <h3>Contatos da organização</h3>
+                    <p>
+                      Adicione quantos responsáveis forem necessários. Uma mesma
+                      pessoa pode exercer mais de um tipo de responsabilidade.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="root2-button neutral"
+                    onClick={adicionarResponsavel}
+                  >
+                    + Adicionar responsável
+                  </button>
+                </div>
+
+                {responsaveis.length === 0 ? (
+                  <div className="nexus-responsaveis-empty">
+                    Nenhum responsável adicionado.
+                  </div>
+                ) : (
+                  <div className="nexus-responsaveis-list">
+                    {responsaveis.map((responsavel, index) => (
+                      <article className="nexus-responsavel-card" key={responsavel.localId}>
+                        <header>
+                          <div>
+                            <span>RESPONSÁVEL {String(index + 1).padStart(2, "0")}</span>
+                            <strong>
+                              {responsavel.name || "Novo responsável"}
+                            </strong>
+                          </div>
+
+                          <div className="nexus-responsavel-actions">
+                            <label className="nexus-principal-toggle">
+                              <input
+                                type="radio"
+                                name="responsavel-principal"
+                                checked={responsavel.principal}
+                                onChange={() => definirPrincipal(responsavel.localId)}
+                              />
+                              <span>Responsável principal</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => removerResponsavel(responsavel.localId)}
+                            >
+                              Remover
+                            </button>
+                          </div>
+                        </header>
+
+                        <div className="nexus-responsavel-grid">
+                          <label>
+                            <span>Nome *</span>
+                            <input
+                              required
+                              value={responsavel.name}
+                              onChange={(event) =>
+                                atualizarResponsavel(responsavel.localId, {
+                                  name: event.target.value,
+                                })
+                              }
+                              placeholder="Nome completo"
+                            />
+                          </label>
+
+                          <label>
+                            <span>Função/Cargo *</span>
+                            <input
+                              required
+                              value={responsavel.role}
+                              onChange={(event) =>
+                                atualizarResponsavel(responsavel.localId, {
+                                  role: event.target.value,
+                                })
+                              }
+                              placeholder="Ex.: Diretor, Gerente, Proprietário"
+                            />
+                          </label>
+
+                          <label className="span-2">
+                            <span>Tipo de responsável *</span>
+                            <div className="nexus-responsavel-types">
+                              {TIPOS_RESPONSAVEL.map((tipo) => {
+                                const checked = responsavel.types.includes(tipo);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={tipo}
+                                    className={checked ? "active" : ""}
+                                    onClick={() =>
+                                      alternarTipo(responsavel.localId, tipo)
+                                    }
+                                  >
+                                    {checked ? "✓ " : ""}{tipo}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </label>
+
+                          <label className="span-2">
+                            <span>E-mail *</span>
+                            <input
+                              required
+                              type="email"
+                              value={responsavel.email}
+                              onChange={(event) =>
+                                atualizarResponsavel(responsavel.localId, {
+                                  email: event.target.value,
+                                })
+                              }
+                              placeholder="responsavel@empresa.com.br"
+                            />
+                          </label>
+
+                          <label>
+                            <span>Telefone</span>
+                            <input
+                              inputMode="tel"
+                              value={formatPhone(responsavel.phone)}
+                              onChange={(event) => {
+                                const phone = onlyDigits(event.target.value);
+                                atualizarResponsavel(responsavel.localId, {
+                                  phone,
+                                  whatsapp: responsavel.samePhone
+                                    ? phone
+                                    : responsavel.whatsapp,
+                                });
+                              }}
+                              placeholder="(00) 00000-0000"
+                            />
+                          </label>
+
+                          <label>
+                            <span>WhatsApp</span>
+                            <input
+                              inputMode="tel"
+                              disabled={responsavel.samePhone}
+                              value={formatPhone(
+                                responsavel.samePhone
+                                  ? responsavel.phone
+                                  : responsavel.whatsapp
+                              )}
+                              onChange={(event) =>
+                                atualizarResponsavel(responsavel.localId, {
+                                  whatsapp: onlyDigits(event.target.value),
+                                })
+                              }
+                              placeholder="(00) 00000-0000"
+                            />
+                            <label className="nexus-same-phone">
+                              <input
+                                type="checkbox"
+                                checked={responsavel.samePhone}
+                                onChange={(event) =>
+                                  atualizarResponsavel(responsavel.localId, {
+                                    samePhone: event.target.checked,
+                                    whatsapp: event.target.checked
+                                      ? responsavel.phone
+                                      : responsavel.whatsapp,
+                                  })
+                                }
+                              />
+                              <span>Mesmo número do telefone</span>
+                            </label>
+                          </label>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
 
               <footer>
                 <button
