@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 
-const AUTH_COOKIE = "nexus_session";
-const PROFILE_COOKIE = "nexus_profile";
-const ORG_COOKIE = "nexus_organization";
-
 export async function POST(request) {
   const response = NextResponse.redirect(new URL("/login", request.url), 303);
 
-  for (const cookieName of [AUTH_COOKIE, PROFILE_COOKIE, ORG_COOKIE]) {
-    response.cookies.set(cookieName, "", {
+  for (const name of [
+    "nexus_access_token",
+    "nexus_refresh_token",
+    "nexus_profile",
+    "nexus_organization",
+  ]) {
+    response.cookies.set(name, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
