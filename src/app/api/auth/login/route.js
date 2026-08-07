@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 
-const AUTH_COOKIE = "nexus_session";
-const PROFILE_COOKIE = "nexus_profile";
-const ORG_COOKIE = "nexus_organization";
-
-const PROFILE_ROUTES = {
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const ROUTES = {
   NEXUS_ROOT: "/admin",
   NEXUS_ADMIN: "/admin",
   CLIENT_ADMIN: "/portal",
@@ -14,186 +12,102 @@ const PROFILE_ROUTES = {
   VIEWER: "/portal",
 };
 
-function getRedirectForProfile(profile) {
-  return PROFILE_ROUTES[profile] || "/portal";
-}
-
-function getCookieMaxAge(remember) {
-  return remember ? 60 * 60 * 24 * 30 : 60 * 60 * 8;
-}
-
-function normalizeEmail(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function isDemoEnabled() {
-  return process.env.NEXUS_DEMO_AUTH === "true";
-}
-
-function getDemoIdentity(email) {
-  if (
-    email.includes("root") ||
-    email.includes("elmolobao") ||
-    email.endsWith("@nexus.com.br")
-  ) {
-    return {
-      accessToken: `demo-root-${Date.now()}`,
-      profile: "NEXUS_ROOT",
-      organizationId: "nexus-platform",
-    };
-  }
-
-  if (email.includes("admin")) {
-    return {
-      accessToken: `demo-admin-${Date.now()}`,
-      profile: "CLIENT_ADMIN",
-      organizationId: "org-demo",
-    };
-  }
-
+function cookieOptions(maxAge) {
   return {
-    accessToken: `demo-user-${Date.now()}`,
-    profile: "OPERATOR",
-    organizationId: "org-demo",
-  };
-}
-
-async function authenticateWithSupabase(email, password) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    throw new Error("SUPABASE_NOT_CONFIGURED");
-  }
-
-  const authResponse = await fetch(
-    `${url}/auth/v1/token?grant_type=password`,
-    {
-      method: "POST",
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-      cache: "no-store",
-    }
-  );
-
-  const authData = await authResponse.json();
-
-  if (!authResponse.ok || !authData.access_token) {
-    throw new Error("INVALID_CREDENTIALS");
-  }
-
-  const profileResponse = await fetch(
-    `${url}/rest/v1/nexus_user_profiles?user_id=eq.${authData.user.id}&select=profile,organization_id,active&limit=1`,
-    {
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${authData.access_token}`,
-      },
-      cache: "no-store",
-    }
-  );
-
-  const profiles = await profileResponse.json();
-  const profile = Array.isArray(profiles) ? profiles[0] : null;
-
-  if (!profileResponse.ok || !profile?.active) {
-    throw new Error("PROFILE_NOT_AUTHORIZED");
-  }
-
-  return {
-    accessToken: authData.access_token,
-    profile: profile.profile,
-    organizationId: profile.organization_id || "",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge,
   };
 }
 
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const email = normalizeEmail(body.email);
-    const password = String(body.senha || "");
-    const remember = Boolean(body.manterConectado);
-
-    if (!email || !email.includes("@")) {
+    if (!URL || !KEY) {
       return NextResponse.json(
-        { message: "Informe um e-mail válido." },
-        { status: 400 }
-      );
-    }
-
-    if (password.length < 4) {
-      return NextResponse.json(
-        { message: "A senha deve possuir pelo menos 4 caracteres." },
-        { status: 400 }
-      );
-    }
-
-    const identity = isDemoEnabled()
-      ? getDemoIdentity(email)
-      : await authenticateWithSupabase(email, password);
-
-    const response = NextResponse.json({
-      ok: true,
-      profile: identity.profile,
-      redirectTo: getRedirectForProfile(identity.profile),
-    });
-
-    const maxAge = getCookieMaxAge(remember);
-    const secure = process.env.NODE_ENV === "production";
-
-    response.cookies.set(AUTH_COOKIE, identity.accessToken, {
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      maxAge,
-    });
-
-    response.cookies.set(PROFILE_COOKIE, identity.profile, {
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      maxAge,
-    });
-
-    response.cookies.set(ORG_COOKIE, identity.organizationId || "", {
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      maxAge,
-    });
-
-    return response;
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "AUTHENTICATION_FAILED";
-
-    if (message == "SUPABASE_NOT_CONFIGURED") {
-      return NextResponse.json(
-        {
-          message:
-            "Autenticação não configurada. Cadastre o Supabase ou habilite NEXUS_DEMO_AUTH=true.",
-        },
+        { message: "As variáveis do Supabase não estão configuradas." },
         { status: 503 }
       );
     }
 
-    if (message == "PROFILE_NOT_AUTHORIZED") {
+    const { email, senha, manterConectado } = await request.json();
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const password = String(senha || "");
+
+    if (!normalizedEmail.includes("@")) {
+      return NextResponse.json({ message: "Informe um e-mail válido." }, { status: 400 });
+    }
+
+    if (password.length < 6) {
       return NextResponse.json(
-        { message: "Usuário sem perfil ativo no NEXUS." },
+        { message: "A senha deve possuir pelo menos 6 caracteres." },
+        { status: 400 }
+      );
+    }
+
+    const authResponse = await fetch(`${URL}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        apikey: KEY,
+        Authorization: `Bearer ${KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: normalizedEmail, password }),
+      cache: "no-store",
+    });
+
+    const authData = await authResponse.json();
+
+    if (!authResponse.ok || !authData?.access_token || !authData?.user?.id) {
+      return NextResponse.json(
+        { message: "E-mail ou senha inválidos." },
+        { status: 401 }
+      );
+    }
+
+    const profileResponse = await fetch(
+      `${URL}/rest/v1/nexus_user_profiles?user_id=eq.${authData.user.id}&select=profile,organization_id,active&limit=1`,
+      {
+        headers: {
+          apikey: KEY,
+          Authorization: `Bearer ${authData.access_token}`,
+        },
+        cache: "no-store",
+      }
+    );
+
+    const rows = await profileResponse.json();
+    const profile = Array.isArray(rows) ? rows[0] : null;
+
+    if (!profileResponse.ok || !profile) {
+      return NextResponse.json(
+        { message: "Usuário autenticado, mas sem perfil no NEXUS." },
         { status: 403 }
       );
     }
 
+    if (!profile.active) {
+      return NextResponse.json({ message: "Este acesso está desativado." }, { status: 403 });
+    }
+
+    const maxAge = manterConectado ? 60 * 60 * 24 * 30 : 60 * 60 * 8;
+    const response = NextResponse.json({
+      ok: true,
+      redirectTo: ROUTES[profile.profile] || "/portal",
+      profile: profile.profile,
+    });
+
+    response.cookies.set("nexus_access_token", authData.access_token, cookieOptions(maxAge));
+    response.cookies.set("nexus_refresh_token", authData.refresh_token || "", cookieOptions(60 * 60 * 24 * 30));
+    response.cookies.set("nexus_profile", profile.profile, cookieOptions(maxAge));
+    response.cookies.set("nexus_organization", profile.organization_id || "", cookieOptions(maxAge));
+
+    return response;
+  } catch {
     return NextResponse.json(
-      { message: "E-mail ou senha inválidos." },
-      { status: 401 }
+      { message: "Falha inesperada durante a autenticação." },
+      { status: 500 }
     );
   }
 }
