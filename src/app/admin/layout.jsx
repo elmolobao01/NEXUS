@@ -1,14 +1,6 @@
-import "./globals.css";
+import { requireAuthenticatedUser } from "./auth-guard";
 
-export const metadata = {
-  title: "NEXUS",
-  description: "Ecossistema inteligente de soluções",
-};
-
-export default function RootLayout({ children }) {
-  return (
-    <html lang="pt-BR">
-      <body>{children}</body>
-    </html>
-  );
+export default async function AdminLayout({ children }) {
+  await requireAuthenticatedUser(["NEXUS_ROOT", "NEXUS_ADMIN"]);
+  return children;
 }
