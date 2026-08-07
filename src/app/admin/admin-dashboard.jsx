@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import ClientsSection from "./clients-section";
 import AlertsCard from "./components/cards/alerts-card";
 import MetricCard from "./components/cards/metric-card";
 import ModulesCard from "./components/cards/modules-card";
@@ -21,6 +22,7 @@ import {
 export default function AdminDashboard() {
   const [secao, setSecao] = useState("Visão executiva");
   const [menuAberto, setMenuAberto] = useState(false);
+  const [novoClienteRequest, setNovoClienteRequest] = useState(0);
 
   return (
     <main className="root2-layout">
@@ -121,7 +123,14 @@ export default function AdminDashboard() {
                   <button type="button" className="root2-button secondary">
                     Exportar relatório
                   </button>
-                  <button type="button" className="root2-button primary">
+                  <button
+                    type="button"
+                    className="root2-button primary"
+                    onClick={() => {
+                      setSecao("Clientes");
+                      setNovoClienteRequest((value) => value + 1);
+                    }}
+                  >
                     + Novo cliente
                   </button>
                 </div>
@@ -145,13 +154,15 @@ export default function AdminDashboard() {
 
               <RecentClients clientes={ultimosClientes} />
             </>
+          ) : secao === "Clientes" ? (
+            <ClientsSection openRequest={novoClienteRequest} />
           ) : (
             <section className="root2-placeholder">
-              <span>SPRINT ROOT 2</span>
+              <span>NEXUS FOUNDATION 1.7</span>
               <h2>{secao}</h2>
               <p>
-                A navegação está preparada. A funcionalidade completa desta
-                área será conectada nas próximas sprints.
+                A navegação está preparada. Esta área será conectada ao núcleo
+                persistente nas próximas sprints.
               </p>
               <button type="button" className="root2-button primary">
                 Iniciar configuração
