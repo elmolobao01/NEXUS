@@ -52,10 +52,6 @@ export default function ClientsSection({ openRequest = 0 }) {
   const [form, setForm] = useState(FORM_INICIAL);
 
   useEffect(() => {
-    if (openRequest > 0) setModalOpen(true);
-  }, [openRequest]);
-
-  useEffect(() => {
     const timer = setTimeout(() => {
       loadClients();
     }, 250);
