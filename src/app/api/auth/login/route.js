@@ -50,7 +50,6 @@ export async function POST(request) {
       method: "POST",
       headers: {
         apikey: KEY,
-        Authorization: `Bearer ${KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ email: normalizedEmail, password }),
