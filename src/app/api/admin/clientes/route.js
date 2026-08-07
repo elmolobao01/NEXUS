@@ -11,6 +11,10 @@ function getToken(request) {
   return request.cookies.get("nexus_access_token")?.value || "";
 }
 
+function onlyDigits(value = "") {
+  return String(value).replace(/\D/g, "");
+}
+
 async function getRootContext(token) {
   if (!SUPABASE_URL || !SUPABASE_KEY || !token) return null;
 
@@ -118,17 +122,31 @@ export async function POST(request) {
     }
 
     const body = await request.json();
+    const responsaveis = Array.isArray(body.responsaveis)
+      ? body.responsaveis
+      : [];
 
     const payload = {
       p_legal_name: String(body.legalName || "").trim(),
       p_trade_name: String(body.tradeName || "").trim() || null,
       p_document_type: String(body.documentType || "CNPJ").trim(),
-      p_document_number: String(body.documentNumber || "").trim() || null,
+      p_document_number: onlyDigits(body.documentNumber) || null,
       p_email: String(body.email || "").trim().toLowerCase() || null,
-      p_phone: String(body.phone || "").trim() || null,
+      p_phone: onlyDigits(body.phone) || null,
       p_segment: String(body.segment || "").trim(),
       p_status: String(body.status || "implementation").trim(),
       p_notes: String(body.notes || "").trim() || null,
+      p_contacts: responsaveis.map((item) => ({
+        name: String(item.name || "").trim(),
+        role: String(item.role || "").trim(),
+        types: Array.isArray(item.types)
+          ? item.types.map((value) => String(value).trim()).filter(Boolean)
+          : [],
+        email: String(item.email || "").trim().toLowerCase(),
+        phone: onlyDigits(item.phone) || null,
+        whatsapp: onlyDigits(item.whatsapp) || null,
+        principal: Boolean(item.principal),
+      })),
     };
 
     if (!payload.p_legal_name) {
@@ -137,6 +155,29 @@ export async function POST(request) {
 
     if (!payload.p_segment) {
       return json("Selecione o segmento.", 400);
+    }
+
+    const principalCount = payload.p_contacts.filter(
+      (item) => item.principal
+    ).length;
+
+    if (principalCount > 1) {
+      return json("Defina somente um responsável principal.", 400);
+    }
+
+    const invalidContact = payload.p_contacts.find(
+      (item) =>
+        !item.name ||
+        !item.role ||
+        item.types.length === 0 ||
+        !item.email
+    );
+
+    if (invalidContact) {
+      return json(
+        "Complete os dados obrigatórios de todos os responsáveis.",
+        400
+      );
     }
 
     const response = await fetch(
