@@ -629,16 +629,6 @@ export default function ClientsSection() {
                     placeholder="(00) 00000-0000"
                   />
                 </label>
-
-                <label className="span-2">
-                  <span>Observações</span>
-                  <textarea
-                    value={form.notes}
-                    onChange={(event) => setForm({ ...form, notes: event.target.value })}
-                    placeholder="Informações comerciais ou de implantação"
-                    rows="3"
-                  />
-                </label>
               </div>
 
               <section className="nexus-responsaveis-section">
@@ -817,6 +807,18 @@ export default function ClientsSection() {
                     ))}
                   </div>
                 )}
+              </section>
+
+              <section className="nexus-observacoes-final">
+                <label>
+                  <span>Observações</span>
+                  <textarea
+                    value={form.notes}
+                    onChange={(event) => setForm({ ...form, notes: event.target.value })}
+                    placeholder="Informações comerciais ou de implantação"
+                    rows="4"
+                  />
+                </label>
               </section>
 
               <footer>
