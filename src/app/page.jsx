@@ -7,7 +7,6 @@ const products = [
     name: "NEXUS Gestão",
     description: "Organize processos, clientes, equipes, indicadores e operações em uma plataforma modular.",
     features: ["Gestão por módulos", "Indicadores e relatórios", "Ambiente multiempresa"],
-    cta: "Conhecer Gestão",
   },
   {
     id: "ia",
@@ -15,13 +14,13 @@ const products = [
     name: "NEXUS IA",
     description: "Acesse inteligência artificial, bases de conhecimento e especialistas digitais em um único ambiente.",
     features: ["Multi-IA", "NEXUS Knowledge", "Créditos com consumo controlado"],
-    cta: "Conhecer NEXUS IA",
   },
 ];
 
+const whatsappNumber = (process.env.NEXT_PUBLIC_NEXUS_WHATSAPP || "5571999952478").replace(/\D/g, "");
+
 function whatsappUrl(message) {
-  const number = process.env.NEXT_PUBLIC_NEXUS_WHATSAPP?.replace(/\D/g, "");
-  return number ? `https://wa.me/${number}?text=${encodeURIComponent(message)}` : "#atendimento";
+  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 }
 
 export default function HomePage() {
@@ -34,8 +33,9 @@ export default function HomePage() {
         </Link>
         <nav className="nexus-home-nav" aria-label="Navegação principal">
           <a href="#produtos">Produtos</a>
-          <a href="#beneficios">Benefícios</a>
-          <a href="#atendimento">Atendimento</a>
+          <a href="#como-funciona">Como funciona</a>
+          <a href="#planos">Planos</a>
+          <a href="#atendimento">Fale conosco</a>
           <Link className="home-login-link" href="/login">Entrar</Link>
         </nav>
       </header>
@@ -46,8 +46,8 @@ export default function HomePage() {
           <h1>Conecte gestão e inteligência para transformar resultados.</h1>
           <p>Contrate somente o que precisa hoje e amplie seu NEXUS quando quiser. Gestão e IA funcionam de forma independente — e juntas entregam ainda mais valor.</p>
           <div className="home-hero-actions">
-            <a className="home-primary-button" href="#produtos">Conhecer produtos</a>
-            <a className="home-secondary-button" href={whatsappUrl("Olá! Gostaria de conhecer as soluções NEXUS e entender qual produto é mais adequado para mim.")} target="_blank" rel="noreferrer">Falar com atendimento</a>
+            <a className="home-primary-button" href="#produtos">Conhecer soluções</a>
+            <a className="home-secondary-button" href={whatsappUrl("Olá! Conheci o NEXUS pelo site e gostaria de entender qual solução é mais adequada para mim.")} target="_blank" rel="noreferrer">Falar no WhatsApp</a>
           </div>
           <div className="home-trust-row"><span>✓ Contratação modular</span><span>✓ Benefício multiproduto</span><span>✓ Evolução sob demanda</span></div>
         </div>
@@ -64,13 +64,25 @@ export default function HomePage() {
             <article className={`home-product-card product-${product.id}`} key={product.id}>
               <span className="product-eyebrow">{product.eyebrow}</span><h3>{product.name}</h3><p>{product.description}</p>
               <ul>{product.features.map((feature) => <li key={feature}>✓ {feature}</li>)}</ul>
-              <div className="product-actions"><a className="home-primary-button" href={whatsappUrl(`Olá! Quero saber mais sobre o ${product.name}.`)} target="_blank" rel="noreferrer">{product.cta}</a><a href={whatsappUrl(`Olá! Tenho dúvidas sobre o ${product.name} e gostaria de falar com o atendimento.`)} target="_blank" rel="noreferrer">Tirar dúvidas</a></div>
+              <div className="product-actions">
+                <Link className="home-primary-button" href={`/contratar?produto=${product.id}`}>Contratar</Link>
+                <a href={whatsappUrl(`Olá! Tenho dúvidas sobre o ${product.name} e gostaria de falar com o atendimento.`)} target="_blank" rel="noreferrer">Tirar dúvidas</a>
+              </div>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="home-benefit" id="beneficios">
+      <section className="home-how" id="como-funciona">
+        <div className="home-section-heading"><span>COMO FUNCIONA</span><h2>Comece simples e evolua quando precisar.</h2></div>
+        <div className="home-how-grid">
+          <article><b>01</b><h3>Escolha</h3><p>Selecione NEXUS Gestão, NEXUS IA ou combine os dois.</p></article>
+          <article><b>02</b><h3>Contrate</h3><p>Inicie a contratação pelo site ou fale com nosso atendimento.</p></article>
+          <article><b>03</b><h3>Amplie</h3><p>Adicione novos produtos depois e receba o Benefício Ecossistema.</p></article>
+        </div>
+      </section>
+
+      <section className="home-benefit" id="planos">
         <div><span className="home-kicker">BENEFÍCIO ECOSSISTEMA</span><h2>Quanto mais NEXUS, mais vantagem.</h2><p>Quem já utiliza NEXUS Gestão recebe condição especial para adicionar NEXUS IA. Quem começa pela IA também recebe benefício ao contratar Gestão.</p></div>
         <div className="benefit-flow"><span>01 produto<br/><strong>Preço individual</strong></span><b>+</b><span>02 produtos<br/><strong>Benefício exclusivo</strong></span><b>→</b><span>Ecossistema<br/><strong>Mais integração e valor</strong></span></div>
       </section>
