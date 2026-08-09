@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const WHATSAPP = "5571999952478";
 
@@ -223,18 +223,9 @@ const segmentos = {
   },
 };
 
-const usosIA = {
-  profissional: "Uso profissional individual",
-  equipe: "Empresa ou equipe",
-  conhecimento: "Base de conhecimento empresarial",
-  conteudo: "Conteúdo, imagem e produtividade",
-  geral: "Uso geral / ainda não defini",
-};
-
 export default function ContractForm({ initialProduct = "gestao", origem = "site" }) {
   const [produto, setProduto] = useState(initialProduct);
-  const [segmento, setSegmento] = useState("educacao");
-  const [usoIA, setUsoIA] = useState("profissional");
+  const [segmento, setSegmento] = useState("");
   const [nome, setNome] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [email, setEmail] = useState("");
@@ -242,14 +233,17 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
 
   const temGestao = produto === "gestao" || produto === "combo";
   const temIA = produto === "ia" || produto === "combo";
-  const segmentoAtual = segmentos[segmento];
+  const segmentoAtual = segmento ? segmentos[segmento] : null;
+
+  useEffect(() => {
+    setProduto(initialProduct);
+  }, [initialProduct]);
 
   const whatsappHref = useMemo(() => {
     const msg = [
       "Olá! Quero conhecer os planos e iniciar uma contratação NEXUS.",
       `Produto: ${productLabels[produto]}`,
-      temGestao ? `Segmento: ${segmentoAtual.nome}` : null,
-      temIA ? `Uso principal da IA: ${usosIA[usoIA]}` : null,
+      segmentoAtual ? `Segmento: ${segmentoAtual.nome}` : "Segmento: não selecionado",
       `Nome: ${nome || "não informado"}`,
       `Empresa: ${empresa || "não informada"}`,
       `E-mail: ${email || "não informado"}`,
@@ -257,7 +251,7 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
       origem === "cliente" ? "Origem: cliente NEXUS existente / adicionar produto" : "Origem: site público",
     ].filter(Boolean).join("\n");
     return `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
-  }, [produto, segmentoAtual, usoIA, nome, empresa, email, telefone, origem, temGestao, temIA]);
+  }, [produto, segmentoAtual, nome, empresa, email, telefone, origem]);
 
   return (
     <form className="contract-form contract-form-segmented" onSubmit={(event) => { event.preventDefault(); window.open(whatsappHref, "_blank", "noopener,noreferrer"); }}>
@@ -268,61 +262,53 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
 
       <label><span>Produto de interesse</span><select value={produto} onChange={(e) => setProduto(e.target.value)}><option value="gestao">NEXUS Gestão</option><option value="ia">NEXUS IA</option><option value="combo">Gestão + IA</option></select></label>
 
-      {temGestao && (
-        <>
-          <div className="contract-step">
-            <span className="contract-step-number">02</span>
-            <div><strong>Qual é o seu segmento?</strong><small>Selecione o perfil mais próximo da sua operação. A configuração final é personalizada.</small></div>
+      <div className="contract-step">
+        <span className="contract-step-number">02</span>
+        <div><strong>Selecione o segmento</strong><small>Escolha a área mais próxima da sua operação. A configuração final é personalizada para a sua empresa.</small></div>
+      </div>
+
+      <label className="segment-select-label">
+        <span>Segmento do negócio</span>
+        <select value={segmento} onChange={(e) => setSegmento(e.target.value)} required>
+          <option value="" disabled>Selecione o segmento</option>
+          {Object.entries(segmentos).map(([key, item]) => <option key={key} value={key}>{item.nome}</option>)}
+        </select>
+      </label>
+
+      {segmentoAtual && temGestao && (
+        <section className="segment-solution-card">
+          <div className="segment-solution-head">
+            <span>SOLUÇÃO PARA O SEU NEGÓCIO</span>
+            <h3>{segmentoAtual.subtitulo}</h3>
+            <p>{segmentoAtual.descricao}</p>
           </div>
 
-          <label className="segment-select-label">
-            <span>Segmento do negócio</span>
-            <select value={segmento} onChange={(e) => setSegmento(e.target.value)}>
-              {Object.entries(segmentos).map(([key, item]) => <option key={key} value={key}>{item.nome}</option>)}
-            </select>
-          </label>
+          <div className="segment-tailored-note">
+            <strong>NEXUS sob medida para a sua estrutura</strong>
+            <span>Cada implantação é configurada conforme o porte, os processos, a rotina e as necessidades da empresa. Você contrata os recursos adequados à sua operação e amplia a solução conforme o negócio evolui.</span>
+          </div>
 
-          <section className="segment-solution-card">
-            <div className="segment-solution-head">
-              <span>SOLUÇÃO PARA O SEU NEGÓCIO</span>
-              <h3>{segmentoAtual.subtitulo}</h3>
-              <p>{segmentoAtual.descricao}</p>
-            </div>
+          <div className="segment-section-title">RECURSOS DE GESTÃO</div>
+          <div className="segment-resource-grid">
+            {segmentoAtual.recursos.map((recurso) => <span key={recurso}>✓ {recurso}</span>)}
+          </div>
 
-            <div className="segment-tailored-note">
-              <strong>NEXUS sob medida para a sua estrutura</strong>
-              <span>Cada implantação é configurada conforme o porte, os processos, a rotina e as necessidades da empresa. Você contrata os recursos adequados à sua operação e amplia a solução conforme o negócio evolui.</span>
-            </div>
-
-            <div className="segment-section-title">RECURSOS DE GESTÃO</div>
-            <div className="segment-resource-grid">
-              {segmentoAtual.recursos.map((recurso) => <span key={recurso}>✓ {recurso}</span>)}
-            </div>
-
-            <div className="segment-section-title facilities-title">FACILITIES NEXUS</div>
-            <div className="segment-facilities-grid">
-              {segmentoAtual.facilities.map((facility) => <span key={facility}>★ {facility}</span>)}
-            </div>
-          </section>
-        </>
+          <div className="segment-section-title facilities-title">FACILITIES NEXUS</div>
+          <div className="segment-facilities-grid">
+            {segmentoAtual.facilities.map((facility) => <span key={facility}>★ {facility}</span>)}
+          </div>
+        </section>
       )}
 
-      {temIA && (
-        <>
-          <div className="contract-step">
-            <span className="contract-step-number">{temGestao ? "03" : "02"}</span>
-            <div><strong>Como pretende utilizar a IA?</strong><small>Essa informação ajuda a indicar o plano e os recursos mais adequados.</small></div>
-          </div>
-          <label><span>Perfil de uso do NEXUS IA</span><select value={usoIA} onChange={(e) => setUsoIA(e.target.value)}>{Object.entries(usosIA).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-          <div className="ia-summary-card">
-            <strong>NEXUS IA</strong>
-            <span>Multi-IA • NEXUS Knowledge • Acesso inteligente às principais IAs</span>
-          </div>
-        </>
+      {segmentoAtual && temIA && (
+        <div className="ia-summary-card">
+          <strong>NEXUS IA para {segmentoAtual.nome}</strong>
+          <span>Multi-IA • NEXUS Knowledge • Acesso inteligente às principais IAs • recursos configurados conforme o seu segmento</span>
+        </div>
       )}
 
       <div className="contract-step">
-        <span className="contract-step-number">{produto === "combo" ? "04" : "03"}</span>
+        <span className="contract-step-number">03</span>
         <div><strong>Seus dados</strong><small>Usaremos essas informações para apresentar os planos e condições adequados ao seu perfil.</small></div>
       </div>
 
