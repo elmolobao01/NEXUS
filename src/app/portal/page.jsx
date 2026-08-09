@@ -163,7 +163,7 @@ export default function PortalPage() {
               </article>
               <article style={{padding:22,border:"1px solid #b9d3ff",borderRadius:18,background:"#f7fbff"}}>
                 <small style={{color:"#0066ff",fontWeight:800}}>BENEFÍCIO DISPONÍVEL</small><h3>NEXUS IA</h3><p>Adicione Multi-IA e Knowledge com condição exclusiva por já ser cliente NEXUS.</p>
-                <a className="ghost-button" style={{display:"inline-flex",textDecoration:"none"}} href="#">Adicionar produto</a>
+                <a className="ghost-button" style={{display:"inline-flex",textDecoration:"none"}} href="/contratar?produto=ia&origem=cliente">Adicionar produto</a>
               </article>
             </div>
           </section>
