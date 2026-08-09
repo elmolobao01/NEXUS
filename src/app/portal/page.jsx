@@ -8,6 +8,7 @@ const modules = [
   "Indicadores",
   "Usuários",
   "Relatórios",
+  "Produtos",
   "Configurações",
 ];
 
@@ -150,14 +151,27 @@ export default function PortalPage() {
               </article>
             </section>
           </>
+        ) : activeModule === "Produtos" ? (
+          <section className="client-panel client-module-placeholder">
+            <span className="eyebrow">MEU ECOSSISTEMA</span>
+            <h2>Produtos NEXUS</h2>
+            <p>Visualize seus produtos contratados e amplie seu ambiente com novas soluções NEXUS.</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16,marginTop:24}}>
+              <article style={{padding:22,border:"1px solid #dbe5ef",borderRadius:18,background:"#fff"}}>
+                <small style={{color:"#16834b",fontWeight:800}}>PRODUTO ATIVO</small><h3>NEXUS Gestão</h3><p>Seu ambiente operacional e módulos contratados.</p>
+                <button type="button" className="ghost-button">Gerenciar produto</button>
+              </article>
+              <article style={{padding:22,border:"1px solid #b9d3ff",borderRadius:18,background:"#f7fbff"}}>
+                <small style={{color:"#0066ff",fontWeight:800}}>BENEFÍCIO DISPONÍVEL</small><h3>NEXUS IA</h3><p>Adicione Multi-IA e Knowledge com condição exclusiva por já ser cliente NEXUS.</p>
+                <a className="ghost-button" style={{display:"inline-flex",textDecoration:"none"}} href="#">Adicionar produto</a>
+              </article>
+            </div>
+          </section>
         ) : (
           <section className="client-panel client-module-placeholder">
             <span className="eyebrow">MÓDULO</span>
             <h2>{activeModule}</h2>
-            <p>
-              Esta área está preparada para receber as funcionalidades
-              específicas contratadas pela organização.
-            </p>
+            <p>Esta área está preparada para receber as funcionalidades específicas contratadas pela organização.</p>
           </section>
         )}
       </section>
