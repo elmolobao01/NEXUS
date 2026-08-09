@@ -23,6 +23,14 @@ const segmentos = {
       "Calendário, atividades e comunicação",
       "Relatórios e indicadores educacionais",
     ],
+    facilities: [
+      "Portal do aluno e do responsável",
+      "Boletins, notas e frequência online",
+      "Alertas e comunicados via WhatsApp",
+      "Calendário escolar e avisos digitais",
+      "Solicitações e envio de documentos online",
+      "Confirmação de leitura de comunicados",
+    ],
   },
   saude: {
     nome: "Saúde e Clínicas",
@@ -35,6 +43,14 @@ const segmentos = {
       "Documentos e registros operacionais",
       "Indicadores de atendimento",
       "Estrutura preparada para controles de privacidade",
+    ],
+    facilities: [
+      "Portal do paciente",
+      "Agendamento online",
+      "Confirmações e lembretes via WhatsApp",
+      "Lista de espera e encaixes organizados",
+      "Envio de orientações e documentos",
+      "Pesquisa de satisfação pós-atendimento",
     ],
   },
   restaurantes: {
@@ -49,6 +65,14 @@ const segmentos = {
       "Indicadores de movimento e desempenho",
       "Gestão centralizada da operação",
     ],
+    facilities: [
+      "Cardápio digital",
+      "Reservas e fila de espera online",
+      "Confirmações e atendimento via WhatsApp",
+      "Pedidos para retirada ou delivery, quando aplicável",
+      "Relacionamento e campanhas para clientes",
+      "Pesquisa de satisfação",
+    ],
   },
   comercio: {
     nome: "Comércio",
@@ -61,6 +85,14 @@ const segmentos = {
       "Gestão de equipe e responsáveis",
       "Indicadores e relatórios",
       "Visão gerencial da operação",
+    ],
+    facilities: [
+      "Vitrine ou catálogo digital",
+      "Solicitação de orçamento online",
+      "Atendimento e relacionamento via WhatsApp",
+      "Acompanhamento de pedidos e solicitações",
+      "Campanhas de relacionamento",
+      "Pesquisa de satisfação",
     ],
   },
   servicos: {
@@ -75,6 +107,14 @@ const segmentos = {
       "Equipe e atribuições",
       "Indicadores de produtividade",
     ],
+    facilities: [
+      "Portal do cliente",
+      "Agendamento online",
+      "Abertura e acompanhamento de solicitações",
+      "Envio e recebimento de documentos",
+      "Avisos automáticos via WhatsApp",
+      "Aprovação de etapas e orçamentos",
+    ],
   },
   hotelaria: {
     nome: "Hotelaria e Pousadas",
@@ -87,6 +127,56 @@ const segmentos = {
       "Serviços e rotina operacional",
       "Equipe e responsáveis",
       "Indicadores de ocupação e atendimento",
+    ],
+    facilities: [
+      "Site próprio com reservas",
+      "Consulta de disponibilidade e pré-reserva",
+      "Confirmações e comunicação via WhatsApp",
+      "Check-in digital",
+      "Solicitação de serviços durante a estadia",
+      "Pesquisa pós-check-out",
+    ],
+  },
+  juridico: {
+    nome: "Jurídico",
+    subtitulo: "NEXUS Jurídico",
+    descricao: "Gestão organizada de clientes, demandas, documentos, prazos e equipe jurídica.",
+    recursos: [
+      "Cadastro de clientes e partes relacionadas",
+      "Demandas, processos e tarefas",
+      "Agenda, compromissos e prazos",
+      "Documentos e histórico de atendimentos",
+      "Responsáveis e distribuição de atividades",
+      "Indicadores de produtividade e carteira",
+    ],
+    facilities: [
+      "Portal do cliente",
+      "Acompanhamento interno das demandas",
+      "Compartilhamento seguro de documentos",
+      "Lembretes e atualizações via WhatsApp",
+      "Solicitações e envio de informações online",
+      "Aceites e assinaturas eletrônicas quando integrados",
+    ],
+  },
+  imobiliario: {
+    nome: "Imobiliário",
+    subtitulo: "NEXUS Imobiliário",
+    descricao: "Gestão comercial e operacional para imobiliárias, corretores e administradores de imóveis.",
+    recursos: [
+      "Cadastro de imóveis e proprietários",
+      "Interessados, leads e funil comercial",
+      "Visitas, propostas e negociações",
+      "Contratos, locações e documentos",
+      "Equipe e responsáveis",
+      "Indicadores de carteira e conversão",
+    ],
+    facilities: [
+      "Site ou vitrine de imóveis",
+      "Busca por filtros e página individual do imóvel",
+      "Formulário de interesse",
+      "Agendamento de visitas",
+      "Atendimento via WhatsApp",
+      "Portal do proprietário, interessado ou locatário",
     ],
   },
   governamental: {
@@ -101,6 +191,14 @@ const segmentos = {
       "Indicadores e painéis gerenciais",
       "Rastreabilidade e governança",
     ],
+    facilities: [
+      "Portal de serviços e acompanhamento",
+      "Abertura de solicitações e protocolo digital",
+      "Consulta de andamento",
+      "Envio de documentos online",
+      "Notificações e comunicação institucional",
+      "Pesquisas de satisfação e painéis públicos quando cabíveis",
+    ],
   },
   outros: {
     nome: "Outros segmentos",
@@ -113,6 +211,14 @@ const segmentos = {
       "Indicadores e relatórios",
       "Automação de rotinas",
       "Evolução modular conforme o crescimento",
+    ],
+    facilities: [
+      "Portal externo personalizado",
+      "Site institucional ou comercial",
+      "Agenda e formulários online",
+      "Solicitações e documentos digitais",
+      "Notificações e WhatsApp",
+      "Automações configuradas conforme a operação",
     ],
   },
 };
@@ -166,17 +272,15 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
         <>
           <div className="contract-step">
             <span className="contract-step-number">02</span>
-            <div><strong>Qual é o seu segmento?</strong><small>Mostramos a configuração NEXUS mais adequada para a sua operação.</small></div>
+            <div><strong>Qual é o seu segmento?</strong><small>Selecione o perfil mais próximo da sua operação. A configuração final é personalizada.</small></div>
           </div>
 
-          <div className="segment-grid" role="radiogroup" aria-label="Segmento do negócio">
-            {Object.entries(segmentos).map(([key, item]) => (
-              <button key={key} type="button" className={`segment-option ${segmento === key ? "active" : ""}`} onClick={() => setSegmento(key)} aria-pressed={segmento === key}>
-                <strong>{item.nome}</strong>
-                <span>{item.subtitulo}</span>
-              </button>
-            ))}
-          </div>
+          <label className="segment-select-label">
+            <span>Segmento do negócio</span>
+            <select value={segmento} onChange={(e) => setSegmento(e.target.value)}>
+              {Object.entries(segmentos).map(([key, item]) => <option key={key} value={key}>{item.nome}</option>)}
+            </select>
+          </label>
 
           <section className="segment-solution-card">
             <div className="segment-solution-head">
@@ -184,13 +288,20 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
               <h3>{segmentoAtual.subtitulo}</h3>
               <p>{segmentoAtual.descricao}</p>
             </div>
+
+            <div className="segment-tailored-note">
+              <strong>NEXUS sob medida para a sua estrutura</strong>
+              <span>Cada implantação é configurada conforme o porte, os processos, a rotina e as necessidades da empresa. Você contrata os recursos adequados à sua operação e amplia a solução conforme o negócio evolui.</span>
+            </div>
+
+            <div className="segment-section-title">RECURSOS DE GESTÃO</div>
             <div className="segment-resource-grid">
               {segmentoAtual.recursos.map((recurso) => <span key={recurso}>✓ {recurso}</span>)}
             </div>
-            <div className="segment-free-row">
-              <b>IMPLANTAÇÃO GRÁTIS</b>
-              <span>Formação técnica inclusa</span>
-              <span>Suporte técnico incluso</span>
+
+            <div className="segment-section-title facilities-title">FACILITIES NEXUS</div>
+            <div className="segment-facilities-grid">
+              {segmentoAtual.facilities.map((facility) => <span key={facility}>★ {facility}</span>)}
             </div>
           </section>
         </>
