@@ -100,7 +100,17 @@ export default function HomePage() {
         <a className="home-whatsapp-button" href={whatsappUrl("Olá! Preciso de ajuda para entender as soluções NEXUS.")} target="_blank" rel="noreferrer">Conversar pelo WhatsApp</a>
       </section>
 
-      <footer className="nexus-home-footer"><span>NEXUS Intelligent Systems</span><span>Conexão • Inteligência • Inovação • Confiança • Futuro</span></footer>
+      <footer className="nexus-home-footer">
+        <div className="nexus-footer-brand">
+          <strong>NEXUS</strong>
+          <span>Tecnologia • Gestão • Inteligência Artificial</span>
+        </div>
+        <div className="nexus-footer-legal">
+          <span>CNPJ 68.473.390/0001-50</span>
+          <span>Salvador – Bahia</span>
+          <span>© 2026 NEXUS. Todos os direitos reservados.</span>
+        </div>
+      </footer>
       <a className="home-whatsapp-float" href={whatsappUrl("Olá! Vim pelo site da NEXUS e gostaria de atendimento.")} target="_blank" rel="noreferrer" aria-label="Falar com a NEXUS pelo WhatsApp">WA</a>
     </main>
   );
