@@ -29,6 +29,18 @@ export default async function ContratarPage({ searchParams }) {
 
         <ContractForm initialProduct={initialProduct} origem={origem} />
       </section>
+
+      <footer className="nexus-home-footer nexus-contract-footer">
+        <div className="nexus-footer-brand">
+          <strong>NEXUS</strong>
+          <span>Tecnologia • Gestão • Inteligência Artificial</span>
+        </div>
+        <div className="nexus-footer-legal">
+          <span>CNPJ 68.473.390/0001-50</span>
+          <span>Salvador – Bahia</span>
+          <span>© 2026 NEXUS. Todos os direitos reservados.</span>
+        </div>
+      </footer>
     </main>
   );
 }
