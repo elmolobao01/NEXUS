@@ -1,3 +1,13 @@
+export const produtosNexus = [
+  { id: "gestao", nome: "NEXUS Gestão", tipo: "produto", contratacaoIndependente: true },
+  { id: "ia", nome: "NEXUS IA", tipo: "produto", contratacaoIndependente: true },
+];
+
+export const regrasBeneficioEcossistema = {
+  multiproduto: true,
+  descricao: "Clientes com mais de um produto NEXUS podem receber condição comercial proporcional conforme plano e contrato.",
+};
+
 export const modulosComerciais = [
   { id: "core", nome: "Núcleo NEXUS", categoria: "Base", valorMensal: 390, obrigatorio: true },
   { id: "educacao", nome: "NEXUS Educação", categoria: "Portfólio", valorMensal: 690 },
