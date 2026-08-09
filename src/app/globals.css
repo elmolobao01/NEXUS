@@ -2602,3 +2602,27 @@ body { margin: 0; }
    NEXUS — CONTRATAÇÃO POR SEGMENTO V4
    ========================================================= */
 .contract-form-segmented{gap:22px}.contract-step{display:flex;align-items:flex-start;gap:12px;padding-top:4px}.contract-step-number{width:32px;height:32px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px;background:#eaf3ff;color:#0066ff;font-size:10px;font-weight:900;letter-spacing:.08em}.contract-step>div{display:grid;gap:4px}.contract-step strong{color:#0b2846;font-size:14px}.contract-step small{color:#73869b;font-size:11px;line-height:1.5}.segment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.segment-option{min-height:72px;padding:14px 16px;text-align:left;border:1px solid #d8e3ef;border-radius:14px;background:#fff;color:#17334f;cursor:pointer;transition:.18s ease}.segment-option:hover{border-color:#9fc2ff;transform:translateY(-1px)}.segment-option.active{border-color:#1872ff;background:#f2f7ff;box-shadow:0 0 0 3px rgba(24,114,255,.08)}.segment-option strong,.segment-option span{display:block}.segment-option strong{font-size:12px}.segment-option span{margin-top:4px;color:#6d8298;font-size:9px}.segment-solution-card{padding:22px;border:1px solid #dbe7f4;border-radius:18px;background:linear-gradient(180deg,#f7faff 0%,#fff 100%)}.segment-solution-head>span{color:#0066ff;font-size:9px;font-weight:900;letter-spacing:.13em}.segment-solution-head h3{margin:8px 0 7px;color:#08243f;font-size:24px}.segment-solution-head p{margin:0;color:#60758b;font-size:12px;line-height:1.6}.segment-resource-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 14px;margin-top:18px}.segment-resource-grid span{color:#264762;font-size:11px;font-weight:700;line-height:1.4}.segment-free-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid #dfe8f2}.segment-free-row b,.segment-free-row span{padding:7px 10px;border-radius:999px;font-size:9px;font-weight:850}.segment-free-row b{background:#e8f7ef;color:#11824b}.segment-free-row span{background:#eef5ff;color:#1e63b5}.ia-summary-card{display:grid;gap:6px;padding:16px 18px;border:1px solid #dbe7f4;border-radius:14px;background:#f7faff}.ia-summary-card strong{color:#08243f;font-size:13px}.ia-summary-card span{color:#58728c;font-size:11px;line-height:1.45}.contract-submit{min-height:52px}.contract-form-segmented>small{font-size:10px}@media(max-width:760px){.segment-grid,.segment-resource-grid{grid-template-columns:1fr}.segment-option{min-height:64px}}
+
+/* =========================================================
+   NEXUS — CONTRATAÇÃO SEGMENTOS / FACILITIES V5 REAPLICADO
+   Base: versão atual do projeto enviada em 09/08/2026
+   ========================================================= */
+.contract-copy-sticky{position:sticky;top:105px;align-self:start}
+.contract-included-card{margin-top:18px;padding:22px;border:1px solid #d8e6f3;border-radius:20px;background:#fff;box-shadow:0 18px 45px rgba(15,42,70,.07);display:grid;gap:12px}
+.contract-included-kicker{color:#0066ff;font-size:10px;font-weight:900;letter-spacing:.13em}
+.contract-included-item{display:grid;gap:4px;padding:13px 14px;border-radius:14px;background:#f6f9fd;border:1px solid #e1e9f2}
+.contract-included-item strong{font-size:14px;color:#0b2846}.contract-included-item span{font-size:11px;color:#647b91;line-height:1.5}
+.contract-included-item.free{background:#eaf8f0;border-color:#ccebd9}.contract-included-item.free strong{color:#11824b}
+.contract-included-card>p{margin:4px 2px 0;color:#516c84;font-size:12px;line-height:1.55}.contract-included-card>p b{color:#0b2846}
+.segment-select-label{margin-top:-2px}
+.segment-select-label select{font-weight:700;color:#0b2846;background:#fff}
+.segment-solution-card{padding:26px}.segment-solution-head h3{font-size:27px}.segment-solution-head p{font-size:14px}
+.segment-tailored-note{margin-top:18px;padding:15px 16px;border-radius:14px;background:#edf5ff;border:1px solid #d6e7ff;display:grid;gap:5px}
+.segment-tailored-note strong{color:#0b5fcc;font-size:14px}.segment-tailored-note span{color:#4c6c8a;font-size:12px;line-height:1.55}
+.segment-section-title{margin-top:23px;color:#0b2846;font-size:11px;font-weight:900;letter-spacing:.11em}.facilities-title{color:#0066ff}
+.segment-resource-grid,.segment-facilities-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 16px;margin-top:12px}
+.segment-resource-grid span,.segment-facilities-grid span{font-size:13px;line-height:1.45;font-weight:700}
+.segment-resource-grid span{color:#264762}.segment-facilities-grid span{color:#0b5fcc}
+.contract-form label>span{font-size:13px}.contract-step strong{font-size:15px}.contract-step small{font-size:12px}.ia-summary-card strong{font-size:14px}.ia-summary-card span{font-size:12px}
+@media(max-width:900px){.contract-copy-sticky{position:static}.contract-included-card{margin-bottom:8px}}
+@media(max-width:760px){.segment-resource-grid,.segment-facilities-grid{grid-template-columns:1fr}.segment-solution-card{padding:20px}.segment-solution-head h3{font-size:24px}}
