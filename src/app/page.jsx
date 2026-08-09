@@ -5,15 +5,17 @@ const products = [
     id: "gestao",
     eyebrow: "GESTÃO CONECTADA",
     name: "NEXUS Gestão",
-    description: "Organize processos, clientes, equipes, indicadores e operações em uma plataforma modular.",
-    features: ["Gestão por módulos", "Indicadores e relatórios", "Ambiente multiempresa"],
+    description: "Gestão profissional para negócios de todos os segmentos e tamanhos, com estrutura modular que acompanha o crescimento da sua operação.",
+    features: ["Para todos os segmentos e negócios", "Gestão por módulos", "Indicadores e relatórios inteligentes", "Estrutura profissional e escalável"],
+    included: ["Implantação inicial GRÁTIS", "Formação técnica INCLUSA", "Suporte técnico INCLUSO"],
   },
   {
     id: "ia",
     eyebrow: "INTELIGÊNCIA APLICADA",
     name: "NEXUS IA",
     description: "Acesse inteligência artificial, bases de conhecimento e especialistas digitais em um único ambiente.",
-    features: ["Multi-IA", "NEXUS Knowledge", "Créditos com consumo controlado"],
+    features: ["Multi-IA", "NEXUS Knowledge", "Acesso inteligente às principais IAs"],
+    included: ["Configuração inicial GRÁTIS", "Formação para utilização INCLUSA", "Suporte técnico INCLUSO"],
   },
 ];
 
@@ -64,8 +66,9 @@ export default function HomePage() {
             <article className={`home-product-card product-${product.id}`} key={product.id}>
               <span className="product-eyebrow">{product.eyebrow}</span><h3>{product.name}</h3><p>{product.description}</p>
               <ul>{product.features.map((feature) => <li key={feature}>✓ {feature}</li>)}</ul>
+              <div className="product-included"><strong>SERVIÇOS INCLUSOS</strong>{product.included.map((item) => <span key={item}>🎁 {item}</span>)}</div>
               <div className="product-actions">
-                <Link className="home-primary-button" href={`/contratar?produto=${product.id}`}>Contratar</Link>
+                <a className="home-primary-button" href="#planos">Ver planos</a>
                 <a href={whatsappUrl(`Olá! Tenho dúvidas sobre o ${product.name} e gostaria de falar com o atendimento.`)} target="_blank" rel="noreferrer">Tirar dúvidas</a>
               </div>
             </article>
@@ -82,9 +85,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="home-benefit" id="planos">
-        <div><span className="home-kicker">BENEFÍCIO ECOSSISTEMA</span><h2>Quanto mais NEXUS, mais vantagem.</h2><p>Quem já utiliza NEXUS Gestão recebe condição especial para adicionar NEXUS IA. Quem começa pela IA também recebe benefício ao contratar Gestão.</p></div>
-        <div className="benefit-flow"><span>01 produto<br/><strong>Preço individual</strong></span><b>+</b><span>02 produtos<br/><strong>Benefício exclusivo</strong></span><b>→</b><span>Ecossistema<br/><strong>Mais integração e valor</strong></span></div>
+      <section className="home-section home-plans" id="planos">
+        <div className="home-section-heading"><span>PLANOS NEXUS</span><h2>Escolha o pacote ideal para o seu momento.</h2><p>Comece com a estrutura necessária hoje e evolua quando precisar. A contratação acontece somente depois da escolha do plano.</p></div>
+        <div className="home-plans-grid">
+          <article className="home-plan-card"><span className="product-eyebrow">NEXUS GESTÃO</span><h3>Planos de Gestão</h3><p>Opções para pequenos, médios e grandes negócios, em qualquer segmento.</p><div className="plan-free-badge">IMPLANTAÇÃO GRÁTIS</div><ul><li>✓ Formação técnica inclusa</li><li>✓ Suporte técnico incluso</li><li>✓ Estrutura modular e escalável</li></ul><Link className="home-primary-button" href="/contratar?produto=gestao">Conhecer planos de Gestão</Link></article>
+          <article className="home-plan-card"><span className="product-eyebrow">NEXUS IA</span><h3>Planos de Inteligência</h3><p>Acesso inteligente às principais IAs e recursos de conhecimento.</p><div className="plan-free-badge">CONFIGURAÇÃO GRÁTIS</div><ul><li>✓ Formação para utilização inclusa</li><li>✓ Suporte técnico incluso</li><li>✓ Multi-IA + NEXUS Knowledge</li></ul><Link className="home-primary-button" href="/contratar?produto=ia">Conhecer planos de IA</Link></article>
+          <article className="home-plan-card plan-combo"><span className="product-eyebrow">BENEFÍCIO ECOSSISTEMA</span><h3>Gestão + IA</h3><p>Combine os produtos e receba condições exclusivas, integração e mais valor.</p><div className="plan-free-badge">MAIS VANTAGEM</div><ul><li>★ Benefício multiproduto</li><li>🎁 Implantação inicial grátis</li><li>✓ Formação e suporte inclusos</li></ul><Link className="home-primary-button" href="/contratar?produto=combo">Conhecer o combo</Link></article>
+        </div>
+        <p className="home-business-message"><strong>Estrutura de grandes organizações, acessível para negócios de todos os tamanhos.</strong><br/>Sua empresa não precisa ser grande para ter uma grande gestão. Comece com o que precisa hoje e amplie seu NEXUS conforme o negócio cresce.</p>
       </section>
 
       <section className="home-contact" id="atendimento">
