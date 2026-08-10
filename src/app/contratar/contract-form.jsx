@@ -33,9 +33,9 @@ const segmentos = {
     ],
   },
   saude: {
-    nome: "Saúde e Clínicas",
-    subtitulo: "NEXUS Saúde",
-    descricao: "Organização de atendimentos, agenda, equipe e indicadores para clínicas e serviços de saúde.",
+    nome: "Clínicas e Consultórios",
+    subtitulo: "NEXUS Clínicas e Consultórios",
+    descricao: "Organização de atendimentos, agenda, equipe e indicadores para clínicas e consultórios.",
     recursos: [
       "Cadastro de pacientes e contatos",
       "Agenda e organização de atendimentos",
@@ -54,9 +54,9 @@ const segmentos = {
     ],
   },
   restaurantes: {
-    nome: "Restaurantes e Alimentação",
-    subtitulo: "NEXUS Restaurantes",
-    descricao: "Controle operacional para restaurantes, bares, lanchonetes e negócios de alimentação.",
+    nome: "Restaurantes e Delivery",
+    subtitulo: "NEXUS Restaurantes e Delivery",
+    descricao: "Controle operacional para restaurantes, lanchonetes, delivery e negócios de alimentação.",
     recursos: [
       "Mesas, comandas e pedidos",
       "Reservas e atendimento",
