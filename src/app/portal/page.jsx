@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ORGANIZACAO_DEMO } from "../../core/organizacoes/modelo";
-import { resumoCentral } from "../../core/assinaturas/central-cliente";
+import { useEffect, useMemo, useState } from "react";
+import { ORGANIZACAO_DEMO } from "@/core/organizacoes/modelo";
+import { resumoCentral } from "@/core/assinaturas/central-cliente";
 
-const modules = ["Visão geral", "Operação", "Indicadores", "Usuários", "Relatórios", "Central do Cliente", "Configurações"];
+const operationalModules = ["Visão geral", "Operação", "Indicadores", "Usuários", "Relatórios", "Configurações"];
 const metrics = [["Unidades", "01", "Ambiente principal"], ["Usuários", "24", "25 contratados"], ["Módulos", "03", "Recursos operacionais"], ["Disponibilidade", "99,9%", "Serviços operacionais"]];
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 
@@ -31,7 +31,28 @@ function CentralCliente() {
 }
 
 export default function PortalPage() {
+  const [profile, setProfile] = useState(null);
   const [activeModule, setActiveModule] = useState("Visão geral");
+  const canManageSubscription = profile === "CLIENT_ADMIN";
+  const modules = canManageSubscription
+    ? ["Central do Cliente", ...operationalModules]
+    : operationalModules;
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((session) => {
+        if (!active || !session?.authenticated) return;
+        setProfile(session.profile);
+        // O responsável contratual entra diretamente na Central; os demais
+        // perfis entram na operação autorizada, sem escolha manual.
+        setActiveModule(session.profile === "CLIENT_ADMIN" ? "Central do Cliente" : "Visão geral");
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }
   return <main className="client-shell theme-educacao"><aside className="client-sidebar"><div className="client-brand"><img src="/branding/nexus-logo.png" alt="NEXUS" /><div><strong>NEXUS</strong><span>Ambiente da Organização</span></div></div><div className="client-identity"><small>Organização</small><strong>{ORGANIZACAO_DEMO.nomeFantasia}</strong><span>{ORGANIZACAO_DEMO.unidades[0]?.nome}</span></div><nav className="client-navigation" aria-label="Áreas disponíveis">{modules.map((item) => <button key={item} type="button" className={activeModule === item ? "client-nav active" : "client-nav"} onClick={() => setActiveModule(item)}><span />{item}</button>)}</nav><div className="client-user"><span className="user-avatar">NX</span><div><strong>Administrador</strong><small>Organização NEXUS</small></div></div></aside>
   <section className="client-workspace"><header className="client-topbar"><div><span className="eyebrow">{activeModule === "Central do Cliente" ? "RELACIONAMENTO COMERCIAL NEXUS" : "AMBIENTE OPERACIONAL DO CLIENTE"}</span><h1>{activeModule}</h1><p>{ORGANIZACAO_DEMO.nomeFantasia} · NEXUS sob medida</p></div><div className="client-top-actions"><button type="button" className="ghost-button" onClick={logout}>Sair</button></div></header>
