@@ -12,3 +12,7 @@ A fundação adota uma aplicação Next.js única e modular. A separação por d
 ## Regra de evolução
 
 Somente funcionalidades verdadeiramente compartilhadas entram no núcleo. Regras específicas permanecem em seu portfólio.
+
+## Evolução 2.0 — 10/08/2026
+
+A arquitetura modular, comercial e de rentabilidade foi consolidada em `docs/ARQUITETURA_NEXUS_2.md`. Os catálogos canônicos ficam em `src/core/catalogos`, a autorização comercial por capacidades em `src/core/assinaturas` e a base de margem em `src/core/economia`.
