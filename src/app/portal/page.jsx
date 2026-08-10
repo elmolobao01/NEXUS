@@ -33,7 +33,7 @@ function CentralCliente() {
 export default function PortalPage() {
   const [profile, setProfile] = useState(null);
   const [activeModule, setActiveModule] = useState("Visão geral");
-  const canManageSubscription = profile === "CLIENT_ADMIN";
+  const canManageSubscription = ["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN"].includes(profile);
   const modules = canManageSubscription
     ? ["Central do Cliente", ...operationalModules]
     : operationalModules;
@@ -47,7 +47,7 @@ export default function PortalPage() {
         setProfile(session.profile);
         // O responsável contratual entra diretamente na Central; os demais
         // perfis entram na operação autorizada, sem escolha manual.
-        setActiveModule(session.profile === "CLIENT_ADMIN" ? "Central do Cliente" : "Visão geral");
+        setActiveModule(["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN"].includes(session.profile) ? "Central do Cliente" : "Visão geral");
       })
       .catch(() => {});
     return () => { active = false; };
