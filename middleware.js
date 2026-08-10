@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 const ADMIN_PROFILES = new Set(["NEXUS_ROOT", "NEXUS_ADMIN"]);
+const CLIENT_PROFILES = new Set(["CLIENT_ADMIN", "MANAGER", "SUPERVISOR", "OPERATOR", "VIEWER"]);
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
@@ -13,7 +14,21 @@ export function middleware(request) {
     return NextResponse.redirect(url);
   }
 
+  // Roteamento contextual: se um usuário autenticado tentar abrir o ambiente
+  // errado, o NEXUS o conduz automaticamente ao ambiente correspondente.
+  if (pathname.startsWith("/portal") && ADMIN_PROFILES.has(profile)) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
+  if (pathname.startsWith("/admin") && CLIENT_PROFILES.has(profile)) {
+    return NextResponse.redirect(new URL("/portal", request.url));
+  }
+
   if (pathname.startsWith("/admin") && !ADMIN_PROFILES.has(profile)) {
+    return NextResponse.redirect(new URL("/acesso-negado", request.url));
+  }
+
+  if (pathname.startsWith("/portal") && !CLIENT_PROFILES.has(profile)) {
     return NextResponse.redirect(new URL("/acesso-negado", request.url));
   }
 
