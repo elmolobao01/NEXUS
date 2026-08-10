@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ORGANIZACAO_DEMO } from "../../core/organizacoes/modelo";
-import { resumoCentral } from "../../core/assinaturas/central-cliente";
+import { ORGANIZACAO_DEMO } from "@/core/organizacoes/modelo";
+import { resumoCentral } from "@/core/assinaturas/central-cliente";
 
 const modules = ["Visão geral", "Operação", "Indicadores", "Usuários", "Relatórios", "Central do Cliente", "Configurações"];
 const metrics = [["Unidades", "01", "Ambiente principal"], ["Usuários", "24", "25 contratados"], ["Módulos", "03", "Recursos operacionais"], ["Disponibilidade", "99,9%", "Serviços operacionais"]];
