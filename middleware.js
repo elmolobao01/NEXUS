@@ -16,10 +16,6 @@ export function middleware(request) {
 
   // Roteamento contextual: se um usuário autenticado tentar abrir o ambiente
   // errado, o NEXUS o conduz automaticamente ao ambiente correspondente.
-  if (pathname.startsWith("/portal") && ADMIN_PROFILES.has(profile)) {
-    return NextResponse.redirect(new URL("/admin", request.url));
-  }
-
   if (pathname.startsWith("/admin") && CLIENT_PROFILES.has(profile)) {
     return NextResponse.redirect(new URL("/portal", request.url));
   }
@@ -28,7 +24,7 @@ export function middleware(request) {
     return NextResponse.redirect(new URL("/acesso-negado", request.url));
   }
 
-  if (pathname.startsWith("/portal") && !CLIENT_PROFILES.has(profile)) {
+  if (pathname.startsWith("/portal") && !CLIENT_PROFILES.has(profile) && !ADMIN_PROFILES.has(profile)) {
     return NextResponse.redirect(new URL("/acesso-negado", request.url));
   }
 
