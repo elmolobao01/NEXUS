@@ -1,0 +1,17 @@
+export const FACILITIES_NEXUS = Object.freeze({
+  portal: { id: "portal", nome: "NEXUS Portal", custoVariavel: false },
+  whatsapp: { id: "whatsapp", nome: "NEXUS WhatsApp", custoVariavel: true, unidadeCusto: "mensagem/conversa" },
+  site: { id: "site", nome: "NEXUS Site", custoVariavel: false },
+  reservas: { id: "reservas", nome: "NEXUS Reservas", custoVariavel: false },
+  agendaOnline: { id: "agenda-online", nome: "NEXUS Agenda Online", custoVariavel: false },
+  delivery: { id: "delivery", nome: "NEXUS Delivery", custoVariavel: false },
+  cobrancas: { id: "cobrancas", nome: "NEXUS Cobranças", custoVariavel: true, unidadeCusto: "transacao" },
+  pagamentos: { id: "pagamentos", nome: "NEXUS Pagamentos", custoVariavel: true, unidadeCusto: "transacao" },
+  carteira: { id: "carteira", nome: "NEXUS Carteira", custoVariavel: false },
+  fidelidade: { id: "fidelidade", nome: "NEXUS Fidelidade", custoVariavel: false },
+  pacotes: { id: "pacotes", nome: "NEXUS Pacotes", custoVariavel: false },
+  monitor: { id: "monitor", nome: "NEXUS Monitor", custoVariavel: true, unidadeCusto: "consulta/processo monitorado" },
+  mail: { id: "mail", nome: "NEXUS Mail", custoVariavel: true, unidadeCusto: "conta/armazenamento" },
+  forms: { id: "forms", nome: "NEXUS Forms", custoVariavel: false },
+  atendimento: { id: "atendimento", nome: "NEXUS Atendimento", custoVariavel: false },
+});
