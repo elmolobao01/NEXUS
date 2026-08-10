@@ -1,39 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { resumoCentral } from "@/core/assinaturas/central-cliente";
-
-const ORGANIZACAO_DEMO = {
-  id: "org-demo",
-  razaoSocial: "Organização Demonstrativa NEXUS Ltda.",
-  nomeFantasia: "Minha Organização",
-  documento: "00.000.000/0001-00",
-  segmento: "educacao",
-  perfilOperacional: "multi-etapas",
-  unidades: [{ id: "unidade-matriz", nome: "Unidade Matriz", principal: true }],
-  contatos: { email: "administracao@organizacao.com.br", telefone: "(71) 99999-0000" },
-  assinatura: {
-    id: "ass-demo",
-    status: "ativa",
-    produtoPrincipal: "gestao",
-    plano: "Profissional",
-    modalidade: "anual",
-    duracaoMeses: 12,
-    renovacaoEm: "2027-08-10",
-    valorTabela: 699,
-    valorMensal: 594.15,
-    descontoPermanenciaPercentual: 10,
-    descontoEcossistemaPercentual: 5,
-    economiaMensal: 104.85,
-    produtos: ["gestao"],
-    entitlements: {
-      modulos: ["financeiro", "documentos", "workflow"],
-      facilities: ["portal"],
-      capacidades: ["usuarios", "unidades", "conformidade"],
-      limites: { usuarios: 25, unidades: 2, armazenamentoGb: 20 },
-    },
-  },
-};
+import { ORGANIZACAO_DEMO } from "../../core/organizacoes/modelo";
+import { resumoCentral } from "../../core/assinaturas/central-cliente";
 
 const modules = ["Visão geral", "Operação", "Indicadores", "Usuários", "Relatórios", "Central do Cliente", "Configurações"];
 const metrics = [["Unidades", "01", "Ambiente principal"], ["Usuários", "24", "25 contratados"], ["Módulos", "03", "Recursos operacionais"], ["Disponibilidade", "99,9%", "Serviços operacionais"]];
