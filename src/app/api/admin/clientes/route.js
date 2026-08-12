@@ -49,6 +49,59 @@ function supabaseHeaders(token, extra = {}) {
   };
 }
 
+async function syncResponsaveis(token, clientId, responsaveis = []) {
+  const del = await fetch(`${SUPABASE_URL}/rest/v1/nexus_client_responsaveis?client_id=eq.${encodeURIComponent(clientId)}`, {
+    method: "DELETE", headers: supabaseHeaders(token), cache: "no-store",
+  });
+  if (!del.ok && del.status !== 404) return { ok: false, response: del };
+
+  if (!responsaveis.length) return { ok: true };
+  const rows = responsaveis.map((r) => ({
+    client_id: clientId,
+    name: String(r.name || "").trim(),
+    role: String(r.role || "").trim(),
+    types: Array.isArray(r.types) ? r.types : [],
+    email: String(r.email || "").trim().toLowerCase() || null,
+    phone: String(r.phone || "").replace(/\D/g, "") || null,
+    whatsapp: String(r.whatsapp || "").replace(/\D/g, "") || null,
+    principal: Boolean(r.principal),
+  }));
+  const ins = await fetch(`${SUPABASE_URL}/rest/v1/nexus_client_responsaveis`, {
+    method: "POST", headers: supabaseHeaders(token), body: JSON.stringify(rows), cache: "no-store",
+  });
+  return { ok: ins.ok, response: ins };
+}
+
+async function syncAccess(token, clientId, organizationId, access = {}) {
+  const clean = {
+    enabled: Boolean(access.enabled),
+    display_name: String(access.displayName || "").trim() || null,
+    email: String(access.email || "").trim().toLowerCase() || null,
+    profile: String(access.profile || "ADMIN_ORGANIZACAO").trim(),
+  };
+
+  const hasConfig = clean.enabled || clean.display_name || clean.email;
+  if (!hasConfig) {
+    const del = await fetch(`${SUPABASE_URL}/rest/v1/nexus_client_access?client_id=eq.${encodeURIComponent(clientId)}`, {
+      method: "DELETE", headers: supabaseHeaders(token), cache: "no-store",
+    });
+    return { ok: del.ok || del.status === 404, response: del };
+  }
+
+  const resp = await fetch(`${SUPABASE_URL}/rest/v1/nexus_client_access?on_conflict=client_id`, {
+    method: "POST",
+    headers: supabaseHeaders(token, { Prefer: "resolution=merge-duplicates,return=representation" }),
+    body: JSON.stringify([{
+      client_id: clientId,
+      organization_id: organizationId,
+      ...clean,
+      updated_at: new Date().toISOString(),
+    }]),
+    cache: "no-store",
+  });
+  return { ok: resp.ok, response: resp };
+}
+
 export async function GET(request) {
   try {
     const token = getToken(request);
@@ -65,10 +118,14 @@ export async function GET(request) {
     const clientId = String(searchParams.get("clientId") || "").trim();
 
     if (clientId) {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/nexus_client_responsaveis?client_id=eq.${encodeURIComponent(clientId)}&select=id,name,role,types,email,phone,whatsapp,principal,created_at&order=principal.desc,created_at.asc`, { headers: supabaseHeaders(token), cache: "no-store" });
+      const [resp, accessResp] = await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/nexus_client_responsaveis?client_id=eq.${encodeURIComponent(clientId)}&select=id,name,role,types,email,phone,whatsapp,principal,created_at&order=principal.desc,created_at.asc`, { headers: supabaseHeaders(token), cache: "no-store" }),
+        fetch(`${SUPABASE_URL}/rest/v1/nexus_client_access?client_id=eq.${encodeURIComponent(clientId)}&select=id,client_id,organization_id,display_name,email,profile,enabled,updated_at&limit=1`, { headers: supabaseHeaders(token), cache: "no-store" }),
+      ]);
       const responsaveis = await resp.json();
       if (!resp.ok) return json("Não foi possível carregar os responsáveis.", resp.status, { details: responsaveis });
-      return NextResponse.json({ ok: true, responsaveis });
+      const accessRows = accessResp.ok ? await accessResp.json() : [];
+      return NextResponse.json({ ok: true, responsaveis, access: Array.isArray(accessRows) ? accessRows[0] || null : null });
     }
 
     const params = new URLSearchParams();
@@ -174,6 +231,17 @@ export async function POST(request) {
     }
 
     const client = Array.isArray(data) ? data[0] : data;
+    const clientId = client?.id;
+    const organizationId = client?.organization_id;
+
+    if (clientId) {
+      const respSync = await syncResponsaveis(token, clientId, Array.isArray(body.responsaveis) ? body.responsaveis : []);
+      if (!respSync.ok) return json("Cliente criado, mas houve falha ao salvar responsáveis.", 500);
+
+      const accessSync = await syncAccess(token, clientId, organizationId, body.access || {});
+      if (!accessSync.ok) return json("Cliente criado, mas houve falha ao salvar a configuração de acesso.", 500);
+    }
+
     return NextResponse.json({ ok: true, client }, { status: 201 });
   } catch {
     return json("Falha inesperada ao cadastrar cliente.", 500);
@@ -258,16 +326,13 @@ export async function PUT(request) {
     if (!update.ok) return json("Não foi possível atualizar o cliente.", update.status, { details: updated });
 
     const responsaveis = Array.isArray(body.responsaveis) ? body.responsaveis : [];
-    const del = await fetch(`${SUPABASE_URL}/rest/v1/nexus_client_responsaveis?client_id=eq.${encodeURIComponent(clientId)}`, {
-      method: "DELETE", headers: supabaseHeaders(token), cache: "no-store",
-    });
-    if (!del.ok && del.status !== 404) return json("Cliente atualizado, mas houve falha ao sincronizar responsáveis.", del.status);
+    const respSync = await syncResponsaveis(token, clientId, responsaveis);
+    if (!respSync.ok) return json("Cliente atualizado, mas houve falha ao sincronizar responsáveis.", 500);
 
-    if (responsaveis.length) {
-      const rows = responsaveis.map((r) => ({ client_id: clientId, name: String(r.name || "").trim(), role: String(r.role || "").trim(), types: Array.isArray(r.types) ? r.types : [], email: String(r.email || "").trim().toLowerCase() || null, phone: String(r.phone || "").replace(/\D/g, "") || null, whatsapp: String(r.whatsapp || "").replace(/\D/g, "") || null, principal: Boolean(r.principal) }));
-      const ins = await fetch(`${SUPABASE_URL}/rest/v1/nexus_client_responsaveis`, { method:"POST", headers:supabaseHeaders(token), body:JSON.stringify(rows), cache:"no-store" });
-      if (!ins.ok) return json("Cliente atualizado, mas houve falha ao salvar responsáveis.", ins.status, { details: await ins.json() });
-    }
-    return NextResponse.json({ ok:true, client:Array.isArray(updated) ? updated[0] : updated });
+    const currentClient = Array.isArray(updated) ? updated[0] : updated;
+    const accessSync = await syncAccess(token, clientId, currentClient?.organization_id, body.access || {});
+    if (!accessSync.ok) return json("Cliente atualizado, mas houve falha ao salvar a configuração de acesso.", 500);
+
+    return NextResponse.json({ ok:true, client:currentClient });
   } catch { return json("Falha inesperada ao atualizar a ficha do cliente.", 500); }
 }
