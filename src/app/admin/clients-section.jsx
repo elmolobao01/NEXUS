@@ -154,9 +154,8 @@ export default function ClientsSection() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
   const [responsaveis, setResponsaveis] = useState([]);
-  const [accessClient, setAccessClient] = useState(null);
-  const [accessSaving, setAccessSaving] = useState(false);
-  const [accessForm, setAccessForm] = useState({ fullName: "", email: "", roleTitle: "Responsável pela organização", phone: "" });
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [activeTab, setActiveTab] = useState("dados");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -196,10 +195,44 @@ export default function ClientsSection() {
   }
 
   function abrirCadastro() {
+    setEditingClientId(null);
+    setActiveTab("dados");
     setForm(FORM_INICIAL);
     setResponsaveis([]);
     setMessage("");
     setModalOpen(true);
+  }
+
+  async function abrirFicha(client) {
+    setEditingClientId(client.id);
+    setActiveTab("dados");
+    setMessage("");
+    setForm({
+      legalName: client.legal_name || "",
+      tradeName: client.trade_name || "",
+      documentType: client.document_type || "CNPJ",
+      documentNumber: onlyDigits(client.document_number || ""),
+      email: client.email || "",
+      phone: onlyDigits(client.phone || ""),
+      segment: client.segment || "Educação",
+      status: client.status || "implementation",
+      notes: client.notes || "",
+    });
+    try {
+      const response = await fetch(`/api/admin/clientes?clientId=${encodeURIComponent(client.id)}`, { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.message || "Não foi possível carregar a ficha do cliente.");
+      setResponsaveis((data.responsaveis || []).map((item) => ({
+        localId: item.id || `${Date.now()}-${Math.random()}`,
+        id: item.id, name: item.name || "", role: item.role || "", types: item.types || [],
+        email: item.email || "", phone: item.phone || "", whatsapp: item.whatsapp || "",
+        samePhone: Boolean(item.phone && item.phone === item.whatsapp), principal: Boolean(item.principal),
+      })));
+      setModalOpen(true);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Falha ao carregar ficha.");
+      setMessageType("error");
+    }
   }
 
   function adicionarResponsavel() {
@@ -254,7 +287,7 @@ export default function ClientsSection() {
     );
   }
 
-  async function createClient(event) {
+  async function saveClient(event) {
     event.preventDefault();
     setMessage("");
 
@@ -284,9 +317,10 @@ export default function ClientsSection() {
 
     try {
       const response = await fetch("/api/admin/clientes", {
-        method: "POST",
+        method: editingClientId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(editingClientId ? { clientId: editingClientId } : {}),
           ...form,
           documentNumber: onlyDigits(form.documentNumber),
           phone: onlyDigits(form.phone),
@@ -305,13 +339,13 @@ export default function ClientsSection() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.message || "Não foi possível cadastrar o cliente.");
+        throw new Error(data?.message || (editingClientId ? "Não foi possível atualizar o cliente." : "Não foi possível cadastrar o cliente."));
       }
 
       setModalOpen(false);
       setForm(FORM_INICIAL);
       setResponsaveis([]);
-      setMessage("Cliente cadastrado com sucesso.");
+      setMessage(editingClientId ? "Cliente atualizado com sucesso." : "Cliente cadastrado com sucesso.");
       setMessageType("success");
       await loadClients();
     } catch (error) {
@@ -348,37 +382,6 @@ export default function ClientsSection() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Falha ao atualizar status.");
       setMessageType("error");
-    }
-  }
-
-
-  function abrirAcesso(client) {
-    setAccessClient(client);
-    setAccessForm({ fullName: "", email: client.email || "", roleTitle: "Responsável pela organização", phone: client.phone || "" });
-    setMessage("");
-  }
-
-  async function convidarAdministrador(event) {
-    event.preventDefault();
-    if (!accessClient) return;
-    setAccessSaving(true);
-    setMessage("");
-    try {
-      const response = await fetch("/api/admin/clientes/access", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: accessClient.id, ...accessForm }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.message || "Não foi possível configurar o acesso.");
-      setAccessClient(null);
-      setMessage("Administrador do cliente convidado com sucesso.");
-      setMessageType("success");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Falha ao configurar acesso.");
-      setMessageType("error");
-    } finally {
-      setAccessSaving(false);
     }
   }
 
@@ -481,14 +484,13 @@ export default function ClientsSection() {
                 <th>Contato</th>
                 <th>Cadastro</th>
                 <th>Status</th>
-                <th>Acesso</th>
               </tr>
             </thead>
             <tbody>
               {!loading && clients.map((client) => (
                 <tr key={client.id}>
                   <td>
-                    <strong>{client.trade_name || client.legal_name}</strong>
+                    <button type="button" className="nexus-client-link" onClick={() => abrirFicha(client)}><strong>{client.trade_name || client.legal_name}</strong></button>
                     {client.trade_name ? <small>{client.legal_name}</small> : null}
                   </td>
                   <td>{client.segment}</td>
@@ -516,7 +518,7 @@ export default function ClientsSection() {
                       ))}
                     </select>
                   </td>
-                  <td><button type="button" className="root2-access-button" onClick={() => abrirAcesso(client)}>Configurar acesso</button></td>
+                  <td><button type="button" className="nexus-access-button" onClick={() => { setMessage("Configuração de acesso será vinculada aos usuários desta organização."); setMessageType("info"); }}>Configurar acesso</button></td>
                 </tr>
               ))}
 
@@ -538,37 +540,18 @@ export default function ClientsSection() {
         </div>
       </section>
 
-      {accessClient ? (
-        <div className="root2-modal-backdrop" role="presentation">
-          <section className="root2-modal root2-modal-client-v11" role="dialog" aria-modal="true">
-            <header><div><span>ACESSO DO CLIENTE</span><h2>Administrador da organização</h2><p>Envie um convite para o responsável que terá acesso à Central do Cliente e à administração da organização.</p></div><button type="button" onClick={() => setAccessClient(null)} aria-label="Fechar">×</button></header>
-            <form onSubmit={convidarAdministrador}>
-              <div className="root2-access-client-card"><small>ORGANIZAÇÃO</small><strong>{accessClient.trade_name || accessClient.legal_name}</strong><span>{accessClient.segment}</span></div>
-              <div className="root2-form-grid">
-                <label className="span-2"><span>Nome do administrador *</span><input required value={accessForm.fullName} onChange={(e)=>setAccessForm({...accessForm,fullName:e.target.value})} placeholder="Nome completo"/></label>
-                <label className="span-2"><span>E-mail de acesso *</span><input required type="email" value={accessForm.email} onChange={(e)=>setAccessForm({...accessForm,email:e.target.value})} placeholder="administrador@empresa.com.br"/></label>
-                <label><span>Função/Cargo</span><input value={accessForm.roleTitle} onChange={(e)=>setAccessForm({...accessForm,roleTitle:e.target.value})}/></label>
-                <label><span>Telefone</span><input inputMode="tel" value={formatPhone(accessForm.phone)} onChange={(e)=>setAccessForm({...accessForm,phone:onlyDigits(e.target.value)})}/></label>
-              </div>
-              <div className="root2-access-note"><strong>Perfil CLIENT_ADMIN</strong><p>Este usuário poderá visualizar a Central do Cliente, gerenciar usuários e unidades e acessar o ambiente operacional contratado.</p></div>
-              <footer className="root2-modal-actions"><button type="button" className="root2-button neutral" onClick={()=>setAccessClient(null)}>Cancelar</button><button type="submit" className="root2-button primary" disabled={accessSaving}>{accessSaving ? "Enviando convite…" : "Enviar convite de acesso"}</button></footer>
-            </form>
-          </section>
-        </div>
-      ) : null}
-
       {modalOpen ? (
         <div className="root2-modal-backdrop" role="presentation">
           <section
             className="root2-modal root2-modal-client-v11"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="novo-cliente-title"
+            aria-labelledby="cliente-title"
           >
             <header>
               <div>
-                <span>NOVO CLIENTE</span>
-                <h2 id="novo-cliente-title">Cadastrar organização</h2>
+                <span>{editingClientId ? "FICHA DO CLIENTE" : "NOVO CLIENTE"}</span>
+                <h2 id="cliente-title">{editingClientId ? "Gerenciar organização" : "Cadastrar organização"}</h2>
                 <p>
                   Cadastre a organização e, opcionalmente, todos os responsáveis
                   que atuarão no relacionamento com o NEXUS.
@@ -579,7 +562,9 @@ export default function ClientsSection() {
               </button>
             </header>
 
-            <form onSubmit={createClient}>
+            <div className="nexus-client-tabs"><button type="button" className={activeTab === "dados" ? "active" : ""} onClick={() => setActiveTab("dados")}>Dados da organização</button><button type="button" className={activeTab === "responsaveis" ? "active" : ""} onClick={() => setActiveTab("responsaveis")}>Responsáveis</button><button type="button" className={activeTab === "acesso" ? "active" : ""} onClick={() => setActiveTab("acesso")}>Acesso</button><button type="button" className={activeTab === "historico" ? "active" : ""} onClick={() => setActiveTab("historico")}>Histórico</button></div>
+            <form onSubmit={saveClient}>
+              {activeTab === "dados" ? <>
               <div className="root2-form-grid">
                 <label className="span-2">
                   <span>Razão social / Nome *</span>
@@ -686,7 +671,8 @@ export default function ClientsSection() {
                 </label>
               </div>
 
-              <section className="nexus-responsaveis-section">
+              </> : null}
+              {activeTab === "responsaveis" ? <section className="nexus-responsaveis-section">
                 <div className="nexus-responsaveis-heading">
                   <div>
                     <span>RESPONSÁVEIS</span>
@@ -862,9 +848,9 @@ export default function ClientsSection() {
                     ))}
                   </div>
                 )}
-              </section>
+              </section> : null}
 
-              <section className="nexus-observacoes-final">
+              {activeTab === "dados" ? <section className="nexus-observacoes-final">
                 <label>
                   <span>Observações</span>
                   <textarea
@@ -874,7 +860,9 @@ export default function ClientsSection() {
                     rows="4"
                   />
                 </label>
-              </section>
+              </section> : null}
+              {activeTab === "acesso" ? <section className="nexus-tab-placeholder"><h3>Usuários de acesso</h3><p>Área reservada para vincular usuários que poderão entrar no NEXUS em nome desta organização. Responsáveis comerciais não recebem acesso automaticamente.</p></section> : null}
+              {activeTab === "historico" ? <section className="nexus-tab-placeholder"><h3>Histórico da organização</h3><p>Alterações cadastrais e administrativas serão registradas nesta área pela camada de auditoria.</p></section> : null}
 
               <footer>
                 <button
@@ -890,7 +878,7 @@ export default function ClientsSection() {
                   className="root2-button primary"
                   disabled={saving}
                 >
-                  {saving ? "Cadastrando…" : "Cadastrar cliente"}
+                  {saving ? "Salvando…" : editingClientId ? "Salvar alterações" : "Cadastrar cliente"}
                 </button>
               </footer>
             </form>

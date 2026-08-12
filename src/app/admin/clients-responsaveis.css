@@ -311,5 +311,13 @@
   }
 }
 
-/* NEXUS Fase 3.2 — provisionamento de administrador do cliente */
-.root2-access-button{border:1px solid #b9d2ee;background:#f4f9ff;color:#0b5fd7;border-radius:9px;padding:8px 10px;font-weight:800;white-space:nowrap;cursor:pointer}.root2-access-button:hover{background:#e9f3ff}.root2-access-client-card{display:flex;flex-direction:column;gap:4px;padding:14px 16px;margin-bottom:16px;border-radius:14px;background:#f2f7fd;border:1px solid #dce8f5}.root2-access-client-card small{font-size:10px;letter-spacing:.12em;color:#66809b;font-weight:800}.root2-access-client-card strong{font-size:18px;color:#0a2745}.root2-access-client-card span{font-size:12px;color:#607a94}.root2-access-note{margin-top:16px;padding:14px 16px;border-radius:14px;background:#edf6ff;border:1px solid #cfe4ff}.root2-access-note strong{color:#0b5fd7}.root2-access-note p{margin:5px 0 0;color:#536e88;line-height:1.45}.root2-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #e3ebf4}
+/* NEXUS CLIENTES v1.2 — FICHA, EDIÇÃO E ACESSO */
+.nexus-client-link { border:0; background:transparent; padding:0; color:inherit; cursor:pointer; text-align:left; font:inherit; }
+.nexus-client-link:hover { text-decoration:underline; color:#155bd7; }
+.nexus-access-button { border:1px solid #b9d2f5; border-radius:10px; padding:9px 12px; background:#f7fbff; color:#155bd7; font-weight:800; cursor:pointer; white-space:nowrap; }
+.nexus-client-tabs { display:flex; gap:8px; padding:0 24px 14px; overflow-x:auto; border-bottom:1px solid #e7edf4; }
+.nexus-client-tabs button { border:1px solid #d8e1eb; background:#fff; border-radius:9px; padding:9px 12px; font-weight:800; color:#52657a; cursor:pointer; white-space:nowrap; }
+.nexus-client-tabs button.active { background:#eaf2ff; border-color:#8eb8f4; color:#155bd7; }
+.nexus-tab-placeholder { margin:18px 24px; padding:22px; border:1px dashed #cbd8e8; border-radius:14px; background:#f8fbff; }
+.nexus-tab-placeholder h3 { margin:0 0 7px; }
+.nexus-tab-placeholder p { margin:0; color:#607286; line-height:1.5; }
