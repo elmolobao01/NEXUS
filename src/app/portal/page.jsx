@@ -32,6 +32,8 @@ function CentralCliente() {
 
 export default function PortalPage() {
   const [profile, setProfile] = useState(null);
+  const [organization, setOrganization] = useState(ORGANIZACAO_DEMO);
+  const [units, setUnits] = useState(ORGANIZACAO_DEMO.unidades);
   const [activeModule, setActiveModule] = useState("Visão geral");
   const canManageSubscription = ["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN"].includes(profile);
   const modules = canManageSubscription
@@ -45,6 +47,16 @@ export default function PortalPage() {
       .then((session) => {
         if (!active || !session?.authenticated) return;
         setProfile(session.profile);
+        if (session.organizationId) {
+          fetch("/api/portal/context", { cache: "no-store" })
+            .then((r) => r.ok ? r.json() : null)
+            .then((ctx) => {
+              if (!ctx?.organization) return;
+              setOrganization({ ...ORGANIZACAO_DEMO, id: ctx.organization.id, nomeFantasia: ctx.organization.name, razaoSocial: ctx.organization.legal_name || ctx.organization.name, segmento: ctx.organization.segment, logoUrl: ctx.organization.logo_url || null, contatos: { email: ctx.organization.email, telefone: ctx.organization.phone }, configuracoes: ctx.organization.settings || {} });
+              if (ctx.units?.length) setUnits(ctx.units.map((u) => ({ id: u.id, nome: u.name, principal: u.is_main })));
+            })
+            .catch(() => {});
+        }
         // O responsável contratual entra diretamente na Central; os demais
         // perfis entram na operação autorizada, sem escolha manual.
         setActiveModule(["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN"].includes(session.profile) ? "Central do Cliente" : "Visão geral");
@@ -54,8 +66,8 @@ export default function PortalPage() {
   }, []);
 
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }
-  return <main className="client-shell theme-educacao"><aside className="client-sidebar"><div className="client-brand"><div className="client-brand-mark" aria-hidden="true">NX</div><div><strong>NEXUS</strong><span>Ambiente da Organização</span></div></div><div className="client-identity"><small>Organização</small><strong>{ORGANIZACAO_DEMO.nomeFantasia}</strong><span>{ORGANIZACAO_DEMO.unidades[0]?.nome}</span></div><nav className="client-navigation" aria-label="Áreas disponíveis">{modules.map((item) => <button key={item} type="button" className={activeModule === item ? "client-nav active" : "client-nav"} onClick={() => setActiveModule(item)}><span />{item}</button>)}</nav><div className="client-user"><span className="user-avatar">NX</span><div><strong>Administrador</strong><small>Organização NEXUS</small></div></div></aside>
-  <section className="client-workspace"><header className="client-topbar"><div><span className="eyebrow">{activeModule === "Central do Cliente" ? "RELACIONAMENTO COMERCIAL NEXUS" : "AMBIENTE OPERACIONAL DO CLIENTE"}</span><h1>{activeModule}</h1><p>{ORGANIZACAO_DEMO.nomeFantasia} · NEXUS sob medida</p></div><div className="client-top-actions"><button type="button" className="ghost-button" onClick={logout}>Sair</button></div></header>
+  return <main className="client-shell theme-educacao"><aside className="client-sidebar"><div className="client-brand"><div className="client-brand-mark" aria-hidden="true">NX</div><div><strong>NEXUS</strong><span>Ambiente da Organização</span></div></div><div className="client-identity"><small>Organização</small><strong>{organization.nomeFantasia}</strong><span>{units[0]?.nome || "Unidade Matriz"}</span></div><nav className="client-navigation" aria-label="Áreas disponíveis">{modules.map((item) => <button key={item} type="button" className={activeModule === item ? "client-nav active" : "client-nav"} onClick={() => setActiveModule(item)}><span />{item}</button>)}</nav><div className="client-user"><span className="user-avatar">NX</span><div><strong>Administrador</strong><small>Organização NEXUS</small></div></div></aside>
+  <section className="client-workspace"><header className="client-topbar"><div><span className="eyebrow">{activeModule === "Central do Cliente" ? "RELACIONAMENTO COMERCIAL NEXUS" : "AMBIENTE OPERACIONAL DO CLIENTE"}</span><h1>{activeModule}</h1><p>{organization.nomeFantasia} · NEXUS sob medida</p></div><div className="client-top-actions"><button type="button" className="ghost-button" onClick={logout}>Sair</button></div></header>
   {activeModule === "Central do Cliente" ? <CentralCliente /> : activeModule === "Visão geral" ? <><section className="client-hero"><div><span className="hero-badge">AMBIENTE OPERACIONAL</span><h2>Bem-vindo ao NEXUS</h2><p>Seu ambiente reúne estrutura, módulos e recursos autorizados para a realidade da sua organização.</p></div><div className="client-hero-mark">NX</div></section><section className="client-metrics">{metrics.map(([label,value,detail]) => <article key={label}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>)}</section><section className="client-content-grid"><article className="client-panel"><div className="panel-heading"><div><span className="eyebrow">OPERAÇÃO</span><h3>Ambiente preparado</h3></div><span className="tag">ONLINE</span></div><div className="activity-list">{["Operação","Indicadores","Usuários","Relatórios"].map((item,index) => <div key={item}><span className="activity-index">0{index+1}</span><div><strong>{item}</strong><small>Estrutura disponível para a organização.</small></div><span className="activity-status">Ativo</span></div>)}</div></article><article className="client-panel"><div className="panel-heading"><div><span className="eyebrow">GESTÃO</span><h3>Atalhos administrativos</h3></div></div><ul className="licensed-list"><li><span>✓</span>Usuários e permissões</li><li><span>✓</span>Unidades e responsáveis</li><li><span>✓</span>Identidade e logomarca</li><li><span>✓</span>Configuração sob medida</li></ul></article></section></> : <section className="client-panel client-module-placeholder"><span className="eyebrow">ÁREA OPERACIONAL</span><h2>{activeModule}</h2><p>Esta área permanece separada da Central do Cliente e receberá as funcionalidades específicas da organização e do segmento.</p></section>}
   </section></main>;
 }
