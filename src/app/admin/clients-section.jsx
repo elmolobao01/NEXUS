@@ -154,6 +154,9 @@ export default function ClientsSection() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
   const [responsaveis, setResponsaveis] = useState([]);
+  const [accessClient, setAccessClient] = useState(null);
+  const [accessSaving, setAccessSaving] = useState(false);
+  const [accessForm, setAccessForm] = useState({ fullName: "", email: "", roleTitle: "Responsável pela organização", phone: "" });
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -348,6 +351,37 @@ export default function ClientsSection() {
     }
   }
 
+
+  function abrirAcesso(client) {
+    setAccessClient(client);
+    setAccessForm({ fullName: "", email: client.email || "", roleTitle: "Responsável pela organização", phone: client.phone || "" });
+    setMessage("");
+  }
+
+  async function convidarAdministrador(event) {
+    event.preventDefault();
+    if (!accessClient) return;
+    setAccessSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/clientes/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: accessClient.id, ...accessForm }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.message || "Não foi possível configurar o acesso.");
+      setAccessClient(null);
+      setMessage("Administrador do cliente convidado com sucesso.");
+      setMessageType("success");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Falha ao configurar acesso.");
+      setMessageType("error");
+    } finally {
+      setAccessSaving(false);
+    }
+  }
+
   const summary = useMemo(() => ({
     total: clients.length,
     active: clients.filter((item) => item.status === "active").length,
@@ -447,6 +481,7 @@ export default function ClientsSection() {
                 <th>Contato</th>
                 <th>Cadastro</th>
                 <th>Status</th>
+                <th>Acesso</th>
               </tr>
             </thead>
             <tbody>
@@ -481,18 +516,19 @@ export default function ClientsSection() {
                       ))}
                     </select>
                   </td>
+                  <td><button type="button" className="root2-access-button" onClick={() => abrirAcesso(client)}>Configurar acesso</button></td>
                 </tr>
               ))}
 
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="root2-table-state">Carregando clientes…</td>
+                  <td colSpan="7" className="root2-table-state">Carregando clientes…</td>
                 </tr>
               ) : null}
 
               {!loading && clients.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="root2-table-state">
+                  <td colSpan="7" className="root2-table-state">
                     Nenhum cliente encontrado. Utilize “+ Novo cliente” para iniciar a carteira.
                   </td>
                 </tr>
@@ -501,6 +537,25 @@ export default function ClientsSection() {
           </table>
         </div>
       </section>
+
+      {accessClient ? (
+        <div className="root2-modal-backdrop" role="presentation">
+          <section className="root2-modal root2-modal-client-v11" role="dialog" aria-modal="true">
+            <header><div><span>ACESSO DO CLIENTE</span><h2>Administrador da organização</h2><p>Envie um convite para o responsável que terá acesso à Central do Cliente e à administração da organização.</p></div><button type="button" onClick={() => setAccessClient(null)} aria-label="Fechar">×</button></header>
+            <form onSubmit={convidarAdministrador}>
+              <div className="root2-access-client-card"><small>ORGANIZAÇÃO</small><strong>{accessClient.trade_name || accessClient.legal_name}</strong><span>{accessClient.segment}</span></div>
+              <div className="root2-form-grid">
+                <label className="span-2"><span>Nome do administrador *</span><input required value={accessForm.fullName} onChange={(e)=>setAccessForm({...accessForm,fullName:e.target.value})} placeholder="Nome completo"/></label>
+                <label className="span-2"><span>E-mail de acesso *</span><input required type="email" value={accessForm.email} onChange={(e)=>setAccessForm({...accessForm,email:e.target.value})} placeholder="administrador@empresa.com.br"/></label>
+                <label><span>Função/Cargo</span><input value={accessForm.roleTitle} onChange={(e)=>setAccessForm({...accessForm,roleTitle:e.target.value})}/></label>
+                <label><span>Telefone</span><input inputMode="tel" value={formatPhone(accessForm.phone)} onChange={(e)=>setAccessForm({...accessForm,phone:onlyDigits(e.target.value)})}/></label>
+              </div>
+              <div className="root2-access-note"><strong>Perfil CLIENT_ADMIN</strong><p>Este usuário poderá visualizar a Central do Cliente, gerenciar usuários e unidades e acessar o ambiente operacional contratado.</p></div>
+              <footer className="root2-modal-actions"><button type="button" className="root2-button neutral" onClick={()=>setAccessClient(null)}>Cancelar</button><button type="submit" className="root2-button primary" disabled={accessSaving}>{accessSaving ? "Enviando convite…" : "Enviar convite de acesso"}</button></footer>
+            </form>
+          </section>
+        </div>
+      ) : null}
 
       {modalOpen ? (
         <div className="root2-modal-backdrop" role="presentation">
