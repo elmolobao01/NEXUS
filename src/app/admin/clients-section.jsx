@@ -161,6 +161,14 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("pt-BR").format(new Date(value));
 }
 
+function formatDateTime(value) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 export default function ClientsSection() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -177,6 +185,7 @@ export default function ClientsSection() {
   const [activeTab, setActiveTab] = useState("dados");
   const [accessConfig, setAccessConfig] = useState(ACESSO_INICIAL);
   const [auditEntries, setAuditEntries] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -269,6 +278,38 @@ export default function ClientsSection() {
       setMessage(error instanceof Error ? error.message : "Falha ao carregar ficha.");
       setMessageType("error");
     }
+  }
+
+  async function refreshHistory(clientId = editingClientId) {
+    if (!clientId) {
+      setAuditEntries([]);
+      return;
+    }
+
+    setLoadingHistory(true);
+    try {
+      const response = await fetch(
+        `/api/admin/clientes?clientId=${encodeURIComponent(clientId)}`,
+        { cache: "no-store" }
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Não foi possível atualizar o histórico.");
+      }
+
+      setAuditEntries(Array.isArray(data.audit) ? data.audit : []);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Falha ao carregar histórico.");
+      setMessageType("error");
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
+  function abrirAbaHistorico() {
+    setActiveTab("historico");
+    if (editingClientId) refreshHistory(editingClientId);
   }
 
   function adicionarResponsavel() {
@@ -613,7 +654,7 @@ export default function ClientsSection() {
               </button>
             </header>
 
-            <div className="nexus-client-tabs"><button type="button" className={activeTab === "dados" ? "active" : ""} onClick={() => setActiveTab("dados")}>Dados da organização</button><button type="button" className={activeTab === "responsaveis" ? "active" : ""} onClick={() => setActiveTab("responsaveis")}>Responsáveis</button><button type="button" className={activeTab === "acesso" ? "active" : ""} onClick={() => setActiveTab("acesso")}>Acesso</button><button type="button" className={activeTab === "historico" ? "active" : ""} onClick={() => setActiveTab("historico")}>Histórico</button></div>
+            <div className="nexus-client-tabs"><button type="button" className={activeTab === "dados" ? "active" : ""} onClick={() => setActiveTab("dados")}>Dados da organização</button><button type="button" className={activeTab === "responsaveis" ? "active" : ""} onClick={() => setActiveTab("responsaveis")}>Responsáveis</button><button type="button" className={activeTab === "acesso" ? "active" : ""} onClick={() => setActiveTab("acesso")}>Acesso</button><button type="button" className={activeTab === "historico" ? "active" : ""} onClick={abrirAbaHistorico}>Histórico</button></div>
             <form onSubmit={saveClient}>
               {activeTab === "dados" ? <>
               <div className="root2-form-grid">
@@ -991,30 +1032,83 @@ export default function ClientsSection() {
               {activeTab === "historico" ? (
                 <section className="nexus-history-section">
                   <div className="nexus-history-heading">
-                    <span>AUDITORIA</span>
-                    <h3>Histórico da organização</h3>
-                    <p>Eventos cadastrais, mudanças de situação e alterações de acesso.</p>
+                    <div>
+                      <span>AUDITORIA</span>
+                      <h3>Histórico da organização</h3>
+                      <p>
+                        Linha do tempo administrativa do cliente, com alterações
+                        cadastrais, situação, responsáveis e acesso ao portal.
+                      </p>
+                    </div>
+                    {editingClientId ? (
+                      <button
+                        type="button"
+                        className="root2-button neutral nexus-history-refresh"
+                        onClick={() => refreshHistory(editingClientId)}
+                        disabled={loadingHistory}
+                      >
+                        {loadingHistory ? "Atualizando…" : "↻ Atualizar histórico"}
+                      </button>
+                    ) : null}
                   </div>
-                  {auditEntries.length === 0 ? (
-                    <div className="nexus-responsaveis-empty">Nenhum evento registrado.</div>
+
+                  {!editingClientId ? (
+                    <div className="nexus-history-empty">
+                      O histórico será disponibilizado após o primeiro cadastro da organização.
+                    </div>
+                  ) : loadingHistory && auditEntries.length === 0 ? (
+                    <div className="nexus-history-empty">Carregando histórico…</div>
+                  ) : auditEntries.length === 0 ? (
+                    <div className="nexus-history-empty">Nenhum evento registrado.</div>
                   ) : (
                     <div className="nexus-history-list">
-                      {auditEntries.map((entry) => (
-                        <article key={entry.id} className="nexus-history-item">
-                          <div>
-                            <strong>{{
-                              CLIENT_CREATED: "Cliente cadastrado",
-                              CLIENT_UPDATED: "Dados atualizados",
-                              CLIENT_STATUS_CHANGED: "Situação alterada",
-                              ACCESS_INVITED: "Convite de acesso enviado",
-                              ACCESS_ENABLED: "Acesso liberado",
-                              ACCESS_SUSPENDED: "Acesso suspenso",
-                            }[entry.action] || entry.action}</strong>
-                            <small>{formatDate(entry.created_at)}</small>
-                          </div>
-                          {entry.details?.email ? <span>{entry.details.email}</span> : null}
-                        </article>
-                      ))}
+                      {auditEntries.map((entry) => {
+                        const title = {
+                          CLIENT_CREATED: "Cliente cadastrado",
+                          CLIENT_UPDATED: "Dados cadastrais atualizados",
+                          CLIENT_STATUS_CHANGED: "Situação do cliente alterada",
+                          RESPONSAVEIS_UPDATED: "Responsáveis atualizados",
+                          ACCESS_CONFIGURED: "Configuração de acesso alterada",
+                          ACCESS_INVITED: "Convite de acesso enviado",
+                          ACCESS_ENABLED: "Acesso ao portal liberado",
+                          ACCESS_SUSPENDED: "Acesso ao portal suspenso",
+                        }[entry.action] || entry.action;
+
+                        const details = entry.details || {};
+                        const detailItems = [
+                          details.email ? `E-mail: ${details.email}` : null,
+                          details.profile ? `Perfil: ${details.profile}` : null,
+                          details.status ? `Situação: ${details.status}` : null,
+                          details.display_name ? `Usuário: ${details.display_name}` : null,
+                        ].filter(Boolean);
+
+                        return (
+                          <article key={entry.id} className="nexus-history-item">
+                            <div className="nexus-history-marker" aria-hidden="true">
+                              <span />
+                            </div>
+                            <div className="nexus-history-content">
+                              <div className="nexus-history-row">
+                                <div>
+                                  <strong>{title}</strong>
+                                  <small>{formatDateTime(entry.created_at)}</small>
+                                </div>
+                                <span className="nexus-history-actor">
+                                  {entry.actor_email || entry.actor_profile || "NEXUS"}
+                                </span>
+                              </div>
+
+                              {detailItems.length > 0 ? (
+                                <div className="nexus-history-details">
+                                  {detailItems.map((item) => (
+                                    <span key={item}>{item}</span>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          </article>
+                        );
+                      })}
                     </div>
                   )}
                 </section>

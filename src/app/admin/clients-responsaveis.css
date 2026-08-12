@@ -562,3 +562,144 @@
   text-align: right;
   overflow-wrap: anywhere;
 }
+
+
+/* NEXUS CLIENTES v1.4 — HISTÓRICO / AUDITORIA REAL */
+.nexus-history-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.nexus-history-heading > div {
+  min-width: 0;
+}
+
+.nexus-history-refresh {
+  flex: 0 0 auto;
+}
+
+.nexus-history-empty {
+  margin-top: 14px;
+  padding: 22px;
+  border: 1px dashed #cfdae7;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #74859a;
+  font-size: 9px;
+  text-align: center;
+}
+
+.nexus-history-list {
+  position: relative;
+  display: grid;
+  gap: 0;
+  margin-top: 16px;
+}
+
+.nexus-history-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  padding: 0 0 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.nexus-history-item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 16px;
+  bottom: 0;
+  width: 1px;
+  background: #d9e3ee;
+}
+
+.nexus-history-marker {
+  position: relative;
+  min-height: 18px;
+}
+
+.nexus-history-marker > span {
+  position: absolute;
+  top: 5px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border: 3px solid #dceaff;
+  border-radius: 999px;
+  background: #2d6bea;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.nexus-history-content {
+  min-width: 0;
+  padding: 11px 13px;
+  border: 1px solid #e0e7ef;
+  border-radius: 11px;
+  background: #fbfcfe;
+}
+
+.nexus-history-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nexus-history-row strong {
+  display: block;
+  color: #24384f;
+  font-size: 9px;
+}
+
+.nexus-history-row small {
+  display: block;
+  margin-top: 3px;
+  color: #7b8a9a;
+  font-size: 8px;
+}
+
+.nexus-history-actor {
+  max-width: 42%;
+  color: #52677d;
+  font-size: 8px;
+  font-weight: 800;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.nexus-history-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.nexus-history-details span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #eef4fb;
+  color: #53677d;
+  font-size: 8px;
+}
+
+@media (max-width: 720px) {
+  .nexus-history-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nexus-history-row {
+    flex-direction: column;
+  }
+
+  .nexus-history-actor {
+    max-width: 100%;
+    text-align: left;
+  }
+}
