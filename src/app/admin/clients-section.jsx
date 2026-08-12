@@ -28,6 +28,20 @@ const TIPOS_RESPONSAVEL = [
   "Outro",
 ];
 
+const ACESSO_INICIAL = {
+  enabled: false,
+  displayName: "",
+  email: "",
+  profile: "ADMIN_ORGANIZACAO",
+};
+
+const PERFIS_ACESSO = [
+  { value: "ADMIN_ORGANIZACAO", label: "Administrador da organização" },
+  { value: "GESTOR", label: "Gestor" },
+  { value: "OPERACIONAL", label: "Operacional" },
+  { value: "CONSULTA", label: "Consulta" },
+];
+
 const FORM_INICIAL = {
   legalName: "",
   tradeName: "",
@@ -156,6 +170,7 @@ export default function ClientsSection() {
   const [responsaveis, setResponsaveis] = useState([]);
   const [editingClientId, setEditingClientId] = useState(null);
   const [activeTab, setActiveTab] = useState("dados");
+  const [accessConfig, setAccessConfig] = useState(ACESSO_INICIAL);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -199,6 +214,7 @@ export default function ClientsSection() {
     setActiveTab("dados");
     setForm(FORM_INICIAL);
     setResponsaveis([]);
+    setAccessConfig(ACESSO_INICIAL);
     setMessage("");
     setModalOpen(true);
   }
@@ -228,6 +244,13 @@ export default function ClientsSection() {
         email: item.email || "", phone: item.phone || "", whatsapp: item.whatsapp || "",
         samePhone: Boolean(item.phone && item.phone === item.whatsapp), principal: Boolean(item.principal),
       })));
+      const access = data.access || null;
+      setAccessConfig(access ? {
+        enabled: Boolean(access.enabled),
+        displayName: access.display_name || "",
+        email: access.email || "",
+        profile: access.profile || "ADMIN_ORGANIZACAO",
+      } : ACESSO_INICIAL);
       setModalOpen(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Falha ao carregar ficha.");
@@ -333,6 +356,12 @@ export default function ClientsSection() {
             whatsapp: onlyDigits(item.samePhone ? item.phone : item.whatsapp),
             principal: Boolean(item.principal),
           })),
+          access: {
+            enabled: Boolean(accessConfig.enabled),
+            displayName: accessConfig.displayName.trim(),
+            email: accessConfig.email.trim().toLowerCase(),
+            profile: accessConfig.profile,
+          },
         }),
       });
 
@@ -345,6 +374,7 @@ export default function ClientsSection() {
       setModalOpen(false);
       setForm(FORM_INICIAL);
       setResponsaveis([]);
+      setAccessConfig(ACESSO_INICIAL);
       setMessage(editingClientId ? "Cliente atualizado com sucesso." : "Cliente cadastrado com sucesso.");
       setMessageType("success");
       await loadClients();
@@ -518,19 +548,18 @@ export default function ClientsSection() {
                       ))}
                     </select>
                   </td>
-                  <td><button type="button" className="nexus-access-button" onClick={() => { setMessage("Configuração de acesso será vinculada aos usuários desta organização."); setMessageType("info"); }}>Configurar acesso</button></td>
                 </tr>
               ))}
 
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="root2-table-state">Carregando clientes…</td>
+                  <td colSpan="6" className="root2-table-state">Carregando clientes…</td>
                 </tr>
               ) : null}
 
               {!loading && clients.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="root2-table-state">
+                  <td colSpan="6" className="root2-table-state">
                     Nenhum cliente encontrado. Utilize “+ Novo cliente” para iniciar a carteira.
                   </td>
                 </tr>
@@ -861,7 +890,60 @@ export default function ClientsSection() {
                   />
                 </label>
               </section> : null}
-              {activeTab === "acesso" ? <section className="nexus-tab-placeholder"><h3>Usuários de acesso</h3><p>Área reservada para vincular usuários que poderão entrar no NEXUS em nome desta organização. Responsáveis comerciais não recebem acesso automaticamente.</p></section> : null}
+              {activeTab === "acesso" ? (
+                <section className="nexus-access-embedded">
+                  <div className="nexus-access-heading">
+                    <div>
+                      <span>ACESSO AO PORTAL</span>
+                      <h3>Configuração de acesso</h3>
+                      <p>Defina o usuário principal e o perfil padrão da organização. Responsáveis comerciais não recebem acesso automaticamente.</p>
+                    </div>
+                    <label className="nexus-access-switch">
+                      <input
+                        type="checkbox"
+                        checked={accessConfig.enabled}
+                        onChange={(event) => setAccessConfig({ ...accessConfig, enabled: event.target.checked })}
+                      />
+                      <span>Liberar acesso ao Portal do Cliente</span>
+                    </label>
+                  </div>
+
+                  <div className="nexus-access-grid">
+                    <label>
+                      <span>Nome do usuário principal</span>
+                      <input
+                        value={accessConfig.displayName}
+                        onChange={(event) => setAccessConfig({ ...accessConfig, displayName: event.target.value })}
+                        placeholder="Nome completo"
+                      />
+                    </label>
+                    <label>
+                      <span>E-mail de acesso</span>
+                      <input
+                        type="email"
+                        value={accessConfig.email}
+                        onChange={(event) => setAccessConfig({ ...accessConfig, email: event.target.value })}
+                        placeholder="usuario@empresa.com.br"
+                      />
+                    </label>
+                    <label className="span-2">
+                      <span>Perfil padrão</span>
+                      <select
+                        value={accessConfig.profile}
+                        onChange={(event) => setAccessConfig({ ...accessConfig, profile: event.target.value })}
+                      >
+                        {PERFIS_ACESSO.map((item) => (
+                          <option key={item.value} value={item.value}>{item.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="nexus-access-note">
+                    Esta configuração fica vinculada à organização. A autenticação do usuário continua protegida pelo Supabase Auth e pelas regras de perfil/permissão do NEXUS.
+                  </div>
+                </section>
+              ) : null}
               {activeTab === "historico" ? <section className="nexus-tab-placeholder"><h3>Histórico da organização</h3><p>Alterações cadastrais e administrativas serão registradas nesta área pela camada de auditoria.</p></section> : null}
 
               <footer>
