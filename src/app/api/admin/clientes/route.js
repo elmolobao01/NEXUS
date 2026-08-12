@@ -196,18 +196,24 @@ async function saveAccessConfig(token, clientId, organizationId, access = {}, ex
 
 async function insertAudit(token, clientId, action, details = {}) {
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/nexus_client_audit`, {
-      method: "POST",
-      headers: supabaseHeaders(token),
-      body: JSON.stringify([{
-        client_id: clientId,
-        action,
-        details,
-      }]),
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/nexus_log_client_event`,
+      {
+        method: "POST",
+        headers: supabaseHeaders(token),
+        body: JSON.stringify({
+          p_client_id: clientId,
+          p_action: action,
+          p_details: details || {},
+        }),
+        cache: "no-store",
+      }
+    );
+
+    return { ok: response.ok, status: response.status };
   } catch {
     // Auditoria não pode interromper a operação principal.
+    return { ok: false, status: 500 };
   }
 }
 
@@ -578,8 +584,16 @@ export async function GET(request) {
           { headers: supabaseHeaders(token), cache: "no-store" }
         ),
         fetch(
-          `${SUPABASE_URL}/rest/v1/nexus_client_audit?client_id=eq.${encodeURIComponent(clientId)}&select=id,action,details,created_at&order=created_at.desc&limit=50`,
-          { headers: supabaseHeaders(token), cache: "no-store" }
+          `${SUPABASE_URL}/rest/v1/rpc/nexus_get_client_history`,
+          {
+            method: "POST",
+            headers: supabaseHeaders(token),
+            body: JSON.stringify({
+              p_client_id: clientId,
+              p_limit: 100,
+            }),
+            cache: "no-store",
+          }
         ),
       ]);
 
