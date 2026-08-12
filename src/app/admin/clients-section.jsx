@@ -33,6 +33,11 @@ const ACESSO_INICIAL = {
   displayName: "",
   email: "",
   profile: "ADMIN_ORGANIZACAO",
+  authUserId: "",
+  provisionStatus: "NOT_PROVISIONED",
+  invitedAt: "",
+  lastProvisionedAt: "",
+  lastError: "",
 };
 
 const PERFIS_ACESSO = [
@@ -171,6 +176,7 @@ export default function ClientsSection() {
   const [editingClientId, setEditingClientId] = useState(null);
   const [activeTab, setActiveTab] = useState("dados");
   const [accessConfig, setAccessConfig] = useState(ACESSO_INICIAL);
+  const [auditEntries, setAuditEntries] = useState([]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -215,6 +221,7 @@ export default function ClientsSection() {
     setForm(FORM_INICIAL);
     setResponsaveis([]);
     setAccessConfig(ACESSO_INICIAL);
+    setAuditEntries([]);
     setMessage("");
     setModalOpen(true);
   }
@@ -250,7 +257,13 @@ export default function ClientsSection() {
         displayName: access.display_name || "",
         email: access.email || "",
         profile: access.profile || "ADMIN_ORGANIZACAO",
+        authUserId: access.auth_user_id || "",
+        provisionStatus: access.provision_status || "NOT_PROVISIONED",
+        invitedAt: access.invited_at || "",
+        lastProvisionedAt: access.last_provisioned_at || "",
+        lastError: access.last_error || "",
       } : ACESSO_INICIAL);
+      setAuditEntries(Array.isArray(data.audit) ? data.audit : []);
       setModalOpen(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Falha ao carregar ficha.");
@@ -375,7 +388,16 @@ export default function ClientsSection() {
       setForm(FORM_INICIAL);
       setResponsaveis([]);
       setAccessConfig(ACESSO_INICIAL);
-      setMessage(editingClientId ? "Cliente atualizado com sucesso." : "Cliente cadastrado com sucesso.");
+      setAuditEntries([]);
+      const accessMessage = data?.accessProvision?.invited
+        ? " Convite de acesso enviado ao usuário principal."
+        : data?.accessProvision?.provisioned
+          ? " Acesso ao Portal do Cliente atualizado."
+          : "";
+      setMessage(
+        (editingClientId ? "Cliente atualizado com sucesso." : "Cliente cadastrado com sucesso.") +
+        accessMessage
+      );
       setMessageType("success");
       await loadClients();
     } catch (error) {
@@ -940,11 +962,63 @@ export default function ClientsSection() {
                   </div>
 
                   <div className="nexus-access-note">
-                    Esta configuração fica vinculada à organização. A autenticação do usuário continua protegida pelo Supabase Auth e pelas regras de perfil/permissão do NEXUS.
+                    <div className="nexus-access-status-line">
+                      <strong>Status do acesso</strong>
+                      <span className={`nexus-access-status ${String(accessConfig.provisionStatus || "NOT_PROVISIONED").toLowerCase()}`}>
+                        {{
+                          NOT_PROVISIONED: "Não provisionado",
+                          INVITED: "Convite enviado",
+                          ACTIVE: "Ativo",
+                          SUSPENDED: "Suspenso",
+                          ERROR: "Erro de provisionamento",
+                        }[accessConfig.provisionStatus] || accessConfig.provisionStatus}
+                      </span>
+                    </div>
+                    {accessConfig.invitedAt ? (
+                      <p>Convite enviado em {formatDate(accessConfig.invitedAt)}.</p>
+                    ) : null}
+                    {accessConfig.lastError ? (
+                      <p className="nexus-access-error">{accessConfig.lastError}</p>
+                    ) : null}
+                    <p>
+                      Ao salvar com o acesso liberado, o NEXUS cria ou vincula o usuário no
+                      Supabase Auth e associa o perfil à organização. Se o e-mail ainda não
+                      existir no Auth, o usuário recebe um convite para concluir o acesso.
+                    </p>
                   </div>
                 </section>
               ) : null}
-              {activeTab === "historico" ? <section className="nexus-tab-placeholder"><h3>Histórico da organização</h3><p>Alterações cadastrais e administrativas serão registradas nesta área pela camada de auditoria.</p></section> : null}
+              {activeTab === "historico" ? (
+                <section className="nexus-history-section">
+                  <div className="nexus-history-heading">
+                    <span>AUDITORIA</span>
+                    <h3>Histórico da organização</h3>
+                    <p>Eventos cadastrais, mudanças de situação e alterações de acesso.</p>
+                  </div>
+                  {auditEntries.length === 0 ? (
+                    <div className="nexus-responsaveis-empty">Nenhum evento registrado.</div>
+                  ) : (
+                    <div className="nexus-history-list">
+                      {auditEntries.map((entry) => (
+                        <article key={entry.id} className="nexus-history-item">
+                          <div>
+                            <strong>{{
+                              CLIENT_CREATED: "Cliente cadastrado",
+                              CLIENT_UPDATED: "Dados atualizados",
+                              CLIENT_STATUS_CHANGED: "Situação alterada",
+                              ACCESS_INVITED: "Convite de acesso enviado",
+                              ACCESS_ENABLED: "Acesso liberado",
+                              ACCESS_SUSPENDED: "Acesso suspenso",
+                            }[entry.action] || entry.action}</strong>
+                            <small>{formatDate(entry.created_at)}</small>
+                          </div>
+                          {entry.details?.email ? <span>{entry.details.email}</span> : null}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              ) : null}
 
               <footer>
                 <button

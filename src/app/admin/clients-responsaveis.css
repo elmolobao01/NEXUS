@@ -442,3 +442,123 @@
     grid-column: auto;
   }
 }
+
+
+/* NEXUS CLIENTES v1.3 — PROVISIONAMENTO AUTH + HISTÓRICO */
+.nexus-access-status-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.nexus-access-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #edf2f7;
+  color: #536579;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.nexus-access-status.invited {
+  background: #fff4da;
+  color: #9a6914;
+}
+
+.nexus-access-status.active {
+  background: #e6f7ef;
+  color: #13714b;
+}
+
+.nexus-access-status.suspended {
+  background: #eef1f5;
+  color: #5b6571;
+}
+
+.nexus-access-status.error {
+  background: #fff0ef;
+  color: #a33f38;
+}
+
+.nexus-access-note p {
+  margin: 5px 0 0;
+}
+
+.nexus-access-error {
+  color: #a33f38 !important;
+  font-weight: 800;
+}
+
+.nexus-history-section {
+  padding: 18px 0 4px;
+}
+
+.nexus-history-heading {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5ebf2;
+}
+
+.nexus-history-heading > span {
+  display: block;
+  color: #2d67b1;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.nexus-history-heading h3 {
+  margin: 5px 0;
+  font-size: 18px;
+  letter-spacing: -.03em;
+}
+
+.nexus-history-heading p {
+  margin: 0;
+  color: #718196;
+  font-size: 9px;
+}
+
+.nexus-history-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.nexus-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e0e7ef;
+  border-radius: 11px;
+  background: #fbfcfe;
+}
+
+.nexus-history-item strong,
+.nexus-history-item small {
+  display: block;
+}
+
+.nexus-history-item strong {
+  color: #24384f;
+  font-size: 9px;
+}
+
+.nexus-history-item small {
+  margin-top: 3px;
+  color: #7b8a9a;
+  font-size: 8px;
+}
+
+.nexus-history-item > span {
+  color: #53677d;
+  font-size: 8px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
