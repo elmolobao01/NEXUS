@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import ClientsSection from "./clients-section";
 import ContractsSection from "./contracts-section";
+import ProductsSection from "./products-section";
 import AlertsCard from "./components/cards/alerts-card";
 import MetricCard from "./components/cards/metric-card";
 import ModulesCard from "./components/cards/modules-card";
@@ -159,6 +160,8 @@ export default function AdminDashboard() {
             <ClientsSection openRequest={novoClienteRequest} />
           ) : secao === "Contratos" ? (
             <ContractsSection />
+          ) : secao === "Planos e módulos" ? (
+            <ProductsSection />
           ) : (
             <section className="root2-placeholder">
               <span>NEXUS FOUNDATION 1.7</span>
