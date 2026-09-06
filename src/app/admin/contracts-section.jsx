@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import "./contracts.css";
 const STATUS=[["draft","Rascunho"],["active","Ativo"],["suspended","Suspenso"],["ended","Encerrado"],["cancelled","Cancelado"]];
 const INITIAL={clientId:"",number:"",startDate:"",endDate:"",billingCycle:"monthly",value:"",status:"draft",notes:""};
 const money=v=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v||0));
