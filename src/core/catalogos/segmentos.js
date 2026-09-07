@@ -1,4 +1,4 @@
-export const SEGMENTOS_NEXUS = Object.freeze({
+export const SEGMENTOS_PLENIUM = Object.freeze({
   educacao: { id: "educacao", nome: "Educação", perfis: ["educacao-infantil", "ensino-fundamental", "ensino-medio", "multi-etapas"], metricaPrincipal: "alunos" },
   clinicas: { id: "clinicas", nome: "Clínicas e Consultórios", perfis: ["consultorio", "clinica", "multi-especialidades", "multiunidade"], metricaPrincipal: "profissionais_agendas" },
   restaurantes: { id: "restaurantes", nome: "Restaurantes e Delivery", perfis: ["restaurante", "somente-delivery", "restaurante-delivery", "dark-kitchen"], metricaPrincipal: "unidades_operacao" },
@@ -11,4 +11,4 @@ export const SEGMENTOS_NEXUS = Object.freeze({
   outros: { id: "outros", nome: "Outros segmentos", perfis: ["personalizado"], metricaPrincipal: "escopo_personalizado" },
 });
 
-export const listarSegmentos = () => Object.values(SEGMENTOS_NEXUS);
+export const listarSegmentos = () => Object.values(SEGMENTOS_PLENIUM);
