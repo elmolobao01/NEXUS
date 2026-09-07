@@ -1,7 +1,7 @@
 
 export const portfolioThemes = {
   educacao: {
-    name: "NEXUS Educação",
+    name: "PLENIUM Educação",
     label: "Educação",
     accent: "#2563eb",
     accentStrong: "#1d4ed8",
@@ -11,7 +11,7 @@ export const portfolioThemes = {
     description: "Gestão educacional integrada para instituições, unidades, professores, alunos e famílias.",
   },
   saude: {
-    name: "NEXUS Saúde",
+    name: "PLENIUM Saúde",
     label: "Saúde",
     accent: "#0f9f6e",
     accentStrong: "#087f5b",
@@ -21,7 +21,7 @@ export const portfolioThemes = {
     description: "Experiência clínica clara, segura e orientada ao cuidado.",
   },
   restaurantes: {
-    name: "NEXUS Restaurantes",
+    name: "PLENIUM Restaurantes",
     label: "Restaurantes",
     accent: "#f59e0b",
     accentStrong: "#d97706",
@@ -31,7 +31,7 @@ export const portfolioThemes = {
     description: "Operação dinâmica para atendimento, cozinha, estoque e delivery.",
   },
   governamental: {
-    name: "NEXUS Governamental",
+    name: "PLENIUM Governamental",
     label: "Governamental",
     accent: "#0b5cab",
     accentStrong: "#084b8a",
