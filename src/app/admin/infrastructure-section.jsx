@@ -127,6 +127,20 @@ export default function InfrastructureSection() {
     } catch (error) { setMessage(error.message); }
   }
 
+  async function syncProvider(serviceId, provider) {
+    const key = String(provider || "").toLowerCase();
+    const label = key === "vercel" ? "Vercel" : "GitHub";
+    setMessage(`Sincronizando ${label}…`);
+    try {
+      const result = await send("POST", { serviceId }, `/api/admin/infraestrutura/${key}/sync`);
+      const detail = key === "vercel"
+        ? (result.deployment?.state ? ` Último deployment: ${result.deployment.state}.` : "")
+        : (result.commit?.sha ? ` Commit: ${String(result.commit.sha).slice(0, 7)}.` : "");
+      setMessage(`${label} sincronizado.${detail}`);
+      await load();
+    } catch (error) { setMessage(error.message); }
+  }
+
   async function syncSupabase(serviceId) {
     setMessage("Coletando métricas do Supabase…");
     try {
@@ -195,8 +209,12 @@ export default function InfrastructureSection() {
             <div><dt>Produto</dt><dd>{service.product_code || "Compartilhado"}</dd></div>
           </dl>
           {expiry && <p className={`infra-expiry ${days !== null && days <= 30 ? "attention" : ""}`}>{days < 0 ? `Vencido há ${Math.abs(days)} dia(s)` : `${days} dia(s) restantes`}{service.auto_renew ? " • renovação automática" : ""}</p>}
+          {service.metadata?.vercel && <div className="infra-integration-detail"><strong>Deploy</strong><span>{service.metadata.vercel.latestState || "—"} • {service.metadata.vercel.gitBranch || "branch —"}</span><small>{service.metadata.vercel.gitCommitSha ? String(service.metadata.vercel.gitCommitSha).slice(0,7) : "sem commit"}{service.last_checked_at ? ` • ${new Date(service.last_checked_at).toLocaleString("pt-BR")}` : ""}</small></div>}
+          {service.metadata?.github && <div className="infra-integration-detail"><strong>Repositório</strong><span>{service.metadata.github.defaultBranch || "—"} • {service.metadata.github.visibility || (service.metadata.github.private ? "private" : "public")}</span><small>{service.metadata.github.latestCommitSha ? String(service.metadata.github.latestCommitSha).slice(0,7) : "sem commit"}{service.metadata.github.latestCommitAt ? ` • ${new Date(service.metadata.github.latestCommitAt).toLocaleString("pt-BR")}` : ""}</small></div>}
           <footer>
             {String(service.provider || "").toLowerCase().includes("supabase") && <button type="button" onClick={() => syncSupabase(service.id)}>↻ Sincronizar</button>}
+            {String(service.provider || "").toLowerCase().includes("vercel") && <button type="button" onClick={() => syncProvider(service.id, "vercel")}>↻ Sincronizar</button>}
+            {String(service.provider || "").toLowerCase().includes("github") && <button type="button" onClick={() => syncProvider(service.id, "github")}>↻ Sincronizar</button>}
             <button type="button" onClick={() => { setSelectedService(service.id); setForm("plan"); }}>Plano</button>
             {service.management_url && <a href={service.management_url} target="_blank" rel="noreferrer">Abrir gestão ↗</a>}
           </footer>
