@@ -80,13 +80,13 @@ export default function ControlCenter() {
       <aside className="nexus-control-sidebar">
         <div className="nexus-control-brand">
           <Image
-            src="/branding/nexus-logo.png"
+            src="/branding/plenium-logo.png"
             width={52}
             height={52}
-            alt="NEXUS"
+            alt="PLENIUM"
           />
           <div>
-            <strong>NEXUS</strong>
+            <strong>PLENIUM</strong>
             <span>Centro de Controle</span>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function ControlCenter() {
         <section className="nexus-control-hero">
           <div>
             <span className="nexus-control-eyebrow">CENTRO DE INTELIGÊNCIA</span>
-            <h2>Controle completo do ecossistema NEXUS.</h2>
+            <h2>Controle completo do ecossistema PLENIUM.</h2>
             <p>
               Acompanhe clientes, contratos, receita, infraestrutura e operação
               em uma única visão executiva.

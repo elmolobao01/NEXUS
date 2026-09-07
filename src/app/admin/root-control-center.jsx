@@ -40,7 +40,7 @@ function DashboardExecutivo() {
       <section className="root-hero">
         <div>
           <span>CENTRO DE INTELIGÊNCIA ROOT</span>
-          <h2>Controle completo do ecossistema NEXUS.</h2>
+          <h2>Controle completo do ecossistema PLENIUM.</h2>
           <p>
             Uma visão única para acompanhar clientes, contratos, receita,
             infraestrutura, implantação e operação da plataforma.
@@ -320,14 +320,14 @@ export default function RootControlCenter() {
       <aside className={`root-sidebar ${menuAberto ? "is-open" : ""}`}>
         <div className="root-brand">
           <Image
-            src="/branding/nexus-logo.png"
-            alt="NEXUS"
+            src="/branding/plenium-logo.png"
+            alt="PLENIUM"
             width={54}
             height={54}
             priority
           />
           <div>
-            <strong>NEXUS</strong>
+            <strong>PLENIUM</strong>
             <span>Centro de Controle ROOT</span>
           </div>
         </div>
@@ -392,7 +392,7 @@ export default function RootControlCenter() {
               <span>EL</span>
               <div>
                 <strong>Elmo Lobão</strong>
-                <small>NEXUS ROOT</small>
+                <small>PLENIUM ROOT</small>
               </div>
             </button>
           </div>

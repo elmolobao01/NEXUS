@@ -137,10 +137,10 @@ export const modulosDemonstrativos = [
   { nome: "Contratos e Licenças", categoria: "Core", preco: 160, contratos: 18 },
   { nome: "Hospedagem Gerenciada", categoria: "Infraestrutura", preco: 220, contratos: 15 },
   { nome: "BI e Indicadores", categoria: "Inteligência", preco: 290, contratos: 12 },
-  { nome: "NEXUS Educação", categoria: "Portfólio", preco: 690, contratos: 6 },
-  { nome: "NEXUS Hotelaria", categoria: "Portfólio", preco: 790, contratos: 4 },
-  { nome: "NEXUS Saúde", categoria: "Portfólio", preco: 890, contratos: 3 },
-  { nome: "NEXUS Governamental", categoria: "Portfólio", preco: 990, contratos: 3 },
+  { nome: "PLENIUM Educação", categoria: "Portfólio", preco: 690, contratos: 6 },
+  { nome: "PLENIUM Hotelaria", categoria: "Portfólio", preco: 790, contratos: 4 },
+  { nome: "PLENIUM Saúde", categoria: "Portfólio", preco: 890, contratos: 3 },
+  { nome: "PLENIUM Governamental", categoria: "Portfólio", preco: 990, contratos: 3 },
 ];
 
 export const alertasOperacionais = [

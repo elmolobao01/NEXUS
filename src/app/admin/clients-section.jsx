@@ -497,7 +497,7 @@ export default function ClientsSection() {
       <section className="root2-section-intro root2-clients-intro">
         <div>
           <span>GESTÃO COMERCIAL</span>
-          <h2>Clientes NEXUS</h2>
+          <h2>Clientes PLENIUM</h2>
           <p>
             Cadastre organizações, acompanhe implantação e controle a situação
             comercial dos clientes em uma única base.
@@ -646,7 +646,7 @@ export default function ClientsSection() {
                 <h2 id="cliente-title">{editingClientId ? "Gerenciar organização" : "Cadastrar organização"}</h2>
                 <p>
                   Cadastre a organização e, opcionalmente, todos os responsáveis
-                  que atuarão no relacionamento com o NEXUS.
+                  que atuarão no relacionamento com o PLENIUM.
                 </p>
               </div>
               <button type="button" onClick={() => setModalOpen(false)} aria-label="Fechar">
@@ -1022,7 +1022,7 @@ export default function ClientsSection() {
                       <p className="nexus-access-error">{accessConfig.lastError}</p>
                     ) : null}
                     <p>
-                      Ao salvar com o acesso liberado, o NEXUS cria ou vincula o usuário no
+                      Ao salvar com o acesso liberado, o PLENIUM cria ou vincula o usuário no
                       Supabase Auth e associa o perfil à organização. Se o e-mail ainda não
                       existir no Auth, o usuário recebe um convite para concluir o acesso.
                     </p>
@@ -1094,7 +1094,7 @@ export default function ClientsSection() {
                                   <small>{formatDateTime(entry.created_at)}</small>
                                 </div>
                                 <span className="nexus-history-actor">
-                                  {entry.actor_email || entry.actor_profile || "NEXUS"}
+                                  {entry.actor_email || entry.actor_profile || "PLENIUM"}
                                 </span>
                               </div>
 

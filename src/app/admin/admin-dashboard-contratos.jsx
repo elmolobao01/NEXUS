@@ -30,14 +30,14 @@ export default function AdminDashboard() {
       <aside className={`root2-sidebar ${menuAberto ? "is-open" : ""}`}>
         <div className="root2-brand">
           <Image
-            src="/branding/nexus-logo.png"
+            src="/branding/plenium-logo.png"
             width={54}
             height={54}
-            alt="NEXUS"
+            alt="PLENIUM"
             priority
           />
           <div>
-            <strong>NEXUS</strong>
+            <strong>PLENIUM</strong>
             <span>Centro de Controle ROOT</span>
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function AdminDashboard() {
               <span>EL</span>
               <div>
                 <strong>Elmo Lobão</strong>
-                <small>NEXUS ROOT</small>
+                <small>PLENIUM ROOT</small>
               </div>
             </button>
           </div>
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
             <ContractsSection />
           ) : (
             <section className="root2-placeholder">
-              <span>NEXUS FOUNDATION 1.7</span>
+              <span>PLENIUM FOUNDATION 1.7</span>
               <h2>{secao}</h2>
               <p>
                 A navegação está preparada. Esta área será conectada ao núcleo
