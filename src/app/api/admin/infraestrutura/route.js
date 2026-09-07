@@ -247,6 +247,13 @@ export async function PATCH(request) {
 
   if (body?.entity === "service" && body.id) {
     const payload = {};
+    if (body.name !== undefined) payload.name = cleanText(body.name);
+    if (body.provider !== undefined) payload.provider = cleanText(body.provider);
+    if (body.category !== undefined) payload.category = cleanText(body.category) || "OUTRO";
+    if (body.productCode !== undefined) payload.product_code = cleanText(body.productCode);
+    if (body.resourceIdentifier !== undefined) payload.resource_identifier = cleanText(body.resourceIdentifier);
+    if (body.managementUrl !== undefined) payload.management_url = cleanText(body.managementUrl);
+    if (body.startedOn !== undefined) payload.started_on = body.startedOn || null;
     if (body.status) payload.status = body.status;
     if (body.healthStatus) payload.health_status = body.healthStatus;
     if (body.expiresOn !== undefined) payload.expires_on = body.expiresOn || null;
