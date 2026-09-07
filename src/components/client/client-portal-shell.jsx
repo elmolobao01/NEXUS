@@ -28,7 +28,7 @@ export function ClientPortalShell() {
   return (
     <main className={`client-shell theme-${organization.portfolio}`} style={cssVars}>
       <aside className="client-sidebar">
-        <div className="client-brand"><img src="/branding/nexus-logo.png" alt="NEXUS" /><div><strong>{theme.name}</strong><span>Portal do Cliente</span></div></div>
+        <div className="client-brand"><img src="/branding/plenium-logo.png" alt="PLENIUM" /><div><strong>{theme.name}</strong><span>Portal do Cliente</span></div></div>
         <div className="client-identity"><small>Organização</small><strong>{organization.nome}</strong><span>{organization.unidade}</span></div>
         <nav className="client-navigation" aria-label="Módulos contratados">{organization.modulos.map((item) => <button key={item} className={activeModule === item ? "client-nav active" : "client-nav"} type="button" onClick={() => setActiveModule(item)}><span />{item}</button>)}</nav>
         <div className="client-user"><span className="user-avatar">GL</span><div><strong>Gestor Local</strong><small>{organization.perfil}</small></div></div>
