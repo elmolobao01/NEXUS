@@ -62,15 +62,16 @@ export async function GET(request) {
   const ctx = await requireRoot(request);
   if (!ctx) return json("Acesso ROOT necessário.", 403);
 
-  const [services, plans, accounts, consumption, syncRuns] = await Promise.all([
+  const [services, plans, accounts, consumption, syncRuns, alerts] = await Promise.all([
     rest(ctx.token, "nexus_infra_services?select=*&order=provider.asc,name.asc"),
     rest(ctx.token, "nexus_infra_plans?select=*&order=starts_on.desc,created_at.desc"),
     rest(ctx.token, "nexus_infra_accounts_payable?select=*&order=due_on.asc,created_at.desc"),
     rest(ctx.token, "nexus_infra_consumption?select=*&order=measured_at.desc&limit=1000"),
     rest(ctx.token, "nexus_infra_sync_runs?select=*&order=started_at.desc&limit=100"),
+    rest(ctx.token, "nexus_infra_alerts?select=*&order=detected_at.desc&limit=250"),
   ]);
 
-  const failed = [services, plans, accounts, consumption, syncRuns].find((item) => !item.ok);
+  const failed = [services, plans, accounts, consumption, syncRuns, alerts].find((item) => !item.ok);
   if (failed) {
     return json(
       "Não foi possível carregar Infraestrutura. Confirme a execução da migration 20260907_001_infraestrutura_assinaturas.sql.",
@@ -85,6 +86,7 @@ export async function GET(request) {
     accounts: accounts.data || [],
     consumption: consumption.data || [],
     syncRuns: syncRuns.data || [],
+    alerts: alerts.data || [],
   });
 }
 
@@ -105,6 +107,12 @@ export async function POST(request) {
       product_code: cleanText(body.productCode),
       resource_identifier: cleanText(body.resourceIdentifier),
       management_url: cleanText(body.managementUrl),
+      started_on: body.startedOn || null,
+      expires_on: body.expiresOn || null,
+      renewal_on: body.renewalOn || null,
+      auto_renew: Boolean(body.autoRenew),
+      health_status: body.healthStatus || "UNKNOWN",
+      metadata: body.metadata && typeof body.metadata === "object" ? body.metadata : {},
       status: body.status || "ACTIVE",
       notes: cleanText(body.notes),
       created_by: ctx.userId,
@@ -204,6 +212,12 @@ export async function POST(request) {
     return NextResponse.json({ generated: Number(result.data || 0) });
   }
 
+  if (entity === "refresh-alerts") {
+    const result = await rest(ctx.token, "rpc/nexus_infra_refresh_alerts", { method: "POST", body: "{}" });
+    if (!result.ok) return json("Falha ao recalcular alertas.", result.status, { details: result.data });
+    return NextResponse.json({ generated: Number(result.data || 0) });
+  }
+
   return json("Entidade não suportada.", 400);
 }
 
@@ -234,6 +248,11 @@ export async function PATCH(request) {
   if (body?.entity === "service" && body.id) {
     const payload = {};
     if (body.status) payload.status = body.status;
+    if (body.healthStatus) payload.health_status = body.healthStatus;
+    if (body.expiresOn !== undefined) payload.expires_on = body.expiresOn || null;
+    if (body.renewalOn !== undefined) payload.renewal_on = body.renewalOn || null;
+    if (body.autoRenew !== undefined) payload.auto_renew = Boolean(body.autoRenew);
+    if (body.lastCheckedAt !== undefined) payload.last_checked_at = body.lastCheckedAt || null;
     if (body.notes !== undefined) payload.notes = cleanText(body.notes);
     const result = await rest(ctx.token, `nexus_infra_services?id=eq.${encodeURIComponent(body.id)}`, {
       method: "PATCH",
@@ -242,6 +261,19 @@ export async function PATCH(request) {
     });
     if (!result.ok) return json("Falha ao atualizar serviço.", result.status, { details: result.data });
     return NextResponse.json({ service: result.data?.[0] });
+  }
+
+  if (body?.entity === "alert" && body.id && ["acknowledge", "resolve"].includes(body.action)) {
+    const payload = body.action === "resolve"
+      ? { status: "RESOLVED", resolved_at: new Date().toISOString() }
+      : { status: "ACKNOWLEDGED" };
+    const result = await rest(ctx.token, `nexus_infra_alerts?id=eq.${encodeURIComponent(body.id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(payload),
+    });
+    if (!result.ok) return json("Falha ao atualizar alerta.", result.status, { details: result.data });
+    return NextResponse.json({ alert: result.data?.[0] });
   }
 
   return json("Atualização não suportada.", 400);
