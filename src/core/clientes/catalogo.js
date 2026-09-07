@@ -1,21 +1,21 @@
 export const produtosNexus = [
-  { id: "gestao", nome: "NEXUS Gestão", tipo: "produto", contratacaoIndependente: true },
-  { id: "ia", nome: "NEXUS IA", tipo: "produto", contratacaoIndependente: true },
+  { id: "gestao", nome: "PLENIUM Gestão", tipo: "produto", contratacaoIndependente: true },
+  { id: "ia", nome: "PLENIUM IA", tipo: "produto", contratacaoIndependente: true },
 ];
 
 export const regrasBeneficioEcossistema = {
   multiproduto: true,
-  descricao: "Clientes com mais de um produto NEXUS podem receber condição comercial proporcional conforme plano e contrato.",
+  descricao: "Clientes com mais de um produto PLENIUM podem receber condição comercial proporcional conforme plano e contrato.",
 };
 
 export const modulosComerciais = [
-  { id: "core", nome: "Núcleo NEXUS", categoria: "Base", valorMensal: 390, obrigatorio: true },
-  { id: "educacao", nome: "NEXUS Educação", categoria: "Portfólio", valorMensal: 690 },
-  { id: "saude", nome: "NEXUS Saúde", categoria: "Portfólio", valorMensal: 890 },
-  { id: "restaurantes", nome: "NEXUS Restaurantes", categoria: "Portfólio", valorMensal: 490 },
-  { id: "governamental", nome: "NEXUS Governamental", categoria: "Portfólio", valorMensal: 1190 },
+  { id: "core", nome: "Núcleo PLENIUM", categoria: "Base", valorMensal: 390, obrigatorio: true },
+  { id: "educacao", nome: "PLENIUM Educação", categoria: "Portfólio", valorMensal: 690 },
+  { id: "saude", nome: "PLENIUM Saúde", categoria: "Portfólio", valorMensal: 890 },
+  { id: "restaurantes", nome: "PLENIUM Restaurantes", categoria: "Portfólio", valorMensal: 490 },
+  { id: "governamental", nome: "PLENIUM Governamental", categoria: "Portfólio", valorMensal: 1190 },
   { id: "familia", nome: "Portal da Família", categoria: "Complementar", valorMensal: 190 },
-  { id: "ia", nome: "Assistente NEXUS IA", categoria: "Complementar", valorMensal: 350 },
+  { id: "ia", nome: "Assistente PLENIUM IA", categoria: "Complementar", valorMensal: 350 },
   { id: "bi", nome: "Painel Executivo e BI", categoria: "Complementar", valorMensal: 290 },
   { id: "hospedagem", nome: "Hospedagem Gerenciada", categoria: "Infraestrutura", valorMensal: 220 },
   { id: "suporte", nome: "Suporte Prioritário", categoria: "Serviço", valorMensal: 280 },
@@ -58,7 +58,7 @@ export const clientesIniciais = [
     segmento: "Educação",
     unidades: 4,
     plano: "Profissional",
-    modulos: ["NEXUS Educação", "Portal da Família", "Hospedagem Gerenciada"],
+    modulos: ["PLENIUM Educação", "Portal da Família", "Hospedagem Gerenciada"],
     inicioContrato: "01/08/2026",
     fimContrato: "31/07/2027",
     vencimento: "10 de cada mês",
@@ -74,7 +74,7 @@ export const clientesIniciais = [
     segmento: "Saúde",
     unidades: 2,
     plano: "Enterprise",
-    modulos: ["NEXUS Saúde", "Assistente NEXUS IA", "Hospedagem Gerenciada"],
+    modulos: ["PLENIUM Saúde", "Assistente PLENIUM IA", "Hospedagem Gerenciada"],
     inicioContrato: "15/07/2026",
     fimContrato: "14/07/2027",
     vencimento: "15 de cada mês",
@@ -90,7 +90,7 @@ export const clientesIniciais = [
     segmento: "Restaurantes",
     unidades: 1,
     plano: "Essencial",
-    modulos: ["NEXUS Restaurantes", "Hospedagem Gerenciada"],
+    modulos: ["PLENIUM Restaurantes", "Hospedagem Gerenciada"],
     inicioContrato: "20/08/2026",
     fimContrato: "19/08/2027",
     vencimento: "20 de cada mês",
