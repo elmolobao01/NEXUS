@@ -1,6 +1,6 @@
 export const ambientesNexus = {
   admin: {
-    nome: "Administração NEXUS",
+    nome: "Administração PLENIUM",
     descricao: "Gestão interna da plataforma, clientes, contratos, planos e infraestrutura.",
     rota: "/admin",
   },
@@ -38,7 +38,7 @@ export const organizacoesDemo = [
   },
   {
     id: "org-restaurantes",
-    nome: "Bistrô NEXUS",
+    nome: "Bistrô PLENIUM",
     portfolio: "restaurantes",
     unidade: "Loja Principal",
     perfil: "Gestor Operacional",
