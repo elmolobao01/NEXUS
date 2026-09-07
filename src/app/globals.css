@@ -2842,3 +2842,7 @@ body { margin: 0; }
   .infra-modal { max-height: calc(100vh - 24px); }
   .infra-form .infra-span-2, .infra-form .infra-check, .infra-form-actions { grid-column: auto; }
 }
+
+/* PLENIUM Infraestrutura — Etapa 2 / monitoramento automático */
+.infra-panel-actions > div > small { display:block; margin-top:4px; opacity:.68; }
+.infra-form label > small { display:block; margin-top:6px; font-size:11px; line-height:1.45; opacity:.68; }
