@@ -66,7 +66,7 @@ async function getRootContext(token) {
 
   if (
     !profile?.active ||
-    !["NEXUS_ROOT", "NEXUS_ADMIN"].includes(profile.profile)
+    !["PLENIUM_ROOT", "PLENIUM_ADMIN"].includes(profile.profile)
   ) {
     return null;
   }
@@ -351,7 +351,7 @@ async function provisionAccess(request, token, client, access = {}) {
           ok: false,
           status: 503,
           message: "A chave administrativa do Supabase não está configurada no servidor.",
-          code: "NEXUS_AUTH_ADMIN_NOT_CONFIGURED",
+          code: "PLENIUM_AUTH_ADMIN_NOT_CONFIGURED",
         };
       }
 
@@ -403,7 +403,7 @@ async function provisionAccess(request, token, client, access = {}) {
       ok: false,
       status: 503,
       message: "Configure SUPABASE_SERVICE_ROLE_KEY na Vercel para liberar usuários do Portal do Cliente.",
-      code: "NEXUS_AUTH_ADMIN_NOT_CONFIGURED",
+      code: "PLENIUM_AUTH_ADMIN_NOT_CONFIGURED",
     };
   }
 
@@ -665,7 +665,7 @@ export async function POST(request) {
       return json(
         "Configure SUPABASE_SERVICE_ROLE_KEY na Vercel antes de liberar o Portal do Cliente.",
         503,
-        { code: "NEXUS_AUTH_ADMIN_NOT_CONFIGURED" }
+        { code: "PLENIUM_AUTH_ADMIN_NOT_CONFIGURED" }
       );
     }
 
@@ -813,7 +813,7 @@ export async function PUT(request) {
       return json(
         "Configure SUPABASE_SERVICE_ROLE_KEY na Vercel antes de liberar o Portal do Cliente.",
         503,
-        { code: "NEXUS_AUTH_ADMIN_NOT_CONFIGURED" }
+        { code: "PLENIUM_AUTH_ADMIN_NOT_CONFIGURED" }
       );
     }
 
