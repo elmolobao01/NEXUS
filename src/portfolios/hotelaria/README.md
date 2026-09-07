@@ -1,4 +1,4 @@
-# NEXUS Hotelaria
+# PLENIUM Hotelaria
 
 Portfólio destinado a hotéis, pousadas, resorts, hostels e redes de hospedagem.
 
@@ -11,7 +11,7 @@ Portfólio destinado a hotéis, pousadas, resorts, hostels e redes de hospedagem
 - **Texto grafite:** `#1F2937`
 - **Gradiente:** `#C65A11 → #B54A1C → #8B1E2D`
 
-A composição deve transmitir hospitalidade, energia, conforto e sofisticação, mantendo a estrutura e a usabilidade do Design System NEXUS.
+A composição deve transmitir hospitalidade, energia, conforto e sofisticação, mantendo a estrutura e a usabilidade do Design System PLENIUM.
 
 ## Módulos previstos
 
