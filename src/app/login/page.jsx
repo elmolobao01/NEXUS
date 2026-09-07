@@ -1,7 +1,7 @@
 import LoginScreen from "./login-screen";
 
 export const metadata = {
-  title: "Iniciar sessão | NEXUS",
+  title: "Iniciar sessão | PLENIUM",
   description: "Ecossistema Inteligente de Gestão Operacional.",
 };
 

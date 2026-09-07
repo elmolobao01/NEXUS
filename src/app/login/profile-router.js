@@ -1,6 +1,6 @@
 const DESTINOS_POR_PERFIL = {
-  NEXUS_ROOT: "/admin",
-  NEXUS_ADMIN: "/admin",
+  PLENIUM_ROOT: "/admin",
+  PLENIUM_ADMIN: "/admin",
   CLIENT_ADMIN: "/portal",
   MANAGER: "/portal",
   SUPERVISOR: "/portal",

@@ -56,7 +56,7 @@ export default function LoginScreen() {
 
   return (
     <main className="nexus-login-page nexus-login-inteligente">
-      <section className="nexus-login-visual" aria-label="Apresentação NEXUS">
+      <section className="nexus-login-visual" aria-label="Apresentação PLENIUM">
         <div className="nexus-grid-glow" aria-hidden="true" />
         <div className="nexus-login-orb nexus-login-orb-one" aria-hidden="true" />
         <div className="nexus-login-orb nexus-login-orb-two" aria-hidden="true" />
@@ -64,15 +64,15 @@ export default function LoginScreen() {
         <header className="nexus-login-brand">
           <div className="nexus-login-logo-box nexus-logo-premium">
             <Image
-              src="/branding/nexus-logo.png"
-              alt="Logomarca NEXUS"
+              src="/branding/plenium-logo.png"
+              alt="Logomarca PLENIUM"
               width={96}
               height={96}
               priority
             />
           </div>
           <div>
-            <strong>NEXUS</strong>
+            <strong>PLENIUM</strong>
             <span>Ecossistema Inteligente de Gestão Operacional</span>
           </div>
         </header>
@@ -101,12 +101,12 @@ export default function LoginScreen() {
 
         <footer className="nexus-login-visual-footer nexus-login-footer-v2">
           <div>
-            <strong>NEXUS Foundation 1.5</strong>
+            <strong>PLENIUM Foundation 1.5</strong>
             <span>
               LGPD • SSL • Backup automático • Multiempresa • 99,9% de disponibilidade
             </span>
           </div>
-          <span>© 2026 NEXUS Platform</span>
+          <span>© 2026 PLENIUM Platform</span>
         </footer>
       </section>
 
@@ -117,7 +117,7 @@ export default function LoginScreen() {
             <p>ACESSO SEGURO</p>
           </div>
 
-          <h2>Bem-vindo ao NEXUS</h2>
+          <h2>Bem-vindo ao PLENIUM</h2>
           <p className="nexus-login-concept">
             Um novo conceito em gestão operacional.
           </p>
@@ -195,7 +195,7 @@ export default function LoginScreen() {
           </form>
 
           <p className="nexus-login-demo-note">
-            O NEXUS identifica automaticamente sua organização, perfil,
+            O PLENIUM identifica automaticamente sua organização, perfil,
             módulos contratados e ambiente de trabalho.
           </p>
         </div>
