@@ -73,13 +73,13 @@ export default function LoginScreen() {
           </div>
           <div>
             <strong>PLENIUM</strong>
-            <span>Ecossistema Inteligente de Gestão Operacional</span>
+            <span>Sistema Inteligente de Gestão Integrada</span>
           </div>
         </header>
 
         <div className="nexus-login-presentation">
           <p className="nexus-login-kicker">
-            ECOSSISTEMA INTELIGENTE DE GESTÃO OPERACIONAL
+            SISTEMA INTELIGENTE DE GESTÃO INTEGRADA
           </p>
           <h1>Uma plataforma que se adapta ao seu negócio.</h1>
           <p className="nexus-login-lead">
@@ -101,12 +101,12 @@ export default function LoginScreen() {
 
         <footer className="nexus-login-visual-footer nexus-login-footer-v2">
           <div>
-            <strong>PLENIUM Foundation 1.5</strong>
+            <strong>PLENIUM • Sistema de Gestão</strong>
             <span>
               LGPD • SSL • Backup automático • Multiempresa • 99,9% de disponibilidade
             </span>
           </div>
-          <span>© 2026 PLENIUM Platform</span>
+          <span>© 2026 PLENIUM</span>
         </footer>
       </section>
 
@@ -119,7 +119,7 @@ export default function LoginScreen() {
 
           <h2>Bem-vindo ao PLENIUM</h2>
           <p className="nexus-login-concept">
-            Um novo conceito em gestão operacional.
+            Gestão completa, integrada e adaptável ao seu negócio.
           </p>
           <p className="nexus-login-card-description">
             Acesse sua conta para continuar.
