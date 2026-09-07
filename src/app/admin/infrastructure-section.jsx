@@ -42,9 +42,20 @@ function consumptionPercent(item) {
   return Math.max(0, (Number(item.used_value || 0) / limit) * 100);
 }
 
+function parseLimits(text) {
+  const result = {};
+  String(text || "").split(/\r?\n/).forEach((line) => {
+    const [rawKey, rawValue] = line.split("=");
+    const key = String(rawKey || "").trim();
+    const value = Number(String(rawValue || "").trim().replace(",", "."));
+    if (key && Number.isFinite(value) && value >= 0) result[key] = value;
+  });
+  return result;
+}
+
 export default function InfrastructureSection() {
   const [tab, setTab] = useState("Visão geral");
-  const [data, setData] = useState({ services: [], plans: [], accounts: [], consumption: [] });
+  const [data, setData] = useState({ services: [], plans: [], accounts: [], consumption: [], syncRuns: [] });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [form, setForm] = useState(null);
@@ -149,6 +160,7 @@ export default function InfrastructureSection() {
         entity: "plan",
         ...values,
         autoRenew: values.autoRenew === "on",
+        consumptionLimits: parseLimits(values.consumptionLimits),
         isActive: true,
       });
       setForm(null); setMessage("Novo plano ativado e histórico preservado."); await load();
@@ -188,6 +200,19 @@ export default function InfrastructureSection() {
     try {
       const payload = await post({ entity: "generate-payables", until: until.toISOString().slice(0, 10) });
       setMessage(`${payload.generated || 0} cobrança(s) nova(s) gerada(s) para os próximos 12 meses.`);
+      await load();
+    } catch (error) { setMessage(error.message); }
+  }
+
+  async function syncSupabase(serviceId) {
+    setMessage("Coletando métricas do Supabase…");
+    try {
+      const response = await fetch("/api/admin/infraestrutura/supabase/sync", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ serviceId }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "Falha na sincronização.");
+      setMessage(`${payload.metricsCount} métrica(s) do Supabase atualizada(s).${payload.status === "PARTIAL" ? " Algumas métricas não puderam ser coletadas." : ""}`);
       await load();
     } catch (error) { setMessage(error.message); }
   }
@@ -280,17 +305,17 @@ export default function InfrastructureSection() {
 
       {!loading && tab === "Consumo" && (
         <section className="root-panel infra-table-panel">
-          <header className="root-panel-header infra-panel-actions"><div><span>CONSUMO</span><h3>Métricas atuais por serviço</h3></div><button type="button" className="root-button root-button-primary" onClick={() => setForm("consumption")}>+ Registrar consumo</button></header>
+          <header className="root-panel-header infra-panel-actions"><div><span>CONSUMO</span><h3>Métricas atuais por serviço</h3><small>Coleta automática disponível para serviços Supabase configurados.</small></div><div className="infra-header-actions">{data.services.filter((s) => String(s.provider || "").toLowerCase().includes("supabase")).map((s) => <button key={s.id} type="button" className="root-button root-button-secondary" onClick={() => syncSupabase(s.id)}>↻ Atualizar Supabase</button>)}<button type="button" className="root-button root-button-primary" onClick={() => setForm("consumption")}>+ Registrar consumo</button></div></header>
           <div className="infra-consumption-grid">
             {latestConsumption.map((item) => { const pct = consumptionPercent(item); return <article key={`${item.service_id}:${item.metric_key}`}><div><span>{serviceName(item.service_id)}</span><strong>{item.metric_label}</strong></div><p>{Number(item.used_value).toLocaleString("pt-BR")} <small>{item.unit}</small>{item.limit_value !== null ? <><em>/</em> {Number(item.limit_value).toLocaleString("pt-BR")} <small>{item.unit}</small></> : null}</p>{pct !== null && <div className="infra-progress"><span style={{ width: `${Math.min(pct, 100)}%` }} /><small>{pct.toFixed(1)}%</small></div>}<footer><span>{item.source}</span><small>{new Date(item.measured_at).toLocaleString("pt-BR")}</small></footer></article>; })}
-            {!latestConsumption.length && <p className="infra-empty">Nenhuma métrica registrada. Comece manualmente; depois conectaremos APIs.</p>}
+            {!latestConsumption.length && <p className="infra-empty">Nenhuma métrica registrada. Use “Atualizar Supabase” para coleta automática ou registre uma leitura manual.</p>}
           </div>
         </section>
       )}
 
       {form && <div className="infra-modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setForm(null); }}><section className="infra-modal" role="dialog" aria-modal="true" aria-label="Cadastro de infraestrutura"><header><div><span>PLENIUM ROOT</span><h3>{form === "service" ? "Novo serviço" : form === "plan" ? "Novo plano / alteração" : form === "account" ? "Lançamento manual" : "Registrar consumo"}</h3></div><button type="button" onClick={() => setForm(null)} aria-label="Fechar">×</button></header>
         {form === "service" && <form onSubmit={submitService} className="infra-form"><label>Fornecedor<input name="provider" required placeholder="Ex.: Supabase" /></label><label>Serviço / ativo<input name="name" required placeholder="Ex.: Banco PLENIUM" /></label><label>Categoria<select name="category"><option value="BANCO_DADOS">Banco de dados</option><option value="HOSPEDAGEM">Hospedagem</option><option value="DOMINIO">Domínio</option><option value="IA">IA / API</option><option value="EMAIL">E-mail</option><option value="DESENVOLVIMENTO">Desenvolvimento</option><option value="OUTRO">Outro</option></select></label><label>Produto<select name="productCode"><option value="">Compartilhado</option>{PRODUCT_OPTIONS.map((p) => <option key={p}>{p}</option>)}</select></label><label>Identificador<input name="resourceIdentifier" placeholder="domínio, projeto, workspace..." /></label><label>URL de gestão<input name="managementUrl" type="url" placeholder="https://..." /></label><label className="infra-span-2">Observações<textarea name="notes" rows="3" /></label><div className="infra-form-actions"><button type="button" className="root-button root-button-secondary" onClick={() => setForm(null)}>Cancelar</button><button className="root-button root-button-primary">Salvar serviço</button></div></form>}
-        {form === "plan" && <form onSubmit={submitPlan} className="infra-form"><label>Serviço<select name="serviceId" required defaultValue={selectedService}>{data.services.map((s) => <option key={s.id} value={s.id}>{s.provider} — {s.name}</option>)}</select></label><label>Nome do plano<input name="planName" required placeholder="Free, Pro, Enterprise..." /></label><label>Valor<input name="price" type="number" min="0" step="0.01" defaultValue="0" /></label><label>Periodicidade<select name="billingCycle"><option value="FREE">Gratuito</option><option value="MONTHLY">Mensal</option><option value="QUARTERLY">Trimestral</option><option value="SEMIANNUAL">Semestral</option><option value="ANNUAL">Anual</option><option value="BIENNIAL">Bienal</option><option value="USAGE">Por consumo</option><option value="OTHER">Outro</option></select></label><label>Início da vigência<input name="startsOn" type="date" defaultValue={isoToday()} required /></label><label>Próxima renovação<input name="nextRenewalOn" type="date" /></label><label className="infra-check"><input name="autoRenew" type="checkbox" /> Renovação automática</label><label className="infra-span-2">Observações<textarea name="notes" rows="3" placeholder="Inclua limites, condições comerciais e detalhes do contrato." /></label><div className="infra-form-actions"><button type="button" className="root-button root-button-secondary" onClick={() => setForm(null)}>Cancelar</button><button className="root-button root-button-primary">Ativar novo plano</button></div></form>}
+        {form === "plan" && <form onSubmit={submitPlan} className="infra-form"><label>Serviço<select name="serviceId" required defaultValue={selectedService}>{data.services.map((s) => <option key={s.id} value={s.id}>{s.provider} — {s.name}</option>)}</select></label><label>Nome do plano<input name="planName" required placeholder="Free, Pro, Enterprise..." /></label><label>Valor<input name="price" type="number" min="0" step="0.01" defaultValue="0" /></label><label>Periodicidade<select name="billingCycle"><option value="FREE">Gratuito</option><option value="MONTHLY">Mensal</option><option value="QUARTERLY">Trimestral</option><option value="SEMIANNUAL">Semestral</option><option value="ANNUAL">Anual</option><option value="BIENNIAL">Bienal</option><option value="USAGE">Por consumo</option><option value="OTHER">Outro</option></select></label><label>Início da vigência<input name="startsOn" type="date" defaultValue={isoToday()} required /></label><label>Próxima renovação<input name="nextRenewalOn" type="date" /></label><label className="infra-check"><input name="autoRenew" type="checkbox" /> Renovação automática</label><label className="infra-span-2">Limites de consumo <textarea name="consumptionLimits" rows="4" placeholder={"database_size_gb=0.5\nstorage_size_gb=1\napi_rest_requests=500000"} /><small>Uma métrica por linha: chave=limite. Os limites ficam vinculados à vigência deste plano.</small></label><label className="infra-span-2">Observações<textarea name="notes" rows="3" placeholder="Condições comerciais e detalhes do contrato." /></label><div className="infra-form-actions"><button type="button" className="root-button root-button-secondary" onClick={() => setForm(null)}>Cancelar</button><button className="root-button root-button-primary">Ativar novo plano</button></div></form>}
         {form === "account" && <form onSubmit={submitAccount} className="infra-form"><label className="infra-span-2">Descrição<input name="description" required placeholder="Ex.: Renovação do domínio pleniumgestao.com.br" /></label><label>Serviço<select name="serviceId"><option value="">Sem vínculo</option>{data.services.map((s) => <option key={s.id} value={s.id}>{s.provider} — {s.name}</option>)}</select></label><label>Produto<select name="productCode"><option value="">Não definido</option>{PRODUCT_OPTIONS.map((p) => <option key={p}>{p}</option>)}</select></label><label>Vencimento<input name="dueOn" type="date" required /></label><label>Valor previsto<input name="expectedAmount" type="number" min="0" step="0.01" required /></label><label>Recorrência<select name="recurrence"><option value="NONE">Não recorrente</option><option value="MONTHLY">Mensal</option><option value="QUARTERLY">Trimestral</option><option value="SEMIANNUAL">Semestral</option><option value="ANNUAL">Anual</option><option value="BIENNIAL">Bienal</option><option value="OTHER">Outra</option></select></label><label>Forma de pagamento<input name="paymentMethod" placeholder="Cartão, PIX, boleto..." /></label><label className="infra-span-2">Observações<textarea name="notes" rows="3" /></label><div className="infra-form-actions"><button type="button" className="root-button root-button-secondary" onClick={() => setForm(null)}>Cancelar</button><button className="root-button root-button-primary">Lançar conta</button></div></form>}
         {form === "consumption" && <form onSubmit={submitConsumption} className="infra-form"><label>Serviço<select name="serviceId" required>{data.services.map((s) => <option key={s.id} value={s.id}>{s.provider} — {s.name}</option>)}</select></label><label>Métrica<input name="metricLabel" required placeholder="Ex.: Database size" /></label><label>Chave técnica<input name="metricKey" required placeholder="database_size" /></label><label>Unidade<input name="unit" defaultValue="GB" /></label><label>Consumo atual<input name="usedValue" type="number" min="0" step="0.0001" required /></label><label>Limite do plano<input name="limitValue" type="number" min="0" step="0.0001" /></label><label>Custo estimado<input name="estimatedCost" type="number" min="0" step="0.01" /></label><div className="infra-form-actions"><button type="button" className="root-button root-button-secondary" onClick={() => setForm(null)}>Cancelar</button><button className="root-button root-button-primary">Registrar leitura</button></div></form>}
       </section></div>}
