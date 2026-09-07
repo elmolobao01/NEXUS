@@ -11,7 +11,7 @@ function identificarPerfilDemonstrativo(email) {
     email.endsWith("@nexus.com.br")
   ) {
     return {
-      perfil: "PLENIUM_ROOT",
+      perfil: "NEXUS_ROOT",
       organizacaoId: "nexus-platform",
       organizacaoNome: "PLENIUM Platform",
       unidadeId: null,
@@ -59,7 +59,7 @@ export async function autenticarUsuario({ email, senha }) {
   return {
     id: `demo-${btoa(emailNormalizado).replace(/=/g, "").slice(0, 18)}`,
     email: emailNormalizado,
-    nome: contexto.perfil === "PLENIUM_ROOT" ? "Elmo Lobão" : "Usuário Demonstração",
+    nome: contexto.perfil === "NEXUS_ROOT" ? "Elmo Lobão" : "Usuário Demonstração",
     ...contexto,
     autenticadoEm: new Date().toISOString(),
   };
