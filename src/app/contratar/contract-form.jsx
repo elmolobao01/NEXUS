@@ -5,15 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 const WHATSAPP = "5571999952478";
 
 const productLabels = {
-  gestao: "NEXUS Gestão",
-  ia: "NEXUS IA",
-  combo: "NEXUS Gestão + NEXUS IA",
+  gestao: "PLENIUM Gestão",
+  ia: "PLENIUM IA",
+  combo: "PLENIUM Gestão + PLENIUM IA",
 };
 
 const segmentos = {
   educacao: {
     nome: "Educação",
-    subtitulo: "NEXUS Educação",
+    subtitulo: "PLENIUM Educação",
     descricao: "Gestão acadêmica, administrativa e de relacionamento em uma única estrutura.",
     recursos: [
       "Cadastro de alunos e responsáveis",
@@ -34,7 +34,7 @@ const segmentos = {
   },
   saude: {
     nome: "Clínicas e Consultórios",
-    subtitulo: "NEXUS Clínicas e Consultórios",
+    subtitulo: "PLENIUM Clínicas e Consultórios",
     descricao: "Organização de atendimentos, agenda, equipe e indicadores para clínicas e consultórios.",
     recursos: [
       "Cadastro de pacientes e contatos",
@@ -55,7 +55,7 @@ const segmentos = {
   },
   restaurantes: {
     nome: "Restaurantes e Delivery",
-    subtitulo: "NEXUS Restaurantes e Delivery",
+    subtitulo: "PLENIUM Restaurantes e Delivery",
     descricao: "Controle operacional para restaurantes, lanchonetes, delivery e negócios de alimentação.",
     recursos: [
       "Mesas, comandas e pedidos",
@@ -76,7 +76,7 @@ const segmentos = {
   },
   comercio: {
     nome: "Comércio",
-    subtitulo: "NEXUS Comércio",
+    subtitulo: "PLENIUM Comércio",
     descricao: "Organize clientes, operação comercial, equipe e indicadores do seu negócio.",
     recursos: [
       "Cadastro e relacionamento com clientes",
@@ -97,7 +97,7 @@ const segmentos = {
   },
   servicos: {
     nome: "Serviços e Escritórios",
-    subtitulo: "NEXUS Serviços",
+    subtitulo: "PLENIUM Serviços",
     descricao: "Estruture demandas, prazos, documentos e relacionamento com clientes.",
     recursos: [
       "Clientes e responsáveis",
@@ -118,7 +118,7 @@ const segmentos = {
   },
   hotelaria: {
     nome: "Hotelaria e Pousadas",
-    subtitulo: "NEXUS Hotelaria",
+    subtitulo: "PLENIUM Hotelaria",
     descricao: "Gestão de hóspedes, reservas, atendimento e rotinas de hospedagem.",
     recursos: [
       "Cadastro de hóspedes",
@@ -139,7 +139,7 @@ const segmentos = {
   },
   juridico: {
     nome: "Jurídico",
-    subtitulo: "NEXUS Jurídico",
+    subtitulo: "PLENIUM Jurídico",
     descricao: "Gestão organizada de clientes, demandas, documentos, prazos e equipe jurídica.",
     recursos: [
       "Cadastro de clientes e partes relacionadas",
@@ -160,7 +160,7 @@ const segmentos = {
   },
   imobiliario: {
     nome: "Imobiliário",
-    subtitulo: "NEXUS Imobiliário",
+    subtitulo: "PLENIUM Imobiliário",
     descricao: "Gestão comercial e operacional para imobiliárias, corretores e administradores de imóveis.",
     recursos: [
       "Cadastro de imóveis e proprietários",
@@ -181,7 +181,7 @@ const segmentos = {
   },
   governamental: {
     nome: "Governamental e Institucional",
-    subtitulo: "NEXUS Governamental",
+    subtitulo: "PLENIUM Governamental",
     descricao: "Gestão de processos, solicitações, prazos e rastreabilidade para organizações públicas e institucionais.",
     recursos: [
       "Processos e solicitações",
@@ -202,7 +202,7 @@ const segmentos = {
   },
   outros: {
     nome: "Outros segmentos",
-    subtitulo: "NEXUS sob medida",
+    subtitulo: "PLENIUM sob medida",
     descricao: "Uma configuração modular construída a partir da rotina e das necessidades do seu negócio.",
     recursos: [
       "Mapeamento inicial da operação",
@@ -241,14 +241,14 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
 
   const whatsappHref = useMemo(() => {
     const msg = [
-      "Olá! Quero conhecer os planos e iniciar uma contratação NEXUS.",
+      "Olá! Quero conhecer os planos e iniciar uma contratação PLENIUM.",
       `Produto: ${productLabels[produto]}`,
       segmentoAtual ? `Segmento: ${segmentoAtual.nome}` : "Segmento: não selecionado",
       `Nome: ${nome || "não informado"}`,
       `Empresa: ${empresa || "não informada"}`,
       `E-mail: ${email || "não informado"}`,
       `Telefone: ${telefone || "não informado"}`,
-      origem === "cliente" ? "Origem: cliente NEXUS existente / adicionar produto" : "Origem: site público",
+      origem === "cliente" ? "Origem: cliente PLENIUM existente / adicionar produto" : "Origem: site público",
     ].filter(Boolean).join("\n");
     return `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
   }, [produto, segmentoAtual, nome, empresa, email, telefone, origem]);
@@ -260,7 +260,7 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
         <div><strong>Escolha o produto</strong><small>Você pode contratar cada solução separadamente ou combinar Gestão + IA.</small></div>
       </div>
 
-      <label><span>Produto de interesse</span><select value={produto} onChange={(e) => setProduto(e.target.value)}><option value="gestao">NEXUS Gestão</option><option value="ia">NEXUS IA</option><option value="combo">Gestão + IA</option></select></label>
+      <label><span>Produto de interesse</span><select value={produto} onChange={(e) => setProduto(e.target.value)}><option value="gestao">PLENIUM Gestão</option><option value="ia">PLENIUM IA</option><option value="combo">Gestão + IA</option></select></label>
 
       <div className="contract-step">
         <span className="contract-step-number">02</span>
@@ -284,7 +284,7 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
           </div>
 
           <div className="segment-tailored-note">
-            <strong>NEXUS sob medida para a sua estrutura</strong>
+            <strong>PLENIUM sob medida para a sua estrutura</strong>
             <span>Cada implantação é configurada conforme o porte, os processos, a rotina e as necessidades da empresa. Você contrata os recursos adequados à sua operação e amplia a solução conforme o negócio evolui.</span>
           </div>
 
@@ -293,7 +293,7 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
             {segmentoAtual.recursos.map((recurso) => <span key={recurso}>✓ {recurso}</span>)}
           </div>
 
-          <div className="segment-section-title facilities-title">FACILITIES NEXUS</div>
+          <div className="segment-section-title facilities-title">FACILITIES PLENIUM</div>
           <div className="segment-facilities-grid">
             {segmentoAtual.facilities.map((facility) => <span key={facility}>★ {facility}</span>)}
           </div>
@@ -302,8 +302,8 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
 
       {segmentoAtual && temIA && (
         <div className="ia-summary-card">
-          <strong>NEXUS IA para {segmentoAtual.nome}</strong>
-          <span>Multi-IA • NEXUS Knowledge • Acesso inteligente às principais IAs • recursos configurados conforme o seu segmento</span>
+          <strong>PLENIUM IA para {segmentoAtual.nome}</strong>
+          <span>Multi-IA • PLENIUM Knowledge • Acesso inteligente às principais IAs • recursos configurados conforme o seu segmento</span>
         </div>
       )}
 
@@ -320,7 +320,7 @@ export default function ContractForm({ initialProduct = "gestao", origem = "site
       </div>
 
       <button type="submit" className="home-primary-button contract-submit">Ver planos e continuar</button>
-      <small>A contratação é concluída após a escolha do plano. O atendimento NEXUS receberá sua solicitação já contextualizada.</small>
+      <small>A contratação é concluída após a escolha do plano. O atendimento PLENIUM receberá sua solicitação já contextualizada.</small>
     </form>
   );
 }

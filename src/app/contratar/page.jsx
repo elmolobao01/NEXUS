@@ -2,9 +2,9 @@ import Link from "next/link";
 import ContractForm from "./contract-form";
 
 const productLabels = {
-  gestao: "NEXUS Gestão",
-  ia: "NEXUS IA",
-  combo: "NEXUS Gestão + NEXUS IA",
+  gestao: "PLENIUM Gestão",
+  ia: "PLENIUM IA",
+  combo: "PLENIUM Gestão + PLENIUM IA",
 };
 
 export default async function ContratarPage({ searchParams }) {
@@ -15,15 +15,15 @@ export default async function ContratarPage({ searchParams }) {
   return (
     <main className="nexus-contract-page">
       <header className="nexus-contract-header">
-        <Link href="/" className="nexus-home-brand"><img src="/branding/nexus-logo.png" alt="" /><span><strong>NEXUS</strong><small>INTELLIGENT SYSTEMS</small></span></Link>
+        <Link href="/" className="nexus-home-brand"><img src="/branding/plenium-logo.png" alt="" /><span><strong>PLENIUM</strong><small>INTELLIGENT SYSTEMS</small></span></Link>
         <Link href="/login" className="home-login-link">Já sou cliente</Link>
       </header>
 
       <section className="contract-shell">
         <div className="contract-copy contract-copy-sticky">
-          <span className="home-kicker">CONTRATAÇÃO NEXUS</span>
+          <span className="home-kicker">CONTRATAÇÃO PLENIUM</span>
           <h1>Comece pelo produto certo para você.</h1>
-          <p>Escolha a solução e o segmento. O NEXUS apresenta uma configuração adequada à sua operação e encaminha sua solicitação já contextualizada.</p>
+          <p>Escolha a solução e o segmento. O PLENIUM apresenta uma configuração adequada à sua operação e encaminha sua solicitação já contextualizada.</p>
 
           <div className="contract-benefit">
             <strong>Benefício Ecossistema</strong>
@@ -48,7 +48,7 @@ export default async function ContratarPage({ searchParams }) {
               <strong>Configuração sob medida</strong>
               <span>Estrutura ajustada ao porte, processos e necessidades da sua empresa.</span>
             </div>
-            <p>Sua empresa não precisa se adaptar ao sistema. <b>O NEXUS se adapta à sua operação.</b></p>
+            <p>Sua empresa não precisa se adaptar ao sistema. <b>O PLENIUM se adapta à sua operação.</b></p>
           </aside>
         </div>
 
@@ -57,13 +57,13 @@ export default async function ContratarPage({ searchParams }) {
 
       <footer className="nexus-home-footer nexus-contract-footer">
         <div className="nexus-footer-brand">
-          <strong>NEXUS</strong>
+          <strong>PLENIUM</strong>
           <span>Tecnologia • Gestão • Inteligência Artificial</span>
         </div>
         <div className="nexus-footer-legal">
           <span>CNPJ 68.473.390/0001-50</span>
           <span>Salvador – Bahia</span>
-          <span>© 2026 NEXUS. Todos os direitos reservados.</span>
+          <span>© 2026 PLENIUM. Todos os direitos reservados.</span>
         </div>
       </footer>
     </main>
