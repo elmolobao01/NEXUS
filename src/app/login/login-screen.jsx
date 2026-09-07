@@ -79,9 +79,9 @@ export default function LoginScreen() {
 
         <div className="nexus-login-presentation">
           <p className="nexus-login-kicker">
-            SISTEMA INTELIGENTE DE GESTÃO INTEGRADA
+            GESTÃO QUE SE ADAPTA AO SEU NEGÓCIO
           </p>
-          <h1>Uma plataforma que se adapta ao seu negócio.</h1>
+          <h1>Uma plataforma que se adapta ao <span>seu negócio.</span></h1>
           <p className="nexus-login-lead">
             Transformando operações complexas em decisões inteligentes.
           </p>
@@ -100,11 +100,10 @@ export default function LoginScreen() {
         </div>
 
         <footer className="nexus-login-visual-footer nexus-login-footer-v2">
-          <div>
-            <strong>PLENIUM • Sistema de Gestão</strong>
-            <span>
-              LGPD • SSL • Backup automático • Multiempresa • 99,9% de disponibilidade
-            </span>
+          <div className="plenium-footer-values">
+            <span>Mais eficiência</span><i />
+            <span>Mais controle</span><i />
+            <span>Mais crescimento</span>
           </div>
           <span>© 2026 PLENIUM</span>
         </footer>
