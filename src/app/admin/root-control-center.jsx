@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import InfrastructureSection from "./infrastructure-section";
 import {
   alertasOperacionais,
   clientesDemonstrativos,
@@ -16,6 +17,7 @@ const secoes = [
   "Clientes",
   "Contratos",
   "Planos e módulos",
+  "Infraestrutura",
   "Hospedagem",
   "Financeiro",
   "Implantações",
@@ -312,6 +314,7 @@ export default function RootControlCenter() {
     if (secao === "Visão executiva") return <DashboardExecutivo />;
     if (secao === "Clientes") return <ClientesTable />;
     if (secao === "Planos e módulos") return <PlanosEModulos />;
+    if (secao === "Infraestrutura") return <InfrastructureSection />;
     return <SecaoGenerica titulo={secao} />;
   }
 
