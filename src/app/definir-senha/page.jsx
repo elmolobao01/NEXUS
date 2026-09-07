@@ -1,8 +1,8 @@
 import SetPasswordClient from "./set-password-client";
 
 export const metadata = {
-  title: "Definir senha | NEXUS",
-  description: "Ativação segura do acesso NEXUS.",
+  title: "Definir senha | PLENIUM",
+  description: "Ativação segura do acesso PLENIUM.",
 };
 
 export default function SetPasswordPage() {
