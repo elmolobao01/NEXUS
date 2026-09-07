@@ -66,7 +66,7 @@ async function getRootContext(token) {
 
   if (
     !profile?.active ||
-    !["PLENIUM_ROOT", "PLENIUM_ADMIN"].includes(profile.profile)
+    !["NEXUS_ROOT", "NEXUS_ADMIN"].includes(profile.profile)
   ) {
     return null;
   }
