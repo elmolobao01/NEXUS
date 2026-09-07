@@ -2754,3 +2754,91 @@ body { margin: 0; }
 .plenium-footer-values { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .plenium-footer-values i { width:1px; height:12px; background:rgba(255,255,255,.25); }
 .plenium-footer-values span { color:#a9bfd3; }
+
+/* ============================================================
+   PLENIUM ROOT — Infraestrutura & Assinaturas
+   ============================================================ */
+.infra-module { display: grid; gap: 18px; }
+.infra-intro { margin-bottom: 0; }
+.infra-header-actions, .infra-panel-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.infra-tabs { display: flex; gap: 8px; padding: 6px; overflow-x: auto; border: 1px solid #dfe6ee; border-radius: 14px; background: #fff; }
+.infra-tabs button { flex: 0 0 auto; min-height: 38px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: #667085; font-size: 11px; font-weight: 800; }
+.infra-tabs button.is-active { color: #1749ae; background: #edf4ff; box-shadow: inset 0 0 0 1px #d8e7ff; }
+.infra-message, .infra-loading { padding: 12px 14px; border: 1px solid #d8e7ff; border-radius: 12px; color: #24508b; background: #f2f7ff; font-size: 12px; font-weight: 650; }
+.infra-loading { color: #667085; border-color: #e4e7ec; background: #fff; }
+.infra-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 13px; }
+.infra-metrics article { min-height: 128px; display: flex; flex-direction: column; justify-content: space-between; padding: 17px; border: 1px solid #dfe6ee; border-radius: 15px; background: #fff; box-shadow: 0 7px 22px rgba(15,23,42,.045); }
+.infra-metrics span, .infra-metrics small { color: #667085; font-size: 10px; }
+.infra-metrics strong { font-size: 27px; letter-spacing: -.04em; }
+.infra-dashboard-grid { grid-template-columns: 1.25fr .8fr; }
+.infra-service-list, .infra-alert-list { display: grid; gap: 9px; }
+.infra-service-row { display: grid; grid-template-columns: 1.2fr .8fr .7fr; gap: 12px; align-items: center; padding: 12px 13px; border: 1px solid #e7ebf0; border-radius: 11px; background: #f9fbfd; }
+.infra-service-row strong, .infra-service-row span { display: block; }
+.infra-service-row strong { font-size: 11px; }
+.infra-service-row span { margin-top: 3px; color: #667085; font-size: 9px; }
+.infra-alert { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: center; padding: 11px 12px; border-radius: 11px; background: #f8fafc; }
+.infra-alert > b { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; background: #e8eef8; color: #3b5f8c; }
+.infra-alert.warning > b { background: #fff4d6; color: #9a6700; }
+.infra-alert.critical > b { background: #ffe8e8; color: #b42318; }
+.infra-alert strong, .infra-alert small { display: block; }
+.infra-alert strong { font-size: 10px; }
+.infra-alert small { margin-top: 3px; color: #667085; font-size: 9px; }
+.infra-empty { margin: 4px 0; color: #667085; font-size: 12px; line-height: 1.5; }
+.infra-table-panel { min-width: 0; }
+.infra-table { min-width: 900px; }
+.infra-table td small { display: block; margin-top: 3px; color: #667085; font-size: 9px; }
+.infra-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 999px; font-size: 9px; font-weight: 850; }
+.infra-badge.paid { color: #087443; background: #e9f9f1; }
+.infra-badge.open { color: #24508b; background: #edf4ff; }
+.infra-badge.warning { color: #8a6100; background: #fff5d8; }
+.infra-badge.critical { color: #b42318; background: #ffeceb; }
+.infra-badge.neutral { color: #667085; background: #f2f4f7; }
+.infra-link-button { border: 0; padding: 4px 0; color: #2365e8; background: transparent; font-size: 10px; font-weight: 800; }
+.infra-history { display: grid; grid-template-columns: auto minmax(180px,260px) 1fr; gap: 12px; align-items: center; margin-top: 18px; padding: 14px; border: 1px solid #e6eaf0; border-radius: 12px; background: #f9fbfd; }
+.infra-history > strong { font-size: 11px; }
+.infra-history select { min-height: 36px; padding: 0 10px; border: 1px solid #d9e0e8; border-radius: 9px; background: white; }
+.infra-history > div { display: flex; gap: 6px; flex-wrap: wrap; }
+.infra-history > div span { padding: 6px 8px; border-radius: 8px; background: #fff; color: #536071; font-size: 9px; }
+.infra-consumption-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.infra-consumption-grid article { min-width: 0; padding: 15px; border: 1px solid #e1e6ec; border-radius: 13px; background: #f9fbfd; }
+.infra-consumption-grid article > div:first-child span, .infra-consumption-grid article > div:first-child strong { display: block; }
+.infra-consumption-grid article > div:first-child span { color: #667085; font-size: 9px; }
+.infra-consumption-grid article > div:first-child strong { margin-top: 3px; font-size: 12px; }
+.infra-consumption-grid p { margin: 16px 0 10px; font-size: 22px; font-weight: 850; letter-spacing: -.03em; }
+.infra-consumption-grid p small { color: #667085; font-size: 10px; font-weight: 650; }
+.infra-consumption-grid p em { margin: 0 5px; color: #98a2b3; font-style: normal; }
+.infra-progress { position: relative; height: 8px; overflow: visible; margin: 12px 0 22px; border-radius: 999px; background: #e6ebf2; }
+.infra-progress > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#2365e8,#40c4ff); }
+.infra-progress > small { position: absolute; top: 12px; right: 0; color: #667085; font-size: 9px; }
+.infra-consumption-grid footer { display: flex; justify-content: space-between; gap: 8px; color: #667085; font-size: 8px; }
+.infra-modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; background: rgba(4,15,30,.56); backdrop-filter: blur(4px); }
+.infra-modal { width: min(760px,100%); max-height: calc(100vh - 48px); overflow-y: auto; border: 1px solid #dfe6ee; border-radius: 18px; background: #fff; box-shadow: 0 30px 90px rgba(4,15,30,.28); }
+.infra-modal > header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; padding: 20px 22px; border-bottom: 1px solid #e8edf3; }
+.infra-modal > header span { color: #2365e8; font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.infra-modal > header h3 { margin: 5px 0 0; font-size: 20px; }
+.infra-modal > header > button { width: 34px; height: 34px; border: 0; border-radius: 9px; color: #667085; background: #f2f4f7; font-size: 20px; }
+.infra-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 22px; }
+.infra-form label { display: grid; gap: 6px; color: #475467; font-size: 10px; font-weight: 800; }
+.infra-form input, .infra-form select, .infra-form textarea { width: 100%; min-height: 40px; padding: 10px 11px; border: 1px solid #d9e0e8; border-radius: 9px; outline: none; background: #fff; color: #101828; font: inherit; font-size: 12px; }
+.infra-form textarea { resize: vertical; }
+.infra-form input:focus, .infra-form select:focus, .infra-form textarea:focus { border-color: #2365e8; box-shadow: 0 0 0 3px rgba(35,101,232,.1); }
+.infra-form .infra-span-2 { grid-column: 1 / -1; }
+.infra-form .infra-check { display: flex; grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 8px; }
+.infra-form .infra-check input { width: 16px; min-height: 16px; }
+.infra-form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 9px; padding-top: 5px; }
+
+@media (max-width: 1050px) {
+  .infra-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .infra-dashboard-grid { grid-template-columns: 1fr; }
+  .infra-consumption-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .infra-history { grid-template-columns: 1fr; align-items: stretch; }
+}
+@media (max-width: 720px) {
+  .infra-metrics, .infra-consumption-grid, .infra-form { grid-template-columns: 1fr; }
+  .infra-header-actions { width: 100%; }
+  .infra-header-actions .root-button { flex: 1 1 auto; }
+  .infra-service-row { grid-template-columns: 1fr; }
+  .infra-modal-backdrop { padding: 12px; }
+  .infra-modal { max-height: calc(100vh - 24px); }
+  .infra-form .infra-span-2, .infra-form .infra-check, .infra-form-actions { grid-column: auto; }
+}
