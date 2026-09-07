@@ -5,6 +5,7 @@ import { useState } from "react";
 import ClientsSection from "./clients-section";
 import ContractsSection from "./contracts-section";
 import ProductsSection from "./products-section";
+import InfrastructureSection from "./infrastructure-section";
 import AlertsCard from "./components/cards/alerts-card";
 import MetricCard from "./components/cards/metric-card";
 import ModulesCard from "./components/cards/modules-card";
@@ -94,7 +95,12 @@ export default function AdminDashboard() {
           </div>
 
           <div className="root2-user-area">
-            <button type="button" className="root2-alert-button">
+            <button
+              type="button"
+              className="root2-alert-button"
+              onClick={() => setSecao("Infraestrutura")}
+              title="Abrir alertas de infraestrutura"
+            >
               <span>4</span>
               Alertas
             </button>
@@ -162,6 +168,8 @@ export default function AdminDashboard() {
             <ContractsSection />
           ) : secao === "Planos e módulos" ? (
             <ProductsSection />
+          ) : secao === "Infraestrutura" ? (
+            <InfrastructureSection />
           ) : (
             <section className="root2-placeholder">
               <span>PLENIUM FOUNDATION 1.7</span>

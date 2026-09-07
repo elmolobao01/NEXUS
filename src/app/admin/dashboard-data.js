@@ -138,6 +138,7 @@ export const navegacaoRoot = [
   "Contratos",
   "Planos e módulos",
   "Financeiro",
+  "Infraestrutura",
   "Hospedagem",
   "Implantações",
   "Suporte",
