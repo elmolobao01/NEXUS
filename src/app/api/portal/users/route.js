@@ -36,7 +36,7 @@ export async function GET(request) {
   try {
     const token = getToken(request);
     const requester = await getRequester(token);
-    if (!requester || !["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN", "MANAGER"].includes(requester.profile)) {
+    if (!requester || !["PLENIUM_ROOT", "PLENIUM_ADMIN", "CLIENT_ADMIN", "MANAGER"].includes(requester.profile)) {
       return json("Acesso não autorizado.", 403);
     }
 
@@ -59,7 +59,7 @@ export async function POST(request) {
   try {
     const token = getToken(request);
     const requester = await getRequester(token);
-    if (!requester || !["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN"].includes(requester.profile)) {
+    if (!requester || !["PLENIUM_ROOT", "PLENIUM_ADMIN", "CLIENT_ADMIN"].includes(requester.profile)) {
       return json("Acesso não autorizado.", 403);
     }
     if (!SERVICE_ROLE_KEY) {
@@ -108,10 +108,10 @@ export async function POST(request) {
     });
     const provisionData = provisionResponse.status === 204 ? null : await provisionResponse.json().catch(() => null);
     if (!provisionResponse.ok) {
-      return json("Convite enviado, mas não foi possível concluir o perfil NEXUS.", provisionResponse.status, { details: provisionData });
+      return json("Convite enviado, mas não foi possível concluir o perfil PLENIUM.", provisionResponse.status, { details: provisionData });
     }
 
-    return NextResponse.json({ ok: true, userId: inviteData.id, message: "Convite enviado e perfil NEXUS criado." }, { status: 201 });
+    return NextResponse.json({ ok: true, userId: inviteData.id, message: "Convite enviado e perfil PLENIUM criado." }, { status: 201 });
   } catch {
     return json("Falha inesperada ao provisionar usuário.", 500);
   }
@@ -121,7 +121,7 @@ export async function PATCH(request) {
   try {
     const token = getToken(request);
     const requester = await getRequester(token);
-    if (!requester || !["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN"].includes(requester.profile)) {
+    if (!requester || !["PLENIUM_ROOT", "PLENIUM_ADMIN", "CLIENT_ADMIN"].includes(requester.profile)) {
       return json("Acesso não autorizado.", 403);
     }
 
