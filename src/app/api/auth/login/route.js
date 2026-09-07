@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const ROUTES = {
-  NEXUS_ROOT: "/admin",
-  NEXUS_ADMIN: "/admin",
+  PLENIUM_ROOT: "/admin",
+  PLENIUM_ADMIN: "/admin",
   CLIENT_ADMIN: "/portal",
   MANAGER: "/portal",
   SUPERVISOR: "/portal",
@@ -81,7 +81,7 @@ export async function POST(request) {
 
     if (!profileResponse.ok || !profile) {
       return NextResponse.json(
-        { message: "Usuário autenticado, mas sem perfil no NEXUS." },
+        { message: "Usuário autenticado, mas sem perfil no PLENIUM." },
         { status: 403 }
       );
     }
