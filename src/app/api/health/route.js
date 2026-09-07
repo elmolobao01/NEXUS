@@ -1,7 +1,7 @@
 export function GET() {
   return Response.json({
     status: "ok",
-    application: "NEXUS Foundation",
+    application: "PLENIUM Foundation",
     version: "1.1.0"
   });
 }
