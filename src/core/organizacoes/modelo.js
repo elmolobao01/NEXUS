@@ -25,7 +25,7 @@ export function criarOrganizacao({
 
 export const ORGANIZACAO_DEMO = criarOrganizacao({
   id: "org-demo",
-  razaoSocial: "Organização Demonstrativa NEXUS Ltda.",
+  razaoSocial: "Organização Demonstrativa PLENIUM Ltda.",
   nomeFantasia: "Minha Organização",
   documento: "00.000.000/0001-00",
   segmento: "educacao",
