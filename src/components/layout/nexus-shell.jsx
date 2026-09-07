@@ -38,7 +38,7 @@ function Overview({ theme }) {
           <p>{theme.description}</p>
         </div>
         <div className="hero-logo-wrap">
-          <img src="/branding/nexus-logo.png" alt="Logomarca NEXUS" className="hero-logo" />
+          <img src="/branding/plenium-logo.png" alt="Logomarca PLENIUM" className="hero-logo" />
         </div>
       </section>
 
@@ -56,7 +56,7 @@ function Overview({ theme }) {
         <article className="panel architecture-panel">
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">Núcleo NEXUS</span>
+              <span className="eyebrow">Núcleo PLENIUM</span>
               <h3>Camadas permanentes da plataforma</h3>
             </div>
             <span className="tag">Base 1.2</span>
@@ -168,7 +168,7 @@ export function NexusShell() {
 
   return <main className={`app-shell theme-${portfolio}`} style={cssVars}>
     <aside className="sidebar">
-      <div className="brand-block"><img src="/branding/nexus-logo.png" alt="NEXUS" className="brand-logo" /><div><strong>NEXUS Administração</strong><span>Gestão interna da plataforma</span></div></div>
+      <div className="brand-block"><img src="/branding/plenium-logo.png" alt="PLENIUM" className="brand-logo" /><div><strong>PLENIUM Administração</strong><span>Gestão interna da plataforma</span></div></div>
       <nav className="navigation" aria-label="Navegação principal">{navItems.map((item) => <button className={activeSection === item ? "nav-item active" : "nav-item"} key={item} type="button" onClick={() => setActiveSection(item)}><span className="nav-dot" />{item}</button>)}</nav>
       <div className="portfolio-picker"><label htmlFor="portfolio">Identidade do portfólio</label><select id="portfolio" value={portfolio} onChange={(event) => setPortfolio(event.target.value)}>{Object.entries(portfolioThemes).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></div>
       <div className="sidebar-status"><span className="status-light" /><div><strong>Fundação operacional</strong><small>Com gestão comercial inicial</small></div></div>
