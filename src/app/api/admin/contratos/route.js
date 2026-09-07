@@ -12,7 +12,7 @@ async function getRootContext(token) {
   if (!response.ok) return null;
   const rows = await response.json();
   const profile = Array.isArray(rows) ? rows[0] : null;
-  return profile?.active && ["PLENIUM_ROOT", "PLENIUM_ADMIN"].includes(profile.profile) ? profile : null;
+  return profile?.active && ["NEXUS_ROOT", "NEXUS_ADMIN"].includes(profile.profile) ? profile : null;
 }
 
 export async function GET(request) {
