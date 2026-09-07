@@ -12,7 +12,7 @@ async function rootContext(t) {
   const r = await fetch(`${URL}/rest/v1/nexus_user_profiles?select=profile,active&limit=1`, { headers: h(t), cache: "no-store" });
   const rows = r.ok ? await r.json() : [];
   const p = Array.isArray(rows) ? rows[0] : null;
-  return p?.active && ["NEXUS_ROOT","NEXUS_ADMIN"].includes(p.profile) ? p : null;
+  return p?.active && ["PLENIUM_ROOT","PLENIUM_ADMIN"].includes(p.profile) ? p : null;
 }
 
 export async function POST(request) {
