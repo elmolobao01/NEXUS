@@ -62,14 +62,15 @@ export async function GET(request) {
   const ctx = await requireRoot(request);
   if (!ctx) return json("Acesso ROOT necessário.", 403);
 
-  const [services, plans, accounts, consumption] = await Promise.all([
+  const [services, plans, accounts, consumption, syncRuns] = await Promise.all([
     rest(ctx.token, "nexus_infra_services?select=*&order=provider.asc,name.asc"),
     rest(ctx.token, "nexus_infra_plans?select=*&order=starts_on.desc,created_at.desc"),
     rest(ctx.token, "nexus_infra_accounts_payable?select=*&order=due_on.asc,created_at.desc"),
     rest(ctx.token, "nexus_infra_consumption?select=*&order=measured_at.desc&limit=1000"),
+    rest(ctx.token, "nexus_infra_sync_runs?select=*&order=started_at.desc&limit=100"),
   ]);
 
-  const failed = [services, plans, accounts, consumption].find((item) => !item.ok);
+  const failed = [services, plans, accounts, consumption, syncRuns].find((item) => !item.ok);
   if (failed) {
     return json(
       "Não foi possível carregar Infraestrutura. Confirme a execução da migration 20260907_001_infraestrutura_assinaturas.sql.",
@@ -83,6 +84,7 @@ export async function GET(request) {
     plans: plans.data || [],
     accounts: accounts.data || [],
     consumption: consumption.data || [],
+    syncRuns: syncRuns.data || [],
   });
 }
 
