@@ -1,6 +1,6 @@
 import { requireAuthenticatedUser } from "./auth-guard";
 
 export default async function AdminLayout({ children }) {
-  await requireAuthenticatedUser(["PLENIUM_ROOT", "PLENIUM_ADMIN"]);
+  await requireAuthenticatedUser(["NEXUS_ROOT", "NEXUS_ADMIN"]);
   return children;
 }
