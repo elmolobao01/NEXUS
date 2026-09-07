@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 const ambientes = {
   educacao: {
-    nome: "NEXUS Educação",
+    nome: "PLENIUM Educação",
     organizacao: "Colégio Horizonte",
     unidade: "Unidade Centro",
     destaque: "#0066ff",
@@ -18,7 +18,7 @@ const ambientes = {
     ],
   },
   hotelaria: {
-    nome: "NEXUS Hotelaria",
+    nome: "PLENIUM Hotelaria",
     organizacao: "Hotel Serra Azul",
     unidade: "Unidade Centro",
     destaque: "#c65a11",
@@ -48,7 +48,7 @@ export default function ClientPortalShell() {
       }}
     >
       <aside style={{ background: "#ffffff", padding: 24, borderRight: "1px solid #e5e7eb" }}>
-        <div style={{ fontWeight: 900, fontSize: 24, marginBottom: 8 }}>NEXUS</div>
+        <div style={{ fontWeight: 900, fontSize: 24, marginBottom: 8 }}>PLENIUM</div>
         <div style={{ color: ambiente.destaque, fontWeight: 800, marginBottom: 24 }}>{ambiente.nome}</div>
 
         <select
