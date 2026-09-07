@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const ROUTES = {
-  PLENIUM_ROOT: "/admin",
-  PLENIUM_ADMIN: "/admin",
+  NEXUS_ROOT: "/admin",
+  NEXUS_ADMIN: "/admin",
   CLIENT_ADMIN: "/portal",
   MANAGER: "/portal",
   SUPERVISOR: "/portal",
