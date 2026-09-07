@@ -3,8 +3,8 @@ export const PROFILE_COOKIE = "nexus_profile";
 export const ORG_COOKIE = "nexus_organization";
 
 export const PROFILE_ROUTES = {
-  PLENIUM_ROOT: "/admin",
-  PLENIUM_ADMIN: "/admin",
+  NEXUS_ROOT: "/admin",
+  NEXUS_ADMIN: "/admin",
   CLIENT_ADMIN: "/portal",
   MANAGER: "/portal",
   SUPERVISOR: "/portal",
