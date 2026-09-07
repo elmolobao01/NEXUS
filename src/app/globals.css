@@ -1,6 +1,6 @@
 
 /* =========================================================
-   NEXUS — LOGIN PREMIUM
+   PLENIUM — LOGIN PREMIUM
    ========================================================= */
 
 .nexus-login-page {
@@ -461,7 +461,7 @@
   }
 }
 /* =========================================================
-   NEXUS ROOT — SPRINT 1
+   PLENIUM ROOT — SPRINT 1
    Copie este conteúdo para o final de src/app/globals.css
    ========================================================= */
 
@@ -1386,7 +1386,7 @@
 }
 
 
-/* NEXUS — SUPABASE AUTH DEFINITIVO */
+/* PLENIUM — SUPABASE AUTH DEFINITIVO */
 .nexus-auth-feedback{margin:0 0 14px;padding:11px 13px;border:1px solid #ffd5d5;border-radius:11px;background:#fff3f3;color:#9d2929;font-size:11px;line-height:1.45}
 .nexus-login-submit.is-loading{cursor:wait;opacity:.76}
 .nexus-access-denied{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f4f7fb}
@@ -1396,7 +1396,7 @@
 .nexus-access-denied-card a{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 18px;border-radius:12px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:12px;font-weight:800;text-decoration:none}
 
 /* =========================================================
-   NEXUS ROOT — SPRINT 2 DASHBOARD
+   PLENIUM ROOT — SPRINT 2 DASHBOARD
    Cole este bloco ao final de src/app/globals.css
    ========================================================= */
 
@@ -2207,7 +2207,7 @@
 }
 
 
-/* NEXUS 1.7 — MÓDULO CLIENTES */
+/* PLENIUM 1.7 — MÓDULO CLIENTES */
 .root2-section-intro {
   display: flex;
   justify-content: space-between;
@@ -2547,7 +2547,7 @@
 }
 
 /* =========================================================
-   NEXUS — HOMEPAGE MULTIPRODUTO
+   PLENIUM — HOMEPAGE MULTIPRODUTO
    ========================================================= */
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -2569,7 +2569,7 @@ body { margin: 0; }
 @media(max-width:560px){.nexus-home-header{padding:10px 18px}.nexus-home-brand small{display:none}.home-hero-copy h1{font-size:40px}.home-section,.nexus-home-hero{padding-left:20px;padding-right:20px}.home-benefit,.home-contact{margin-left:20px;margin-right:20px;padding:28px}.home-product-card{padding:28px}.home-nx-card img{width:140px;height:140px}}
 
 /* =========================================================
-   NEXUS — HOMEPAGE / CONTRATAÇÃO V2
+   PLENIUM — HOMEPAGE / CONTRATAÇÃO V2
    ========================================================= */
 .home-how { padding: 0 clamp(24px,7vw,110px) 90px; }
 .home-how-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
@@ -2595,16 +2595,16 @@ body { margin: 0; }
 .contract-form>small { color:#708196; line-height:1.5; text-align:center; }
 @media(max-width:900px){.home-how-grid,.contract-shell{grid-template-columns:1fr}.contract-shell{padding-top:50px}.contract-grid{grid-template-columns:1fr}}
 
-/* NEXUS product packages */
+/* PLENIUM product packages */
 .product-included{margin:18px 0 4px;padding:14px 16px;border-radius:14px;background:#f3f7ff;border:1px solid #dbe7fb;display:grid;gap:7px;color:#0b2846;font-size:.92rem}.product-included strong{font-size:.72rem;letter-spacing:.12em;color:#0065ff}.home-plans{background:#fff}.home-plans-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.home-plan-card{padding:30px;border:1px solid #dce5f0;border-radius:24px;background:#fff;box-shadow:0 18px 45px rgba(13,45,79,.08)}.home-plan-card h3{font-size:1.75rem;margin:10px 0}.home-plan-card p{color:#526b86;line-height:1.6}.home-plan-card ul{list-style:none;padding:0;margin:20px 0;display:grid;gap:10px;font-weight:650;color:#183753}.plan-combo{border:2px solid #1671ff;background:linear-gradient(180deg,#f4f8ff 0%,#fff 100%)}.plan-free-badge{display:inline-flex;margin-top:12px;padding:7px 11px;border-radius:999px;background:#eaf3ff;color:#0065ff;font-weight:800;font-size:.75rem;letter-spacing:.08em}.home-business-message{margin:30px auto 0;text-align:center;max-width:900px;color:#49647f;line-height:1.7}.home-business-message strong{font-size:1.2rem;color:#08243f}@media(max-width:900px){.home-plans-grid{grid-template-columns:1fr}}
 
 /* =========================================================
-   NEXUS — CONTRATAÇÃO POR SEGMENTO V4
+   PLENIUM — CONTRATAÇÃO POR SEGMENTO V4
    ========================================================= */
 .contract-form-segmented{gap:22px}.contract-step{display:flex;align-items:flex-start;gap:12px;padding-top:4px}.contract-step-number{width:32px;height:32px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px;background:#eaf3ff;color:#0066ff;font-size:10px;font-weight:900;letter-spacing:.08em}.contract-step>div{display:grid;gap:4px}.contract-step strong{color:#0b2846;font-size:14px}.contract-step small{color:#73869b;font-size:11px;line-height:1.5}.segment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.segment-option{min-height:72px;padding:14px 16px;text-align:left;border:1px solid #d8e3ef;border-radius:14px;background:#fff;color:#17334f;cursor:pointer;transition:.18s ease}.segment-option:hover{border-color:#9fc2ff;transform:translateY(-1px)}.segment-option.active{border-color:#1872ff;background:#f2f7ff;box-shadow:0 0 0 3px rgba(24,114,255,.08)}.segment-option strong,.segment-option span{display:block}.segment-option strong{font-size:12px}.segment-option span{margin-top:4px;color:#6d8298;font-size:9px}.segment-solution-card{padding:22px;border:1px solid #dbe7f4;border-radius:18px;background:linear-gradient(180deg,#f7faff 0%,#fff 100%)}.segment-solution-head>span{color:#0066ff;font-size:9px;font-weight:900;letter-spacing:.13em}.segment-solution-head h3{margin:8px 0 7px;color:#08243f;font-size:24px}.segment-solution-head p{margin:0;color:#60758b;font-size:12px;line-height:1.6}.segment-resource-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 14px;margin-top:18px}.segment-resource-grid span{color:#264762;font-size:11px;font-weight:700;line-height:1.4}.segment-free-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid #dfe8f2}.segment-free-row b,.segment-free-row span{padding:7px 10px;border-radius:999px;font-size:9px;font-weight:850}.segment-free-row b{background:#e8f7ef;color:#11824b}.segment-free-row span{background:#eef5ff;color:#1e63b5}.ia-summary-card{display:grid;gap:6px;padding:16px 18px;border:1px solid #dbe7f4;border-radius:14px;background:#f7faff}.ia-summary-card strong{color:#08243f;font-size:13px}.ia-summary-card span{color:#58728c;font-size:11px;line-height:1.45}.contract-submit{min-height:52px}.contract-form-segmented>small{font-size:10px}@media(max-width:760px){.segment-grid,.segment-resource-grid{grid-template-columns:1fr}.segment-option{min-height:64px}}
 
 /* =========================================================
-   NEXUS — CONTRATAÇÃO SEGMENTOS / FACILITIES V5 REAPLICADO
+   PLENIUM — CONTRATAÇÃO SEGMENTOS / FACILITIES V5 REAPLICADO
    Base: versão atual do projeto enviada em 09/08/2026
    ========================================================= */
 .contract-copy-sticky{position:sticky;top:105px;align-self:start}
@@ -2627,7 +2627,7 @@ body { margin: 0; }
 @media(max-width:900px){.contract-copy-sticky{position:static}.contract-included-card{margin-bottom:8px}}
 @media(max-width:760px){.segment-resource-grid,.segment-facilities-grid{grid-template-columns:1fr}.segment-solution-card{padding:20px}.segment-solution-head h3{font-size:24px}}
 
-/* NEXUS V10.1 — Fase 3.2: usuários, permissões e unidades */
+/* PLENIUM V10.1 — Fase 3.2: usuários, permissões e unidades */
 .client-section-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:18px}.client-section-intro h2{margin:4px 0 6px;font-size:30px;line-height:1.05;color:#061a32}.client-section-intro p{margin:0;color:#59708d;max-width:720px}.client-metrics.compact{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px}.client-feedback{margin:0 0 16px;padding:12px 14px;border:1px solid #bed8ff;background:#eef6ff;border-radius:12px;color:#123b6b;font-weight:700}.client-table-wrap{overflow:auto}.client-table{width:100%;border-collapse:collapse}.client-table th,.client-table td{padding:14px 12px;text-align:left;border-bottom:1px solid #e4edf7;vertical-align:top}.client-table th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6d8198}.client-table td{font-size:14px;color:#18324e}.client-table td strong{display:block;color:#071e38}.client-table td small{display:block;color:#6a7f96;margin-top:4px;line-height:1.35}.activity-status.inactive{background:#fff1f0;color:#b42318}.table-action{border:1px solid #cbd9e8;background:#fff;border-radius:9px;padding:7px 10px;font-weight:800;color:#174a7b;cursor:pointer}.table-muted{font-size:12px;color:#7b8fa4}.client-modal-backdrop{position:fixed;inset:0;background:rgba(2,18,36,.62);z-index:80;display:flex;align-items:center;justify-content:center;padding:24px}.client-modal{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:24px;box-shadow:0 28px 80px rgba(4,28,55,.28);padding:26px}.client-modal>header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:1px solid #e4edf7;padding-bottom:18px;margin-bottom:20px}.client-modal>header h2{margin:4px 0 6px;font-size:28px}.client-modal>header p{margin:0;color:#647b94}.client-modal>header>button{border:0;background:#eef4fb;border-radius:50%;width:36px;height:36px;font-size:24px;cursor:pointer}.client-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.client-form-grid label,.inline-unit-form label{display:flex;flex-direction:column;gap:7px}.client-form-grid label>span,.inline-unit-form label>span{font-size:12px;font-weight:800;color:#2b4563}.client-form-grid input,.client-form-grid select,.inline-unit-form input{border:1px solid #ccd9e8;border-radius:11px;padding:12px 13px;font:inherit;color:#102b48;background:#fff}.client-choice-block{margin-top:18px}.client-choice-block>strong{display:block;margin-bottom:10px;color:#102b48}.client-chip-grid{display:flex;flex-wrap:wrap;gap:8px}.client-chip-grid button{border:1px solid #ccd9e8;background:#f8fbff;border-radius:999px;padding:8px 11px;color:#35516f;font-weight:750;cursor:pointer}.client-chip-grid button.active{border-color:#1e6df0;background:#eaf3ff;color:#0759d8}.client-modal form>footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:18px;border-top:1px solid #e4edf7}.client-data-list{margin:0;display:grid;gap:0}.client-data-list>div{display:grid;grid-template-columns:130px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid #e8eef6}.client-data-list dt{color:#75899e;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.client-data-list dd{margin:0;color:#112b47;font-weight:700}.client-note{margin:16px 0 0;padding:12px 14px;border-radius:12px;background:#f3f7fc;color:#5b7189;font-size:13px;line-height:1.5}.inline-unit-form{display:grid;grid-template-columns:1.4fr .7fr auto;gap:12px;align-items:end}.inline-unit-form .primary-button{height:46px;border:0}.primary-button:disabled{opacity:.6;cursor:wait}
 @media(max-width:900px){.client-section-intro{align-items:flex-start;flex-direction:column}.client-metrics.compact{grid-template-columns:1fr}.client-form-grid,.inline-unit-form{grid-template-columns:1fr}.client-modal{padding:20px}.client-table{min-width:720px}}
 .nexus-activation-page{min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 20% 10%,#dcecff,transparent 35%),#f3f7fb}.nexus-activation-card{width:min(520px,100%);background:#fff;border:1px solid #d9e5f2;border-radius:24px;padding:34px;box-shadow:0 24px 70px rgba(6,38,73,.14)}.nexus-activation-mark{width:58px;height:58px;display:grid;place-items:center;border-radius:16px;background:#083a69;color:#fff;font-weight:900;margin-bottom:18px}.nexus-activation-card h1{margin:5px 0 10px;color:#061c35;font-size:32px}.nexus-activation-card>p{color:#5f7590;line-height:1.55}.nexus-activation-card form{display:grid;gap:14px;margin:24px 0 16px}.nexus-activation-card label{display:grid;gap:7px}.nexus-activation-card label span{font-size:12px;font-weight:800;color:#2c4764}.nexus-activation-card input{border:1px solid #cad9e8;border-radius:11px;padding:13px;font:inherit}.nexus-activation-card .primary-button{border:0;justify-content:center;padding:13px}.nexus-activation-card>small{color:#8293a7}

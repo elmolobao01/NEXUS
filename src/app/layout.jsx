@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "NEXUS",
-  description: "Ecossistema inteligente de soluções",
+  title: "PLENIUM",
+  description: "Sistema de gestão integrado, modular e inteligente",
 };
 
 export default function RootLayout({ children }) {
