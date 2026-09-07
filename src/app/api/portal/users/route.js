@@ -36,7 +36,7 @@ export async function GET(request) {
   try {
     const token = getToken(request);
     const requester = await getRequester(token);
-    if (!requester || !["PLENIUM_ROOT", "PLENIUM_ADMIN", "CLIENT_ADMIN", "MANAGER"].includes(requester.profile)) {
+    if (!requester || !["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN", "MANAGER"].includes(requester.profile)) {
       return json("Acesso não autorizado.", 403);
     }
 
@@ -59,7 +59,7 @@ export async function POST(request) {
   try {
     const token = getToken(request);
     const requester = await getRequester(token);
-    if (!requester || !["PLENIUM_ROOT", "PLENIUM_ADMIN", "CLIENT_ADMIN"].includes(requester.profile)) {
+    if (!requester || !["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN"].includes(requester.profile)) {
       return json("Acesso não autorizado.", 403);
     }
     if (!SERVICE_ROLE_KEY) {
@@ -121,7 +121,7 @@ export async function PATCH(request) {
   try {
     const token = getToken(request);
     const requester = await getRequester(token);
-    if (!requester || !["PLENIUM_ROOT", "PLENIUM_ADMIN", "CLIENT_ADMIN"].includes(requester.profile)) {
+    if (!requester || !["NEXUS_ROOT", "NEXUS_ADMIN", "CLIENT_ADMIN"].includes(requester.profile)) {
       return json("Acesso não autorizado.", 403);
     }
 
