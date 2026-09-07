@@ -28,7 +28,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const accessToken = token(request); const p = await requester(accessToken);
-    if (!p?.active || !["NEXUS_ROOT","NEXUS_ADMIN","CLIENT_ADMIN","MANAGER"].includes(p.profile)) return json("Acesso não autorizado.", 403);
+    if (!p?.active || !["PLENIUM_ROOT","PLENIUM_ADMIN","CLIENT_ADMIN","MANAGER"].includes(p.profile)) return json("Acesso não autorizado.", 403);
     const body = await request.json();
     const organizationId = body.organizationId || p.organization_id;
     const name = String(body.name || "").trim();
@@ -44,7 +44,7 @@ export async function POST(request) {
 export async function PATCH(request) {
   try {
     const accessToken = token(request); const p = await requester(accessToken);
-    if (!p?.active || !["NEXUS_ROOT","NEXUS_ADMIN","CLIENT_ADMIN","MANAGER"].includes(p.profile)) return json("Acesso não autorizado.", 403);
+    if (!p?.active || !["PLENIUM_ROOT","PLENIUM_ADMIN","CLIENT_ADMIN","MANAGER"].includes(p.profile)) return json("Acesso não autorizado.", 403);
     const body = await request.json();
     if (!body.unitId) return json("Unidade obrigatória.", 400);
     const payload = { name: String(body.name || "").trim(), code: String(body.code || "").trim() || null, active: body.active !== false, updated_at: new Date().toISOString() };
