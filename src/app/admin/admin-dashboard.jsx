@@ -6,6 +6,7 @@ import ClientsSection from "./clients-section";
 import ContractsSection from "./contracts-section";
 import ProductsSection from "./products-section";
 import InfrastructureSection from "./infrastructure-section";
+import AISection from "./ai-section";
 import AlertsCard from "./components/cards/alerts-card";
 import MetricCard from "./components/cards/metric-card";
 import ModulesCard from "./components/cards/modules-card";
@@ -170,6 +171,8 @@ export default function AdminDashboard() {
             <ProductsSection />
           ) : secao === "Infraestrutura" ? (
             <InfrastructureSection />
+          ) : secao === "PLENIUM AI" ? (
+            <AISection />
           ) : (
             <section className="root2-placeholder">
               <span>PLENIUM FOUNDATION 1.7</span>
