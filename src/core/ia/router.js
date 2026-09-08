@@ -1,5 +1,7 @@
 import { executeMock } from "./providers/mock";
-const executors = { mock: executeMock };
+import { executeGoogle } from "./providers/google";
+
+const executors = { mock: executeMock, google: executeGoogle };
 export function getProviderExecutor(code) { return executors[code] || null; }
 export async function executeProvider(providerCode, payload) {
   const executor = getProviderExecutor(providerCode);
