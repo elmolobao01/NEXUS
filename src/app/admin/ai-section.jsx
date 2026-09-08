@@ -16,6 +16,120 @@ function usd(value, digits = 4) {
 function pct(value) { return `${Number(value || 0).toFixed(1).replace(".", ",")}%`; }
 function levelName(value) { return levels.find((item) => item.id === Number(value))?.name || `L${value}`; }
 
+
+
+function BenchmarkPanel({ onError }) {
+  const [bench, setBench] = useState({ cases: [], runs: [] });
+  const [loadingBench, setLoadingBench] = useState(true);
+  const [selectedId, setSelectedId] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [level, setLevel] = useState(1);
+  const [executing, setExecuting] = useState(false);
+  const [result, setResult] = useState(null);
+  const [scores, setScores] = useState({ accuracy: 0, adherence: 0, quality: 0, structureScore: 0, stability: 0, notes: "" });
+
+  async function loadBenchmark() {
+    setLoadingBench(true);
+    try {
+      const response = await fetch("/api/admin/ai/benchmark", { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "Falha ao carregar benchmark.");
+      setBench(payload);
+      if (!selectedId && payload.cases?.[0]) {
+        setSelectedId(payload.cases[0].id);
+        setPrompt(payload.cases[0].prompt);
+        setLevel(Number(payload.cases[0].level || 1));
+      }
+    } catch (err) { onError(err.message); }
+    finally { setLoadingBench(false); }
+  }
+
+  useEffect(() => { loadBenchmark(); }, []);
+
+  const selectedCase = bench.cases.find((item) => item.id === selectedId) || null;
+
+  function selectCase(id) {
+    const item = bench.cases.find((x) => x.id === id);
+    setSelectedId(id);
+    setResult(null);
+    setScores({ accuracy: 0, adherence: 0, quality: 0, structureScore: 0, stability: 0, notes: "" });
+    if (item) { setPrompt(item.prompt); setLevel(Number(item.level || 1)); }
+  }
+
+  async function executeBenchmark() {
+    if (!selectedCase || !prompt.trim()) return;
+    setExecuting(true); setResult(null); onError("");
+    try {
+      const started = performance.now();
+      const response = await fetch("/api/ai/execute", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operationType: selectedCase.operation_type, level, input: prompt, metadata: { benchmark: true, benchmarkCaseId: selectedCase.id, benchmarkCode: selectedCase.code } }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Falha ao executar o AI Router.");
+      const latencyMs = payload.latencyMs ?? Math.round(performance.now() - started);
+      const record = await fetch("/api/admin/ai/benchmark", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId: selectedCase.id, operationId: payload.operationId, prompt, output: payload.output, provider: payload.provider, model: payload.model, level }),
+      });
+      const saved = await record.json();
+      if (!record.ok) throw new Error(saved.message || "A resposta foi gerada, mas o benchmark não foi registrado.");
+      setResult({ ...payload, latencyMs, runId: saved.run?.id });
+      await loadBenchmark();
+    } catch (err) { onError(err.message); }
+    finally { setExecuting(false); }
+  }
+
+  async function saveEvaluation() {
+    if (!result?.runId || !result?.operationId) return;
+    try {
+      const response = await fetch("/api/admin/ai/benchmark", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ runId: result.runId, operationId: result.operationId, ...scores }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "Falha ao salvar avaliação.");
+      setResult((r) => ({ ...r, score: payload.score }));
+      await loadBenchmark();
+    } catch (err) { onError(err.message); }
+  }
+
+  if (loadingBench) return <section className="ai2-panel"><div className="ai2-empty">Carregando Benchmark PLENIUM AI…</div></section>;
+
+  return <section className="ai2-benchmark-grid">
+    <article className="ai2-panel ai2-benchmark-runner">
+      <header><div><span>BENCHMARK OPERACIONAL · v1</span><h3>Executar teste real pelo AI Router</h3></div></header>
+      <div className="ai2-benchmark-controls">
+        <label>Caso de teste<select value={selectedId} onChange={(e) => selectCase(e.target.value)}>{bench.cases.map((item) => <option key={item.id} value={item.id}>{item.category} · {item.title}</option>)}</select></label>
+        <label>Nível<select value={level} onChange={(e) => setLevel(Number(e.target.value))}>{levels.map((x) => <option key={x.id} value={x.id}>{x.name} — {x.label}</option>)}</select></label>
+      </div>
+      {selectedCase && <div className="ai2-benchmark-info"><strong>{selectedCase.description}</strong><small>Esperado: {selectedCase.expected_format || "—"}</small><small>Critério: {selectedCase.evaluation_notes || "—"}</small></div>}
+      <label className="ai2-benchmark-prompt">Prompt<textarea rows="10" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></label>
+      <button className="root2-button primary" disabled={executing || !selectedCase} onClick={executeBenchmark}>{executing ? "Executando…" : "▶ Executar teste real"}</button>
+
+      {result && <div className="ai2-benchmark-result">
+        <div className="ai2-benchmark-result-meta">
+          <span><b>Provider</b>{result.provider}</span><span><b>Modelo</b>{result.model}</span><span><b>Latência</b>{Number(result.latencyMs || 0).toLocaleString("pt-BR")} ms</span><span><b>Tokens</b>{Number(result.usage?.inputTokens || 0) + Number(result.usage?.outputTokens || 0)}</span><span><b>Custo</b>{usd(result.usage?.costUsd, 8)}</span><span><b>Fallback</b>{result.fallbackUsed ? "Sim" : "Não"}</span>
+        </div>
+        <div className="ai2-benchmark-output"><span>RESPOSTA</span><pre>{typeof result.output === "string" ? result.output : JSON.stringify(result.output, null, 2)}</pre></div>
+        <div className="ai2-score-grid">
+          {[['accuracy','Precisão'],['adherence','Aderência'],['quality','Qualidade'],['structureScore','Estrutura'],['stability','Estabilidade']].map(([key,label]) => <label key={key}>{label}<input type="number" min="0" max="100" value={scores[key]} onChange={(e) => setScores((v) => ({ ...v, [key]: Number(e.target.value) }))} /></label>)}
+        </div>
+        <label className="ai2-benchmark-prompt">Observações<textarea rows="3" value={scores.notes} onChange={(e) => setScores((v) => ({ ...v, notes: e.target.value }))} /></label>
+        <div className="ai2-benchmark-actions"><button onClick={saveEvaluation}>Salvar avaliação</button>{result.score && <strong>Nota qualitativa: {Number(result.score.final_score || 0).toFixed(1)}</strong>}</div>
+      </div>}
+    </article>
+
+    <article className="ai2-panel">
+      <header><div><span>HISTÓRICO</span><h3>Últimos testes</h3></div></header>
+      <div className="ai2-table-wrap"><table><thead><tr><th>Data</th><th>Teste</th><th>Modelo</th><th>Latência</th><th>Custo</th><th>Nota</th></tr></thead><tbody>
+        {bench.runs.map((run) => <tr key={run.id}><td>{new Date(run.created_at).toLocaleString("pt-BR")}</td><td><strong>{run.case?.title || "Teste livre"}</strong><small>{run.case?.category || "—"}</small></td><td>{run.model_code || "—"}</td><td>{run.latency_ms == null ? "—" : `${Number(run.latency_ms).toLocaleString("pt-BR")} ms`}</td><td>{usd(run.cost_usd, 8)}</td><td>{run.score?.final_score == null ? "Pendente" : Number(run.score.final_score).toFixed(1)}</td></tr>)}
+        {!bench.runs.length && <tr><td colSpan="6" className="ai2-empty">Nenhum benchmark executado ainda.</td></tr>}
+      </tbody></table></div>
+    </article>
+  </section>;
+}
+
 export default function AISection() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +185,7 @@ export default function AISection() {
     <div className="ai2-shell">
       <section className="ai2-hero">
         <div>
-          <span>PLENIUM AI ENGINE · v0.2</span>
+          <span>PLENIUM AI ENGINE · v0.4</span>
           <h2>Controle a inteligência e preserve a margem.</h2>
           <p>Administre providers, modelos, níveis L0–L4, rotas, consumo, limites e custo real sem expor fornecedores aos clientes.</p>
         </div>
@@ -93,7 +207,7 @@ export default function AISection() {
       </section>
 
       <div className="ai2-tabs">
-        {["Visão geral", "Providers", "Modelos", "Rotas", "Consumo", "Limites"].map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}
+        {["Visão geral", "Benchmark", "Providers", "Modelos", "Rotas", "Consumo", "Limites"].map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}
       </div>
 
       {tab === "Visão geral" && (
@@ -111,6 +225,8 @@ export default function AISection() {
           </article>
         </section>
       )}
+
+      {tab === "Benchmark" && <BenchmarkPanel onError={setError} />}
 
       {tab === "Providers" && <section className="ai2-panel"><header><div><span>FORNECEDORES</span><h3>Providers conectáveis</h3></div></header><div className="ai2-table-wrap"><table><thead><tr><th>Provider</th><th>Código</th><th>Prioridade</th><th>Status</th><th>Ação</th></tr></thead><tbody>{(data?.providers || []).map((item) => <tr key={item.id}><td><strong>{item.name}</strong></td><td>{item.code}</td><td>{item.priority}</td><td><span className={`ai2-status ${item.active ? "on" : "off"}`}>{item.active ? "Ativo" : "Inativo"}</span></td><td><button disabled={busy === `provider:${item.id}`} onClick={() => patch("provider", item.id, { active: !item.active })}>{item.active ? "Desativar" : "Ativar"}</button></td></tr>)}</tbody></table></div></section>}
 
