@@ -183,10 +183,10 @@ function BenchmarkPanel({ onError }) {
 
     <article className="ai2-panel">
       <header><div><span>RANKING</span><h3>Eficiência por modelo</h3></div></header>
-      <div className="ai2-ranking-note">Nota de ranking: qualidade 70% + custo 20% + latência 10%. Quando houver avaliação humana, ela substitui a nota automática na qualidade.</div>
-      <div className="ai2-table-wrap"><table><thead><tr><th>#</th><th>Modelo</th><th>Ranking</th><th>Qualidade</th><th>Aprovação</th><th>Custo médio</th><th>Latência média</th></tr></thead><tbody>
-        {bench.ranking.map((row, index) => <tr key={row.model}><td>{index + 1}</td><td><strong>{row.model}</strong><small>{row.provider}</small></td><td><strong>{Number(row.rankingScore || 0).toFixed(1)}</strong></td><td>{Number(row.avgQuality || 0).toFixed(1)}</td><td>{pct(row.passRate)}</td><td>{usd(row.avgCost, 8)}</td><td>{Math.round(row.avgLatency || 0).toLocaleString("pt-BR")} ms</td></tr>)}
-        {!bench.ranking.length && <tr><td colSpan="7" className="ai2-empty">Execute benchmarks para formar o ranking.</td></tr>}
+      <div className="ai2-ranking-note">Ranking: qualidade efetiva 70% + custo 20% + latência 10%. A nota automática é usada por padrão; quando existir avaliação humana, ela passa a ser a qualidade efetiva daquela execução.</div>
+      <div className="ai2-table-wrap"><table><thead><tr><th>#</th><th>Modelo</th><th>Ranking</th><th>Auto</th><th>Humana</th><th>Efetiva</th><th>Aprovação auto</th><th>Custo médio</th><th>Latência média</th></tr></thead><tbody>
+        {bench.ranking.map((row, index) => <tr key={row.model}><td>{index + 1}</td><td><strong>{row.model}</strong><small>{row.provider}</small></td><td><strong>{Number(row.rankingScore || 0).toFixed(1)}</strong></td><td>{Number(row.avgAutoQuality || 0).toFixed(1)}</td><td>{row.avgHumanQuality == null ? "—" : Number(row.avgHumanQuality).toFixed(1)}</td><td><strong>{Number(row.avgQuality || 0).toFixed(1)}</strong></td><td>{pct(row.passRate)}</td><td>{usd(row.avgCost, 8)}</td><td>{Math.round(row.avgLatency || 0).toLocaleString("pt-BR")} ms</td></tr>)}
+        {!bench.ranking.length && <tr><td colSpan="9" className="ai2-empty">Execute benchmarks para formar o ranking.</td></tr>}
       </tbody></table></div>
 
       <header className="ai2-history-header"><div><span>HISTÓRICO</span><h3>Últimos testes</h3></div></header>
