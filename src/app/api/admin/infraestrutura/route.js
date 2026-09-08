@@ -260,6 +260,7 @@ export async function PATCH(request) {
     if (body.renewalOn !== undefined) payload.renewal_on = body.renewalOn || null;
     if (body.autoRenew !== undefined) payload.auto_renew = Boolean(body.autoRenew);
     if (body.lastCheckedAt !== undefined) payload.last_checked_at = body.lastCheckedAt || null;
+    if (body.metadata !== undefined && body.metadata && typeof body.metadata === "object") payload.metadata = body.metadata;
     if (body.notes !== undefined) payload.notes = cleanText(body.notes);
     const result = await rest(ctx.token, `nexus_infra_services?id=eq.${encodeURIComponent(body.id)}`, {
       method: "PATCH",
