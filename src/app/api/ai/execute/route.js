@@ -51,9 +51,21 @@ async function context(request){
 }
 async function chooseRoute(level,operationType){
   const op=encodeURIComponent(operationType);
-  const select="id,level,min_quality_score,model:nexus_ai_models!nexus_ai_routes_model_id_fkey(id,code,name,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active)),fallback:nexus_ai_models!nexus_ai_routes_fallback_model_id_fkey(id,code,name,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active))";
-  const rows=await sb(`nexus_ai_routes?select=${select}&active=eq.true&level=lte.${level}&operation_type=in.(${op},*)&order=level.desc,priority.asc&limit=10`);
-  return (rows||[]).find(r=>r?.model?.active&&r?.model?.provider?.active)||null;
+  const select="id,operation_type,level,priority,min_quality_score,model:nexus_ai_models!nexus_ai_routes_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active)),fallback:nexus_ai_models!nexus_ai_routes_fallback_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active))";
+
+  // Nível é uma fronteira de custo/qualidade, não uma preferência.
+  // Uma solicitação L1 jamais pode cair silenciosamente para uma rota L0 (Mock).
+  const rows=await sb(`nexus_ai_routes?select=${select}&active=eq.true&level=eq.${level}&operation_type=in.(${op},*)&order=priority.asc&limit=20`);
+  const available=(rows||[]).filter(r=>
+    r?.model?.active &&
+    r?.model?.provider?.active &&
+    Number(r?.model?.level) === Number(level)
+  );
+
+  // Prefere rota específica da operação; usa '*' apenas dentro do MESMO nível.
+  return available.find(r=>r.operation_type===operationType)
+    || available.find(r=>r.operation_type==='*')
+    || null;
 }
 async function enforceLimit(orgId, operationType){
   const limits=await sb(`nexus_ai_client_limits?select=*&organization_id=eq.${orgId}&active=eq.true&operation_type=in.(${encodeURIComponent(operationType)},*)`);
