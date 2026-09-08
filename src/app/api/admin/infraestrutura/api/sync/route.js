@@ -39,6 +39,9 @@ async function validateEndpoint(raw) {
   if (url.protocol !== "https:") throw new Error("O monitor aceita somente endpoints HTTPS.");
   const host = url.hostname.toLowerCase();
   if (["localhost", "localhost.localdomain"].includes(host) || host.endsWith(".local") || host.endsWith(".internal")) throw new Error("Endpoint local/interno não é permitido.");
+  if ((host === "pleniumgestao.com.br" || host === "www.pleniumgestao.com.br") && url.pathname.startsWith("/api/admin/")) {
+    throw new Error("Rotas administrativas do PLENIUM exigem autenticação. Para monitorar a plataforma, use https://pleniumgestao.com.br/api/health.");
+  }
   const addresses = await dns.lookup(host, { all: true });
   if (!addresses.length || addresses.some((item) => isPrivateIp(item.address))) throw new Error("O endpoint resolve para rede privada/interna e não pode ser monitorado.");
   return url;
