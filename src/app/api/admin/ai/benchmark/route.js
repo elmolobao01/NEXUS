@@ -50,43 +50,57 @@ function autoEvaluate(caseCode, output){
   let accuracy=0, adherence=0, structure=0, details=[];
 
   if(caseCode === "TXT_CLASSIFY_01"){
-    structure = parsed.valid ? 100 : 0;
-    accuracy = parsed.valid && String(parsed.value?.categoria||"").toUpperCase()==="FINANCEIRO" ? 100 : 0;
-    adherence = parsed.valid && String(parsed.value?.justificativa||"").trim().length >= 12 ? 100 : 50;
-    details.push(parsed.valid ? "JSON válido" : "JSON inválido");
-    details.push(accuracy===100 ? "Categoria FINANCEIRO correta" : "Categoria esperada não encontrada");
-  } else if(caseCode === "DATA_EXTRACT_01"){
-    structure = parsed.valid ? 100 : 0;
-    if(parsed.valid){
-      const v=parsed.value||{};
-      const checks=[
-        String(v.empresa||"").toLowerCase().includes("horizonte serviços"),
-        String(v.cidade||"").toLowerCase().includes("feira de santana"),
-        Number(v.quantidade_unidades)===8,
-        Number(v.prazo_dias)===30,
-      ];
-      accuracy=(checks.filter(Boolean).length/checks.length)*100;
-      adherence=Object.keys(v).length>=4?100:75;
-      details.push(`${checks.filter(Boolean).length}/4 campos corretos`);
+    if(!parsed.valid || !parsed.value || Array.isArray(parsed.value)){
+      details.push("JSON inválido ou resposta não estruturada");
+      return { score:0, passed:false, accuracy:0, adherence:0, structure:0, details };
     }
+    const categoria=String(parsed.value?.categoria||"").trim().toUpperCase();
+    const justificativa=String(parsed.value?.justificativa||"").trim();
+    const allowed=["FINANCEIRO","SUPORTE","COMERCIAL","OUTRO"];
+    structure = (Object.prototype.hasOwnProperty.call(parsed.value,"categoria") && Object.prototype.hasOwnProperty.call(parsed.value,"justificativa")) ? 100 : 50;
+    adherence = allowed.includes(categoria) && justificativa.length >= 12 ? 100 : 0;
+    accuracy = categoria === "FINANCEIRO" ? 100 : 0;
+    details.push("JSON válido");
+    details.push(allowed.includes(categoria) ? `Categoria permitida: ${categoria}` : "Categoria fora do conjunto permitido");
+    details.push(accuracy===100 ? "Categoria FINANCEIRO correta" : "Categoria esperada FINANCEIRO não encontrada");
+    details.push(justificativa.length>=12 ? "Justificativa presente" : "Justificativa ausente ou insuficiente");
+  } else if(caseCode === "DATA_EXTRACT_01"){
+    if(!parsed.valid || !parsed.value || Array.isArray(parsed.value)){
+      details.push("JSON inválido ou resposta não estruturada");
+      return { score:0, passed:false, accuracy:0, adherence:0, structure:0, details };
+    }
+    const v=parsed.value||{};
+    const checks=[
+      String(v.empresa||"").toLowerCase().includes("horizonte serviços"),
+      String(v.cidade||"").toLowerCase().includes("feira de santana"),
+      Number(v.quantidade_unidades)===8,
+      Number(v.prazo_dias)===30,
+    ];
+    accuracy=(checks.filter(Boolean).length/checks.length)*100;
+    structure=Object.keys(v).length>=4?100:50;
+    adherence=checks.length===4 && structure===100?100:50;
+    details.push("JSON válido");
+    details.push(`${checks.filter(Boolean).length}/4 campos corretos`);
   } else if(caseCode === "ANALYSIS_SIMPLE_01"){
-    accuracy = (/25\s*%/.test(lower) && lower.includes("março") && lower.includes("abril")) ? 100 : 40;
-    adherence = (lower.includes("cálculo") || lower.includes("128") || lower.includes("160")) ? 100 : 60;
-    structure = text.trim().length > 20 ? 100 : 40;
-    details.push(accuracy===100 ? "Variação Março→Abril de 25% identificada" : "Resultado esperado não identificado integralmente");
+    const hasExpected=/25(?:[,.]0+)?\s*%/.test(lower) && lower.includes("março") && lower.includes("abril");
+    accuracy = hasExpected ? 100 : 0;
+    adherence = (lower.includes("128") && lower.includes("160")) ? 100 : 50;
+    structure = text.trim().length > 20 ? 100 : 0;
+    details.push(hasExpected ? "Variação Março→Abril de 25% identificada" : "Variação esperada de 25% não identificada");
   } else if(caseCode === "TXT_SUMMARY_01"){
     const facts=["5 de setembro","12","ana","10 de setembro","marcos","11","12 de setembro"];
     const hits=facts.filter(x=>lower.includes(x)).length;
     accuracy=(hits/facts.length)*100;
     const bulletCount=(text.match(/^\s*[-•*]|^\s*\d+[.)]/gm)||[]).length;
-    adherence=bulletCount>0 && bulletCount<=4 ? 100 : 70;
-    structure=text.trim().length>20?100:50;
+    adherence=bulletCount>0 && bulletCount<=4 ? 100 : 50;
+    structure=text.trim().length>20?100:0;
     details.push(`${hits}/${facts.length} fatos-chave preservados`);
+    details.push(bulletCount>0 && bulletCount<=4 ? "Formato resumido aderente" : "Formato do resumo fora do esperado");
   } else if(caseCode === "COMM_DRAFT_01"){
     const facts=[lower.includes("amanhã"),lower.includes("22h"),lower.includes("23h"),lower.includes("indispon")];
     accuracy=(facts.filter(Boolean).length/facts.length)*100;
-    adherence=accuracy;
-    structure=text.trim().length>30?100:60;
+    adherence=accuracy===100?100:50;
+    structure=text.trim().length>30?100:0;
     details.push(`${facts.filter(Boolean).length}/4 informações obrigatórias presentes`);
   } else {
     structure=text.trim().length?100:0;
@@ -106,26 +120,59 @@ function autoEvaluate(caseCode, output){
   };
 }
 
+async function backfillAutoScores(runs, authToken){
+  if(!SERVICE || !Array.isArray(runs) || !runs.length) return runs || [];
+  const pending=runs.filter(run=>run?.id && run?.case?.code && run.auto_score == null && run.output_snapshot != null);
+  if(!pending.length) return runs;
+  const computed=new Map();
+  for(const run of pending){
+    const auto=autoEvaluate(run.case.code, run.output_json ?? run.output_snapshot);
+    computed.set(run.id,auto);
+    await rest(`nexus_ai_benchmark_runs?id=eq.${encodeURIComponent(run.id)}`,{
+      method:"PATCH",
+      body:{auto_score:auto.score,auto_pass:auto.passed,auto_details:auto},
+      prefer:"return=minimal",
+    },authToken);
+  }
+  return runs.map(run=>{
+    const auto=computed.get(run.id);
+    return auto ? {...run,auto_score:auto.score,auto_pass:auto.passed,auto_details:auto} : run;
+  });
+}
+
 function buildRanking(runs){
   const byModel=new Map();
   for(const run of runs){
     if(!run.model_code) continue;
-    const item=byModel.get(run.model_code)||{model:run.model_code,provider:run.provider_code,runs:0,cost:0,latency:0,quality:0,passes:0};
-    const quality=Number(run.score?.final_score ?? run.auto_score ?? 0);
-    item.runs+=1; item.cost+=Number(run.cost_usd||0); item.latency+=Number(run.latency_ms||0); item.quality+=quality;
-    if(run.auto_pass) item.passes+=1;
+    const item=byModel.get(run.model_code)||{model:run.model_code,provider:run.provider_code,runs:0,cost:0,latency:0,autoQuality:0,autoRuns:0,humanQuality:0,humanRuns:0,effectiveQuality:0,passes:0};
+    const hasHuman=run.score?.final_score != null;
+    const hasAuto=run.auto_score != null;
+    const autoQuality=hasAuto?Number(run.auto_score):0;
+    const humanQuality=hasHuman?Number(run.score.final_score):null;
+    const effective=hasHuman?humanQuality:autoQuality;
+    item.runs+=1;
+    item.cost+=Number(run.cost_usd||0);
+    item.latency+=Number(run.latency_ms||0);
+    item.effectiveQuality+=Number(effective||0);
+    if(hasAuto){ item.autoQuality+=autoQuality; item.autoRuns+=1; }
+    if(hasHuman){ item.humanQuality+=humanQuality; item.humanRuns+=1; }
+    if(run.auto_pass===true) item.passes+=1;
     byModel.set(run.model_code,item);
   }
   const rows=[...byModel.values()].map(x=>({
     ...x,
     avgCost:x.runs?x.cost/x.runs:0,
     avgLatency:x.runs?x.latency/x.runs:0,
-    avgQuality:x.runs?x.quality/x.runs:0,
+    avgAutoQuality:x.autoRuns?x.autoQuality/x.autoRuns:0,
+    avgHumanQuality:x.humanRuns?x.humanQuality/x.humanRuns:null,
+    avgQuality:x.runs?x.effectiveQuality/x.runs:0,
     passRate:x.runs?(x.passes/x.runs)*100:0,
   }));
   if(!rows.length) return [];
-  const minCost=Math.min(...rows.filter(x=>x.avgCost>0).map(x=>x.avgCost), 1) || 1;
-  const minLatency=Math.min(...rows.filter(x=>x.avgLatency>0).map(x=>x.avgLatency), 1) || 1;
+  const positiveCosts=rows.filter(x=>x.avgCost>0).map(x=>x.avgCost);
+  const positiveLatencies=rows.filter(x=>x.avgLatency>0).map(x=>x.avgLatency);
+  const minCost=positiveCosts.length?Math.min(...positiveCosts):1;
+  const minLatency=positiveLatencies.length?Math.min(...positiveLatencies):1;
   return rows.map(x=>{
     const costScore=x.avgCost>0?Math.min(100,(minCost/x.avgCost)*100):100;
     const latencyScore=x.avgLatency>0?Math.min(100,(minLatency/x.avgLatency)*100):100;
@@ -152,7 +199,8 @@ export async function GET(request) {
     if (scoreResult.ok) scores = scoreResult.data || [];
   }
   const scoreMap = Object.fromEntries(scores.map((s) => [s.operation_id, s]));
-  const decoratedRuns=(runs.data || []).map((run) => ({ ...run, score: scoreMap[run.operation_id] || null }));
+  let decoratedRuns=(runs.data || []).map((run) => ({ ...run, score: scoreMap[run.operation_id] || null }));
+  decoratedRuns=await backfillAutoScores(decoratedRuns,ctx.token);
   return NextResponse.json({
     cases: cases.data || [],
     models:(models.ok?models.data:[]).filter(x=>x?.provider?.active),
@@ -166,7 +214,7 @@ export async function POST(request) {
   if (!ctx) return json("Acesso ROOT necessário.", 403);
   if (!SERVICE) return json("SUPABASE_SERVICE_ROLE_KEY é necessária para registrar benchmark.", 503);
   let body; try { body = await request.json(); } catch { return json("JSON inválido.", 400); }
-  if (!body?.operationId || !body?.prompt) return json("operationId e prompt são obrigatórios.", 400);
+  if (!body?.caseId || !body?.operationId || !body?.prompt) return json("caseId, operationId e prompt são obrigatórios.", 400);
 
   const op = await rest(`nexus_ai_operations?select=id,organization_id,user_id,requested_level,input_tokens,output_tokens,cost_usd,latency_ms,fallback_used,status&id=eq.${encodeURIComponent(body.operationId)}&limit=1`, {}, ctx.token);
   const operation = op.data?.[0];
