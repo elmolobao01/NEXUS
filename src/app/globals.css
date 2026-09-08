@@ -2859,3 +2859,8 @@ body { margin: 0; }
 .infra-integration-detail strong{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#50667d}
 .infra-integration-detail span{font-size:13px;font-weight:700;color:#142c45}
 .infra-integration-detail small{font-size:11px;color:#6b7d90}
+
+/* PLENIUM ROOT — Etapa 5 / Domínios, DNS e SSL */
+.infra-domain-detail{background:#f7fbff;border-color:#cfe2f6}
+.infra-domain-detail span{display:block}
+.infra-domain-detail small+small{margin-top:2px;word-break:break-word}
