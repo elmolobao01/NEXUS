@@ -66,7 +66,8 @@ export async function POST(request){
     await sb(`nexus_ai_operations?id=eq.${op.id}`,{method:"PATCH",body:{status:"SUCCESS",provider_id:selected.provider.id,model_id:selected.id,input_tokens:result.inputTokens||0,output_tokens:result.outputTokens||0,cost_usd:cost,latency_ms:Date.now()-started,fallback_used:fallbackUsed,completed_at:new Date().toISOString()}});
     await sb("nexus_ai_usage",{method:"POST",body:[{operation_id:op.id,organization_id:ctx.organizationId,provider_id:selected.provider.id,model_id:selected.id,input_tokens:result.inputTokens||0,output_tokens:result.outputTokens||0}]});
     await sb("nexus_ai_costs",{method:"POST",body:[{operation_id:op.id,organization_id:ctx.organizationId,provider_cost_usd:cost}]});
-    return NextResponse.json({operationId:op.id,output:result.output,model:selected.code,provider:selected.provider.code,fallbackUsed,usage:{inputTokens:result.inputTokens||0,outputTokens:result.outputTokens||0,costUsd:cost}},{headers:{"Cache-Control":"no-store"}});
+    const latencyMs=Date.now()-started;
+    return NextResponse.json({operationId:op.id,output:result.output,model:selected.code,provider:selected.provider.code,fallbackUsed,latencyMs,usage:{inputTokens:result.inputTokens||0,outputTokens:result.outputTokens||0,costUsd:cost}},{headers:{"Cache-Control":"no-store"}});
   }catch(e){
     if(op?.id){try{await sb(`nexus_ai_operations?id=eq.${op.id}`,{method:"PATCH",body:{status:"FAILED",error_code:String(e.message).slice(0,500),latency_ms:Date.now()-started,completed_at:new Date().toISOString()}});}catch{}}
     const message=String(e.message||"AI_EXECUTION_FAILED"); const code=message.includes("INVALID")?400:message.includes("LIMIT_EXCEEDED")?429:500;
