@@ -6,22 +6,48 @@ import { estimateTokenCost } from "@/core/ia/cost";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const PUBLIC_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function bearer(r){ const h=r.headers.get("authorization")||""; return h.startsWith("Bearer ")?h.slice(7):null; }
-function h(token){ return {apikey:token,Authorization:`Bearer ${token}`,"Content-Type":"application/json"}; }
-async function sb(path,{token=SERVICE,method="GET",body,prefer}={}){
-  const headers=h(token); if(prefer) headers.Prefer=prefer;
-  const r=await fetch(`${URL}/rest/v1/${path}`,{method,headers,body:body?JSON.stringify(body):undefined,cache:"no-store"});
-  let data=null; try{data=await r.json();}catch{}
-  if(!r.ok) throw new Error(`SUPABASE_${r.status}:${JSON.stringify(data)}`); return data;
+
+function supabaseHeaders({ apiKey, authToken, prefer } = {}){
+  const headers = {
+    apikey: apiKey,
+    "Content-Type": "application/json",
+  };
+  if(authToken) headers.Authorization = `Bearer ${authToken}`;
+  if(prefer) headers.Prefer = prefer;
+  return headers;
 }
+
+async function sb(path,{apiKey=SERVICE,authToken=SERVICE,method="GET",body,prefer}={}){
+  if(!URL || !apiKey) throw new Error("SUPABASE_CONFIG_MISSING");
+  const r=await fetch(`${URL}/rest/v1/${path}`,{
+    method,
+    headers:supabaseHeaders({apiKey,authToken,prefer}),
+    body:body?JSON.stringify(body):undefined,
+    cache:"no-store"
+  });
+  let data=null; try{data=await r.json();}catch{}
+  if(!r.ok) throw new Error(`SUPABASE_${r.status}:${JSON.stringify(data)}`);
+  return data;
+}
+
 async function context(request){
   const token=bearer(request) || request.cookies.get("nexus_access_token")?.value || null;
-  if(!token||!URL||!KEY||!SERVICE) return null;
-  const rows=await sb("nexus_user_profiles?select=user_id,organization_id,profile,active&active=eq.true&limit=1",{token});
-  const p=rows?.[0]; return p?.user_id&&p?.organization_id?{token,userId:p.user_id,organizationId:p.organization_id,profile:p.profile}:null;
+  if(!token||!URL||!PUBLIC_KEY||!SERVICE) return null;
+
+  // A chave pública identifica o projeto (apikey) e o cookie/Bearer identifica o usuário.
+  // Antes, o access token do usuário era enviado também como apikey, causando SUPABASE_401.
+  const rows=await sb(
+    "nexus_user_profiles?select=user_id,organization_id,profile,active&active=eq.true&limit=1",
+    {apiKey:PUBLIC_KEY,authToken:token}
+  );
+  const p=rows?.[0];
+  return p?.user_id&&p?.organization_id
+    ? {token,userId:p.user_id,organizationId:p.organization_id,profile:p.profile}
+    : null;
 }
 async function chooseRoute(level,operationType){
   const op=encodeURIComponent(operationType);
