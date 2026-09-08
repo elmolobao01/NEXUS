@@ -163,6 +163,17 @@ export default function InfrastructureSection() {
     } catch (error) { setMessage(error.message); }
   }
 
+  async function syncApi(serviceId) {
+    setMessage("Testando disponibilidade e latência da API…");
+    try {
+      const result = await send("POST", { serviceId }, "/api/admin/infraestrutura/api/sync");
+      const status = result.httpStatus ? `HTTP ${result.httpStatus}` : result.status;
+      const latency = Number.isFinite(result.latencyMs) ? ` • ${result.latencyMs} ms` : "";
+      setMessage(`API verificada: ${status}${latency}.`);
+      await refreshAlerts();
+    } catch (error) { setMessage(error.message); }
+  }
+
   async function markPaid(account) {
     const amount = window.prompt("Valor pago", String(account.expected_amount ?? 0));
     if (amount === null) return;
@@ -234,11 +245,13 @@ export default function InfrastructureSection() {
           {service.metadata?.domain && <div className="infra-integration-detail infra-domain-detail"><strong>Domínio</strong><span>{service.metadata.domain.dnsOk ? "DNS ativo" : "DNS não confirmado"} • {service.metadata.domain.sslOk ? "SSL válido" : "SSL não confirmado"}</span><small>{service.metadata.domain.registrar ? `${service.metadata.domain.registrar} • ` : ""}{service.metadata.domain.sslExpiresAt ? `SSL até ${dateBR(service.metadata.domain.sslExpiresAt)}` : "SSL sem vencimento coletado"}{service.last_checked_at ? ` • ${new Date(service.last_checked_at).toLocaleString("pt-BR")}` : ""}</small>{Array.isArray(service.metadata.domain.nameservers) && service.metadata.domain.nameservers.length > 0 && <small>NS: {service.metadata.domain.nameservers.join(", ")}</small>}</div>}
           {service.metadata?.vercel && <div className="infra-integration-detail"><strong>Deploy</strong><span>{service.metadata.vercel.latestState || "—"} • {service.metadata.vercel.gitBranch || "branch —"}</span><small>{service.metadata.vercel.gitCommitSha ? String(service.metadata.vercel.gitCommitSha).slice(0,7) : "sem commit"}{service.last_checked_at ? ` • ${new Date(service.last_checked_at).toLocaleString("pt-BR")}` : ""}</small></div>}
           {service.metadata?.github && <div className="infra-integration-detail"><strong>Repositório</strong><span>{service.metadata.github.defaultBranch || "—"} • {service.metadata.github.visibility || (service.metadata.github.private ? "private" : "public")}</span><small>{service.metadata.github.latestCommitSha ? String(service.metadata.github.latestCommitSha).slice(0,7) : "sem commit"}{service.metadata.github.latestCommitAt ? ` • ${new Date(service.metadata.github.latestCommitAt).toLocaleString("pt-BR")}` : ""}</small></div>}
+          {service.metadata?.api && <div className="infra-integration-detail"><strong>Monitor API</strong><span>{service.metadata.api.httpStatus ? `HTTP ${service.metadata.api.httpStatus}` : "Sem resposta"} • {service.metadata.api.latencyMs ?? "—"} ms</span><small>{service.metadata.api.checkedAt ? new Date(service.metadata.api.checkedAt).toLocaleString("pt-BR") : "Ainda não testada"}{service.metadata.api.finalUrl ? ` • ${service.metadata.api.finalUrl}` : ""}</small></div>}
           <footer>
             {categoryMatch(service, "Domínios") && <button type="button" onClick={() => syncDomain(service.id)}>↻ Verificar domínio</button>}
             {String(service.provider || "").toLowerCase().includes("supabase") && <button type="button" onClick={() => syncSupabase(service.id)}>↻ Sincronizar</button>}
             {String(service.provider || "").toLowerCase().includes("vercel") && <button type="button" onClick={() => syncProvider(service.id, "vercel")}>↻ Sincronizar</button>}
             {String(service.provider || "").toLowerCase().includes("github") && <button type="button" onClick={() => syncProvider(service.id, "github")}>↻ Sincronizar</button>}
+            {categoryMatch(service, "APIs") && <button type="button" onClick={() => syncApi(service.id)}>↻ Testar API</button>}
             <button type="button" onClick={() => { setEditingService(service); setForm("service"); }}>Editar</button>
             <button type="button" onClick={() => { setSelectedService(service.id); setForm("plan"); }}>{kind === "Domínios" ? "Plano / custo" : "Plano"}</button>
             {service.management_url && <a href={service.management_url} target="_blank" rel="noreferrer">Abrir gestão ↗</a>}
