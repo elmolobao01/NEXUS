@@ -10,17 +10,12 @@ const PUBLIC_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.e
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function bearer(r){ const h=r.headers.get("authorization")||""; return h.startsWith("Bearer ")?h.slice(7):null; }
-
 function supabaseHeaders({ apiKey, authToken, prefer } = {}){
-  const headers = {
-    apikey: apiKey,
-    "Content-Type": "application/json",
-  };
+  const headers = { apikey: apiKey, "Content-Type": "application/json" };
   if(authToken) headers.Authorization = `Bearer ${authToken}`;
   if(prefer) headers.Prefer = prefer;
   return headers;
 }
-
 async function sb(path,{apiKey=SERVICE,authToken=SERVICE,method="GET",body,prefer}={}){
   if(!URL || !apiKey) throw new Error("SUPABASE_CONFIG_MISSING");
   const r=await fetch(`${URL}/rest/v1/${path}`,{
@@ -33,13 +28,9 @@ async function sb(path,{apiKey=SERVICE,authToken=SERVICE,method="GET",body,prefe
   if(!r.ok) throw new Error(`SUPABASE_${r.status}:${JSON.stringify(data)}`);
   return data;
 }
-
 async function context(request){
   const token=bearer(request) || request.cookies.get("nexus_access_token")?.value || null;
   if(!token||!URL||!PUBLIC_KEY||!SERVICE) return null;
-
-  // A chave pública identifica o projeto (apikey) e o cookie/Bearer identifica o usuário.
-  // Antes, o access token do usuário era enviado também como apikey, causando SUPABASE_401.
   const rows=await sb(
     "nexus_user_profiles?select=user_id,organization_id,profile,active&active=eq.true&limit=1",
     {apiKey:PUBLIC_KEY,authToken:token}
@@ -52,20 +43,22 @@ async function context(request){
 async function chooseRoute(level,operationType){
   const op=encodeURIComponent(operationType);
   const select="id,operation_type,level,priority,min_quality_score,model:nexus_ai_models!nexus_ai_routes_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active)),fallback:nexus_ai_models!nexus_ai_routes_fallback_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active))";
-
-  // Nível é uma fronteira de custo/qualidade, não uma preferência.
-  // Uma solicitação L1 jamais pode cair silenciosamente para uma rota L0 (Mock).
   const rows=await sb(`nexus_ai_routes?select=${select}&active=eq.true&level=eq.${level}&operation_type=in.(${op},*)&order=priority.asc&limit=20`);
   const available=(rows||[]).filter(r=>
-    r?.model?.active &&
-    r?.model?.provider?.active &&
-    Number(r?.model?.level) === Number(level)
+    r?.model?.active && r?.model?.provider?.active && Number(r?.model?.level) === Number(level)
   );
-
-  // Prefere rota específica da operação; usa '*' apenas dentro do MESMO nível.
   return available.find(r=>r.operation_type===operationType)
     || available.find(r=>r.operation_type==='*')
     || null;
+}
+async function chooseBenchmarkModel(modelCode, level){
+  if(!modelCode) return null;
+  const code=encodeURIComponent(modelCode);
+  const select="id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active)";
+  const rows=await sb(`nexus_ai_models?select=${select}&code=eq.${code}&active=eq.true&limit=1`);
+  const model=rows?.[0];
+  if(!model?.provider?.active || Number(model.level)!==Number(level)) return null;
+  return model;
 }
 async function enforceLimit(orgId, operationType){
   const limits=await sb(`nexus_ai_client_limits?select=*&organization_id=eq.${orgId}&active=eq.true&operation_type=in.(${encodeURIComponent(operationType)},*)`);
@@ -78,37 +71,99 @@ async function enforceLimit(orgId, operationType){
     if(exceeded&&l.hard_limit) throw new Error("AI_CLIENT_LIMIT_EXCEEDED");
   }
 }
-function modelCost(model,result){ return estimateTokenCost({inputTokens:result.inputTokens,outputTokens:result.outputTokens,inputCostPerMillion:model.input_cost_per_million,outputCostPerMillion:model.output_cost_per_million}); }
+function modelCost(model,result){
+  return estimateTokenCost({
+    inputTokens:result.inputTokens,
+    outputTokens:result.outputTokens,
+    inputCostPerMillion:model.input_cost_per_million,
+    outputCostPerMillion:model.output_cost_per_million
+  });
+}
+function normalizeStructuredOutput(output){
+  if(typeof output !== "string") return { output, parsed: true };
+  const trimmed=output.trim();
+  const unfenced=trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  try{
+    return { output: JSON.parse(unfenced), parsed: true };
+  }catch{
+    return { output, parsed: false };
+  }
+}
 
 export async function POST(request){
   const started=Date.now(); let op=null;
   try{
     const ctx=await context(request); if(!ctx) return NextResponse.json({error:"UNAUTHORIZED"},{status:401});
-    const req=normalizeAiRequest(await request.json());
+    const rawBody=await request.json();
+    const req=normalizeAiRequest(rawBody);
     await enforceLimit(ctx.organizationId,req.operationType);
-    const route=await chooseRoute(req.level,req.operationType); if(!route?.model?.provider) return NextResponse.json({error:"AI_ROUTE_NOT_FOUND"},{status:503});
-    [op]=await sb("nexus_ai_operations",{method:"POST",body:[{organization_id:ctx.organizationId,user_id:ctx.userId,operation_type:req.operationType,requested_level:req.level,status:"RUNNING",provider_id:route.model.provider.id,model_id:route.model.id,metadata:req.metadata}],prefer:"return=representation"});
 
-    let selected=route.model, result, fallbackUsed=false;
+    const requestedBenchmarkModel = req.metadata?.benchmark === true ? req.metadata?.targetModelCode : null;
+    const canPinBenchmarkModel = ["NEXUS_ROOT","NEXUS_ADMIN"].includes(ctx.profile);
+    let selected = null;
+    let fallback = null;
+
+    if(requestedBenchmarkModel){
+      if(!canPinBenchmarkModel) return NextResponse.json({error:"AI_BENCHMARK_MODEL_FORBIDDEN"},{status:403});
+      selected = await chooseBenchmarkModel(requestedBenchmarkModel, req.level);
+      if(!selected) return NextResponse.json({error:"AI_BENCHMARK_MODEL_NOT_AVAILABLE"},{status:404});
+    }else{
+      const route=await chooseRoute(req.level,req.operationType);
+      if(!route?.model?.provider) return NextResponse.json({error:"AI_ROUTE_NOT_FOUND"},{status:503});
+      selected=route.model;
+      fallback=route.fallback;
+    }
+
+    [op]=await sb("nexus_ai_operations",{method:"POST",body:[{
+      organization_id:ctx.organizationId,
+      user_id:ctx.userId,
+      operation_type:req.operationType,
+      requested_level:req.level,
+      status:"RUNNING",
+      provider_id:selected.provider.id,
+      model_id:selected.id,
+      metadata:req.metadata
+    }],prefer:"return=representation"});
+
+    let result, fallbackUsed=false;
     try{
       result=await executeProvider(selected.provider.code,{input:req.input,operationType:req.operationType,metadata:req.metadata,modelCode:selected.code});
     }catch(primaryError){
-      const fallback=route.fallback;
-      if(!fallback?.active||!fallback?.provider?.active) throw primaryError;
+      if(requestedBenchmarkModel || !fallback?.active || !fallback?.provider?.active) throw primaryError;
       await sb("nexus_ai_fallbacks",{method:"POST",body:[{operation_id:op.id,from_model_id:selected.id,to_model_id:fallback.id,reason:String(primaryError.message||primaryError).slice(0,500)}]});
       selected=fallback; fallbackUsed=true;
       result=await executeProvider(selected.provider.code,{input:req.input,operationType:req.operationType,metadata:req.metadata,modelCode:selected.code});
     }
 
+    const wantsJson = req.metadata?.responseFormat === "json";
+    const normalized = wantsJson ? normalizeStructuredOutput(result.output) : { output: result.output, parsed: null };
     const cost=modelCost(selected,result);
-    await sb(`nexus_ai_operations?id=eq.${op.id}`,{method:"PATCH",body:{status:"SUCCESS",provider_id:selected.provider.id,model_id:selected.id,input_tokens:result.inputTokens||0,output_tokens:result.outputTokens||0,cost_usd:cost,latency_ms:Date.now()-started,fallback_used:fallbackUsed,completed_at:new Date().toISOString()}});
+    const latencyMs=Date.now()-started;
+    await sb(`nexus_ai_operations?id=eq.${op.id}`,{method:"PATCH",body:{
+      status:"SUCCESS",provider_id:selected.provider.id,model_id:selected.id,
+      input_tokens:result.inputTokens||0,output_tokens:result.outputTokens||0,
+      cost_usd:cost,latency_ms:latencyMs,fallback_used:fallbackUsed,completed_at:new Date().toISOString()
+    }});
     await sb("nexus_ai_usage",{method:"POST",body:[{operation_id:op.id,organization_id:ctx.organizationId,provider_id:selected.provider.id,model_id:selected.id,input_tokens:result.inputTokens||0,output_tokens:result.outputTokens||0}]});
     await sb("nexus_ai_costs",{method:"POST",body:[{operation_id:op.id,organization_id:ctx.organizationId,provider_cost_usd:cost}]});
-    const latencyMs=Date.now()-started;
-    return NextResponse.json({operationId:op.id,output:result.output,model:selected.code,provider:selected.provider.code,fallbackUsed,latencyMs,usage:{inputTokens:result.inputTokens||0,outputTokens:result.outputTokens||0,costUsd:cost}},{headers:{"Cache-Control":"no-store"}});
+
+    return NextResponse.json({
+      operationId:op.id,
+      output:normalized.output,
+      outputParsed:normalized.parsed,
+      model:selected.code,
+      provider:selected.provider.code,
+      fallbackUsed,
+      latencyMs,
+      usage:{inputTokens:result.inputTokens||0,outputTokens:result.outputTokens||0,costUsd:cost}
+    },{headers:{"Cache-Control":"no-store"}});
   }catch(e){
     if(op?.id){try{await sb(`nexus_ai_operations?id=eq.${op.id}`,{method:"PATCH",body:{status:"FAILED",error_code:String(e.message).slice(0,500),latency_ms:Date.now()-started,completed_at:new Date().toISOString()}});}catch{}}
-    const message=String(e.message||"AI_EXECUTION_FAILED"); const code=message.includes("INVALID")?400:message.includes("LIMIT_EXCEEDED")?429:500;
+    const message=String(e.message||"AI_EXECUTION_FAILED");
+    const code=message.includes("INVALID")?400:message.includes("FORBIDDEN")?403:message.includes("NOT_AVAILABLE")?404:message.includes("LIMIT_EXCEEDED")?429:500;
     return NextResponse.json({error:message},{status:code});
   }
 }
