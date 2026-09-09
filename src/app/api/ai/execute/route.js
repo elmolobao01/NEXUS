@@ -72,6 +72,7 @@ async function enforceLimit(orgId, operationType){
   }
 }
 function modelCost(model,result){
+  if(Number.isFinite(Number(result?.providerCostUsd))) return Number(result.providerCostUsd);
   return estimateTokenCost({
     inputTokens:result.inputTokens,
     outputTokens:result.outputTokens,
