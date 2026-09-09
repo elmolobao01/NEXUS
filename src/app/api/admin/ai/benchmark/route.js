@@ -15,13 +15,28 @@ function safeText(value){ return value == null ? "" : (typeof value === "string"
 async function requireRoot(request) {
   const token = tokenOf(request);
   if (!token || !URL || !KEY) return null;
-  const response = await fetch(`${URL}/rest/v1/nexus_user_profiles?select=user_id,organization_id,profile,active&active=eq.true&limit=1`, {
+  const authResponse = await fetch(`${URL}/auth/v1/user`, {
     headers: headers(KEY, token), cache: "no-store",
+  });
+  if (!authResponse.ok) return null;
+  const authUser = await authResponse.json();
+  if (!authUser?.id) return null;
+  const key = SERVICE || KEY;
+  const auth = SERVICE || token;
+  const response = await fetch(`${URL}/rest/v1/nexus_user_profiles?user_id=eq.${encodeURIComponent(authUser.id)}&select=user_id,organization_id,profile,active&limit=1`, {
+    headers: headers(key, auth), cache: "no-store",
   });
   if (!response.ok) return null;
   const profile = (await response.json())?.[0];
-  if (!profile || !["NEXUS_ROOT", "NEXUS_ADMIN"].includes(profile.profile)) return null;
+  if (!profile?.active || !["NEXUS_ROOT", "NEXUS_ADMIN"].includes(profile.profile)) return null;
   return { token, userId: profile.user_id, organizationId: profile.organization_id };
+}
+
+const PROVIDER_ENV = { google:"GEMINI_API_KEY", deepseek:"DEEPSEEK_API_KEY", openai:"OPENAI_API_KEY", cloudflare:"CLOUDFLARE_API_TOKEN", mock:null };
+function configuredProvider(code){
+  if(code === "mock") return true;
+  const envName=PROVIDER_ENV[code];
+  return envName ? Boolean(process.env[envName]) : false;
 }
 
 async function rest(path, { method = "GET", body, prefer } = {}, authToken = null) {
@@ -203,7 +218,9 @@ export async function GET(request) {
   decoratedRuns=await backfillAutoScores(decoratedRuns,ctx.token);
   return NextResponse.json({
     cases: cases.data || [],
-    models:(models.ok?models.data:[]).filter(x=>x?.provider?.active),
+    models:(models.ok?models.data:[])
+      .filter(x=>x?.provider?.active && configuredProvider(x.provider.code))
+      .map(x=>({ ...x, provider:{ ...x.provider, configured:true, benchmarkEnabled:true } })),
     runs:decoratedRuns,
     ranking:buildRanking(decoratedRuns),
   });
