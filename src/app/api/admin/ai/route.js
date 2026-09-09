@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function json(message, status, extra = {}) {
@@ -24,15 +24,44 @@ function headers(key, extra = {}) {
 async function requireRoot(request) {
   const token = getToken(request);
   if (!token || !SUPABASE_URL || !SUPABASE_KEY) return null;
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/nexus_user_profiles?select=user_id,profile,active&limit=1`,
-    { headers: { ...headers(SUPABASE_KEY), Authorization: `Bearer ${token}` }, cache: "no-store" }
+
+  // Primeiro valida a sessão diretamente no Supabase Auth. Isso evita depender
+  // de uma leitura RLS sem filtro na tabela de perfis.
+  const authResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!authResponse.ok) return null;
+  const authUser = await authResponse.json();
+  if (!authUser?.id) return null;
+
+  const key = SERVICE_ROLE || SUPABASE_KEY;
+  const auth = SERVICE_ROLE || token;
+  const profileResponse = await fetch(
+    `${SUPABASE_URL}/rest/v1/nexus_user_profiles?user_id=eq.${encodeURIComponent(authUser.id)}&select=user_id,organization_id,profile,active&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${auth}` }, cache: "no-store" }
   );
-  if (!response.ok) return null;
-  const profile = (await response.json())?.[0];
+  if (!profileResponse.ok) return null;
+  const profile = (await profileResponse.json())?.[0];
   return profile?.active && ["NEXUS_ROOT", "NEXUS_ADMIN"].includes(profile.profile)
-    ? { token, userId: profile.user_id }
+    ? { token, userId: profile.user_id, organizationId: profile.organization_id || null, profile: profile.profile }
     : null;
+}
+
+const PROVIDER_ENV = {
+  google: "GEMINI_API_KEY",
+  deepseek: "DEEPSEEK_API_KEY",
+  openai: "OPENAI_API_KEY",
+  cloudflare: "CLOUDFLARE_API_TOKEN",
+  mock: null,
+};
+function providerReadiness(provider) {
+  const envName = PROVIDER_ENV[provider.code];
+  const configured = provider.code === "mock" ? true : envName ? Boolean(process.env[envName]) : false;
+  const cfg = provider.config && typeof provider.config === "object" ? provider.config : {};
+  const benchmarkEnabled = cfg.benchmark_enabled !== false && configured;
+  const productionEnabled = Boolean(provider.active) && configured && cfg.production_enabled !== false;
+  return { configured, credentialEnv: envName, benchmarkEnabled, productionEnabled };
 }
 
 async function rest(path, options = {}, token = null) {
@@ -83,8 +112,11 @@ export async function GET(request) {
   const fallbacks = ops.filter((item) => item.fallback_used).length;
 
   return NextResponse.json({
-    providers: providers.data || [],
-    models: models.data || [],
+    providers: (providers.data || []).map((provider) => ({ ...provider, readiness: providerReadiness(provider) })),
+    models: (models.data || []).map((model) => ({
+      ...model,
+      providerReadiness: providerReadiness((providers.data || []).find((p) => p.id === model.provider_id) || { code: model.provider?.code, active: false, config: {} }),
+    })),
     routes: routes.data || [],
     limits: limits.data || [],
     operations: ops,
