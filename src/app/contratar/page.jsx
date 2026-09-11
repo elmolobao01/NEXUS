@@ -15,7 +15,7 @@ export default async function ContratarPage({ searchParams }) {
   return (
     <main className="nexus-contract-page">
       <header className="nexus-contract-header">
-        <Link href="/" className="nexus-home-brand"><img src="/branding/plenium-logo.png" alt="" /><span><strong>PLENIUM</strong><small>INTELLIGENT SYSTEMS</small></span></Link>
+        <Link href="/" className="nexus-home-brand" aria-label="PLENIUM - início"><img className="plenium-brand-horizontal" src="/branding/plenium-brand-horizontal.png" alt="PLENIUM — Ecossistema de Soluções" /></Link>
         <Link href="/login" className="home-login-link">Já sou cliente</Link>
       </header>
 
