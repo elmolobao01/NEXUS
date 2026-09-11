@@ -95,7 +95,7 @@ function normalizeStructuredOutput(output){
 }
 
 export async function POST(request){
-  const started=Date.now(); let op=null;
+  const started=Date.now(); let op=null; let diagnosticSelected=null; let diagnosticBenchmarkModel=null;
   try{
     const ctx=await context(request); if(!ctx) return NextResponse.json({error:"UNAUTHORIZED"},{status:401});
     const rawBody=await request.json();
@@ -103,6 +103,7 @@ export async function POST(request){
     await enforceLimit(ctx.organizationId,req.operationType);
 
     const requestedBenchmarkModel = req.metadata?.benchmark === true ? req.metadata?.targetModelCode : null;
+    diagnosticBenchmarkModel = requestedBenchmarkModel || null;
     const canPinBenchmarkModel = ["NEXUS_ROOT","NEXUS_ADMIN"].includes(ctx.profile);
     let selected = null;
     let fallback = null;
@@ -117,6 +118,8 @@ export async function POST(request){
       selected=route.model;
       fallback=route.fallback;
     }
+
+    diagnosticSelected = selected;
 
     [op]=await sb("nexus_ai_operations",{method:"POST",body:[{
       organization_id:ctx.organizationId,
@@ -135,7 +138,7 @@ export async function POST(request){
     }catch(primaryError){
       if(requestedBenchmarkModel || !fallback?.active || !fallback?.provider?.active) throw primaryError;
       await sb("nexus_ai_fallbacks",{method:"POST",body:[{operation_id:op.id,from_model_id:selected.id,to_model_id:fallback.id,reason:String(primaryError.message||primaryError).slice(0,500)}]});
-      selected=fallback; fallbackUsed=true;
+      selected=fallback; fallbackUsed=true; diagnosticSelected = selected;
       result=await executeProvider(selected.provider.code,{input:req.input,operationType:req.operationType,metadata:req.metadata,modelCode:selected.code});
     }
 
@@ -164,7 +167,21 @@ export async function POST(request){
   }catch(e){
     if(op?.id){try{await sb(`nexus_ai_operations?id=eq.${op.id}`,{method:"PATCH",body:{status:"FAILED",error_code:String(e.message).slice(0,500),latency_ms:Date.now()-started,completed_at:new Date().toISOString()}});}catch{}}
     const message=String(e.message||"AI_EXECUTION_FAILED");
-    const code=message.includes("INVALID")?400:message.includes("FORBIDDEN")?403:message.includes("NOT_AVAILABLE")?404:message.includes("LIMIT_EXCEEDED")?429:500;
-    return NextResponse.json({error:message},{status:code});
+    const code=message.includes("BAD_REQUEST")||message.includes("INVALID")?400
+      :message.includes("UNAUTHORIZED")?401
+      :message.includes("FORBIDDEN")||message.includes("ACCESS_DENIED")?403
+      :message.includes("NOT_AVAILABLE")||message.includes("MODEL_NOT_FOUND")?404
+      :message.includes("LIMIT_EXCEEDED")||message.includes("RATE_LIMIT")?429
+      :500;
+    return NextResponse.json({
+      error:message,
+      operationId:op?.id || null,
+      provider:diagnosticSelected?.provider?.code || null,
+      model:diagnosticSelected?.code || diagnosticBenchmarkModel || null,
+      requestedModel:diagnosticBenchmarkModel,
+      benchmark:Boolean(diagnosticBenchmarkModel),
+      latencyMs:Date.now()-started,
+      failed:true,
+    },{status:code,headers:{"Cache-Control":"no-store"}});
   }
 }
