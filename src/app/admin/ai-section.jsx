@@ -80,8 +80,25 @@ function BenchmarkPanel({ onError }) {
     });
     const payload = await response.json();
     if (!response.ok) {
+      let persisted = null;
+      if (payload?.operationId) {
+        try {
+          const failureRecord = await fetch("/api/admin/ai/benchmark", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              caseId: selectedCase.id, operationId: payload.operationId, prompt, level,
+              failed: true, errorCode: payload.error || "AI_EXECUTION_FAILED",
+              errorMessage: payload.error || "Falha ao executar o AI Router.",
+              httpStatus: response.status, provider: payload.provider, model: payload.model,
+              requestedModel: targetModelCode || payload.requestedModel, latencyMs: payload.latencyMs,
+            }),
+          });
+          const savedFailure = await failureRecord.json();
+          if (failureRecord.ok) persisted = savedFailure;
+        } catch {}
+      }
       const err = new Error(payload.error || "Falha ao executar o AI Router.");
-      err.diagnostics = payload;
+      err.diagnostics = { ...payload, httpStatus: response.status, runId: persisted?.run?.id || null, persisted: Boolean(persisted?.run?.id) };
       throw err;
     }
     const record = await fetch("/api/admin/ai/benchmark", {
@@ -127,7 +144,10 @@ function BenchmarkPanel({ onError }) {
             model: d.model || model.code,
             provider: d.provider || model.provider?.code || "—",
             operationId: d.operationId || null,
+            runId: d.runId || null,
             latencyMs: d.latencyMs || null,
+            httpStatus: d.httpStatus || null,
+            persisted: Boolean(d.persisted),
             ok: false,
             error: err.message,
           });
@@ -161,7 +181,7 @@ function BenchmarkPanel({ onError }) {
 
   return <section className="ai2-benchmark-grid">
     <article className="ai2-panel ai2-benchmark-runner">
-      <header><div><span>BENCHMARK OPERACIONAL · v2</span><h3>Qualidade × custo × latência</h3></div></header>
+      <header><div><span>BENCHMARK OPERACIONAL · v3</span><h3>Qualidade × custo × latência</h3></div></header>
       <div className="ai2-benchmark-controls">
         <label>Caso de teste<select value={selectedId} onChange={(e) => selectCase(e.target.value)}>{bench.cases.map((item) => <option key={item.id} value={item.id}>{item.category} · {item.title}</option>)}</select></label>
         <label>Nível<select value={level} onChange={(e) => { setLevel(Number(e.target.value)); setComparison([]); }}>{levels.map((x) => <option key={x.id} value={x.id}>{x.name} — {x.label}</option>)}</select></label>
@@ -189,7 +209,7 @@ function BenchmarkPanel({ onError }) {
       {!!comparison.length && <div className="ai2-comparison-block">
         <h4>Comparação deste caso</h4>
         <div className="ai2-table-wrap"><table><thead><tr><th>Modelo</th><th>Status</th><th>Nota auto</th><th>Latência</th><th>Custo</th><th>Tokens / diagnóstico</th></tr></thead><tbody>
-          {comparison.map((row, index) => <tr key={`${row.requestedModel}-${index}`} className={row.ok ? "" : "ai2-row-error"}><td><strong>{row.model || row.requestedModel}</strong><small>{row.provider || "—"}</small>{row.operationId ? <small>op: {row.operationId}</small> : null}</td><td><span className={`ai2-status ${row.ok ? "on" : "off"}`}>{row.ok ? (row.auto?.passed ? "Aprovado" : "Revisar") : "Erro"}</span></td><td>{row.ok ? Number(row.auto?.score || 0).toFixed(1) : "—"}</td><td>{row.latencyMs ? `${Number(row.latencyMs).toLocaleString("pt-BR")} ms` : "—"}</td><td>{row.ok ? usd(row.usage?.costUsd, 8) : "—"}</td><td>{row.ok ? Number(row.usage?.inputTokens || 0)+Number(row.usage?.outputTokens || 0) : <code className="ai2-error-code">{row.error}</code>}</td></tr>)}
+          {comparison.map((row, index) => <tr key={`${row.requestedModel}-${index}`} className={row.ok ? "" : "ai2-row-error"}><td><strong>{row.model || row.requestedModel}</strong><small>{row.provider || "—"}</small>{row.operationId ? <small>op: {row.operationId}</small> : null}</td><td><span className={`ai2-status ${row.ok ? "on" : "off"}`}>{row.ok ? (row.auto?.passed ? "Aprovado" : "Revisar") : "Erro"}</span></td><td>{row.ok ? Number(row.auto?.score || 0).toFixed(1) : "—"}</td><td>{row.latencyMs ? `${Number(row.latencyMs).toLocaleString("pt-BR")} ms` : "—"}</td><td>{row.ok ? usd(row.usage?.costUsd, 8) : "—"}</td><td>{row.ok ? Number(row.usage?.inputTokens || 0)+Number(row.usage?.outputTokens || 0) : <div><code className="ai2-error-code">{row.error}</code>{row.httpStatus ? <small>HTTP {row.httpStatus}</small> : null}{row.persisted ? <small>Falha registrada no histórico</small> : <small>Falha sem persistência</small>}</div>}</td></tr>)}
         </tbody></table></div>
         {comparison.some((row) => !row.ok) ? <div className="ai2-benchmark-alert"><strong>Diagnóstico de execução</strong><span>O modelo com erro não entra no ranking até concluir uma execução válida. A rota produtiva permanece inalterada.</span></div> : null}
       </div>}
@@ -204,9 +224,9 @@ function BenchmarkPanel({ onError }) {
       </tbody></table></div>
 
       <header className="ai2-history-header"><div><span>HISTÓRICO</span><h3>Últimos testes</h3></div></header>
-      <div className="ai2-table-wrap"><table><thead><tr><th>Data</th><th>Teste</th><th>Modelo</th><th>Auto</th><th>Latência</th><th>Custo</th><th>Humana</th></tr></thead><tbody>
-        {bench.runs.map((run) => <tr key={run.id}><td>{new Date(run.created_at).toLocaleString("pt-BR")}</td><td><strong>{run.case?.title || "Teste livre"}</strong><small>{run.case?.category || "—"}</small></td><td>{run.model_code || "—"}</td><td>{run.auto_score == null ? "—" : Number(run.auto_score).toFixed(1)}</td><td>{run.latency_ms == null ? "—" : `${Number(run.latency_ms).toLocaleString("pt-BR")} ms`}</td><td>{usd(run.cost_usd, 8)}</td><td>{run.score?.final_score == null ? "Pendente" : Number(run.score.final_score).toFixed(1)}</td></tr>)}
-        {!bench.runs.length && <tr><td colSpan="7" className="ai2-empty">Nenhum benchmark executado ainda.</td></tr>}
+      <div className="ai2-table-wrap"><table><thead><tr><th>Data</th><th>Teste</th><th>Modelo</th><th>Status</th><th>Auto</th><th>Latência</th><th>Custo</th><th>Humana / erro</th></tr></thead><tbody>
+        {bench.runs.map((run) => { const failed = run.run_status === "FAILED"; return <tr key={run.id} className={failed ? "ai2-row-error" : ""}><td>{new Date(run.created_at).toLocaleString("pt-BR")}</td><td><strong>{run.case?.title || "Teste livre"}</strong><small>{run.case?.category || "—"}</small></td><td>{run.model_code || "—"}<small>{run.provider_code || "—"}</small></td><td><span className={`ai2-status ${failed ? "off" : "on"}`}>{failed ? "FAILED" : "SUCCESS"}</span></td><td>{run.auto_score == null ? "—" : Number(run.auto_score).toFixed(1)}</td><td>{run.latency_ms == null ? "—" : `${Number(run.latency_ms).toLocaleString("pt-BR")} ms`}</td><td>{usd(run.cost_usd, 8)}</td><td>{failed ? <code className="ai2-error-code">{run.error_message || run.error_code || "Falha de execução"}{run.http_status ? ` · HTTP ${run.http_status}` : ""}</code> : (run.score?.final_score == null ? "Pendente" : Number(run.score.final_score).toFixed(1))}</td></tr>})}
+        {!bench.runs.length && <tr><td colSpan="8" className="ai2-empty">Nenhum benchmark executado ainda.</td></tr>}
       </tbody></table></div>
     </article>
   </section>;
