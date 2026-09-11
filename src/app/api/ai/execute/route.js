@@ -53,10 +53,12 @@ async function chooseRoute(level,operationType){
 }
 async function chooseBenchmarkModel(modelCode, level){
   if(!modelCode) return null;
-  const code=encodeURIComponent(modelCode);
+  const wanted=String(modelCode).trim();
   const select="id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active)";
-  const rows=await sb(`nexus_ai_models?select=${select}&code=eq.${code}&active=eq.true&limit=1`);
-  const model=rows?.[0];
+  // Evita ambiguidades de encoding em códigos que contêm "/" (ex.: qwen/qwen3.8-27b).
+  // Carregamos os modelos ativos do mesmo nível e resolvemos o código exatamente em memória.
+  const rows=await sb(`nexus_ai_models?select=${select}&active=eq.true&level=eq.${Number(level)}&limit=100`);
+  const model=(rows||[]).find((item)=>String(item?.code||"").trim()===wanted) || null;
   if(!model?.provider?.active || Number(model.level)!==Number(level)) return null;
   return model;
 }
@@ -95,11 +97,14 @@ function normalizeStructuredOutput(output){
 }
 
 export async function POST(request){
-  const started=Date.now(); let op=null; let diagnosticSelected=null; let diagnosticBenchmarkModel=null;
+  const started=Date.now(); let op=null; let diagnosticSelected=null; let diagnosticBenchmarkModel=null; let diagnosticStage="request";
   try{
-    const ctx=await context(request); if(!ctx) return NextResponse.json({error:"UNAUTHORIZED"},{status:401});
+    diagnosticStage="auth";
+    const ctx=await context(request); if(!ctx) throw new Error("UNAUTHORIZED");
+    diagnosticStage="parse_request";
     const rawBody=await request.json();
     const req=normalizeAiRequest(rawBody);
+    diagnosticStage="client_limit";
     await enforceLimit(ctx.organizationId,req.operationType);
 
     const requestedBenchmarkModel = req.metadata?.benchmark === true ? req.metadata?.targetModelCode : null;
@@ -109,18 +114,22 @@ export async function POST(request){
     let fallback = null;
 
     if(requestedBenchmarkModel){
-      if(!canPinBenchmarkModel) return NextResponse.json({error:"AI_BENCHMARK_MODEL_FORBIDDEN"},{status:403});
+      diagnosticStage="benchmark_authorization";
+      if(!canPinBenchmarkModel) throw new Error("AI_BENCHMARK_MODEL_FORBIDDEN");
+      diagnosticStage="benchmark_model_resolution";
       selected = await chooseBenchmarkModel(requestedBenchmarkModel, req.level);
-      if(!selected) return NextResponse.json({error:"AI_BENCHMARK_MODEL_NOT_AVAILABLE"},{status:404});
+      if(!selected) throw new Error("AI_BENCHMARK_MODEL_NOT_AVAILABLE");
     }else{
+      diagnosticStage="route_resolution";
       const route=await chooseRoute(req.level,req.operationType);
-      if(!route?.model?.provider) return NextResponse.json({error:"AI_ROUTE_NOT_FOUND"},{status:503});
+      if(!route?.model?.provider) throw new Error("AI_ROUTE_NOT_FOUND");
       selected=route.model;
       fallback=route.fallback;
     }
 
     diagnosticSelected = selected;
 
+    diagnosticStage="operation_create";
     [op]=await sb("nexus_ai_operations",{method:"POST",body:[{
       organization_id:ctx.organizationId,
       user_id:ctx.userId,
@@ -133,6 +142,7 @@ export async function POST(request){
     }],prefer:"return=representation"});
 
     let result, fallbackUsed=false;
+    diagnosticStage="provider_execute";
     try{
       result=await executeProvider(selected.provider.code,{input:req.input,operationType:req.operationType,metadata:req.metadata,modelCode:selected.code});
     }catch(primaryError){
@@ -180,6 +190,7 @@ export async function POST(request){
       model:diagnosticSelected?.code || diagnosticBenchmarkModel || null,
       requestedModel:diagnosticBenchmarkModel,
       benchmark:Boolean(diagnosticBenchmarkModel),
+      stage:diagnosticStage,
       latencyMs:Date.now()-started,
       failed:true,
     },{status:code,headers:{"Cache-Control":"no-store"}});
