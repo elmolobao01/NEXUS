@@ -53,6 +53,7 @@ const PROVIDER_ENV = {
   deepseek: "DEEPSEEK_API_KEY",
   openai: "OPENAI_API_KEY",
   cloudflare: "CLOUDFLARE_API_TOKEN",
+  groq: "GROQ_API_KEY",
   mock: null,
 };
 function providerReadiness(provider) {
@@ -158,6 +159,17 @@ export async function PATCH(request) {
     route: ["active", "priority", "level", "model_id", "fallback_model_id", "min_quality_score", "conditions"],
     limit: ["active", "hard_limit", "monthly_operations", "monthly_input_tokens", "monthly_output_tokens", "monthly_cost_usd"],
   }[body.entity];
+
+  // Não permita ativar provider sem a credencial exigida no ambiente.
+  if (body.entity === "provider" && body.active === true) {
+    const current = await rest(`nexus_ai_providers?id=eq.${encodeURIComponent(body.id)}&select=*`, {}, ctx.token);
+    const provider = current.data?.[0];
+    if (!current.ok || !provider) return json("Provider não encontrado.", 404);
+    const readiness = providerReadiness(provider);
+    if (!readiness.configured) {
+      return json(`Credencial ${readiness.credentialEnv || "do provider"} não configurada.`, 409, { readiness });
+    }
+  }
 
   const payload = {};
   for (const key of allowed) if (body[key] !== undefined) payload[key] = body[key];
