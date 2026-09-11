@@ -95,13 +95,25 @@ export async function GET(request) {
     rest("nexus_organizations?select=id,name,legal_name&order=name.asc", {}, ctx.token),
   ]);
 
-  const failed = [providers, models, routes, limits, operations, costs].find((item) => !item.ok);
-  if (failed) {
-    return json(
-      "Não foi possível carregar o Console PLENIUM AI. Execute a migration 20260908_001_plenium_ai_engine.sql.",
-      failed.status || 500,
-      { details: failed.data }
-    );
+  // v0.7.4.1: não atribuir toda falha à migration inicial.
+  // O console já pode existir e uma consulta isolada falhar por autenticação,
+  // variável de ambiente ou indisponibilidade temporária do Supabase.
+  const named = { providers, models, routes, limits, operations, costs };
+  const failures = Object.entries(named)
+    .filter(([, result]) => !result.ok)
+    .map(([resource, result]) => ({ resource, status: result.status, details: result.data }));
+
+  if (failures.length) {
+    const first = failures[0];
+    const serialized = JSON.stringify(first.details || {});
+    const relationMissing = first.status === 404 || /42P01|does not exist|relation .* not found/i.test(serialized);
+    const authFailure = first.status === 401 || first.status === 403;
+    const message = relationMissing
+      ? `Estrutura do PLENIUM AI incompleta: recurso ${first.resource} não encontrado. Verifique as migrations aplicadas; não execute novamente a migration inicial sem confirmar a tabela ausente.`
+      : authFailure
+        ? `Falha de autenticação/autorização ao carregar ${first.resource}. Verifique a sessão e as credenciais Supabase da Vercel.`
+        : `Falha ao carregar ${first.resource} no Console PLENIUM AI. O banco existente não será reinicializado.`;
+    return json(message, first.status || 500, { code: "PLENIUM_AI_CONSOLE_LOAD_FAILED", failures });
   }
 
   const ops = operations.data || [];
