@@ -238,12 +238,60 @@ export async function POST(request) {
   if (!ctx) return json("Acesso ROOT necessário.", 403);
   if (!SERVICE) return json("SUPABASE_SERVICE_ROLE_KEY é necessária para registrar benchmark.", 503);
   let body; try { body = await request.json(); } catch { return json("JSON inválido.", 400); }
-  if (!body?.caseId || !body?.operationId || !body?.prompt) return json("caseId, operationId e prompt são obrigatórios.", 400);
+  if (!body?.caseId || !body?.prompt) return json("caseId e prompt são obrigatórios.", 400);
 
+  const caseRow=(await rest(`nexus_ai_benchmark_cases?select=id,code&id=eq.${encodeURIComponent(body.caseId)}&limit=1`,{},ctx.token)).data?.[0];
+  if (!caseRow) return json("Caso de benchmark não encontrado.", 404);
+
+  // v0.7.4: falhas podem ocorrer antes da criação de nexus_ai_operations
+  // (ex.: resolução/autorização de modelo). Nesses casos persistimos a tentativa
+  // diretamente no benchmark com operation_id nulo e diagnóstico completo.
+  if (body.failed === true && !body.operationId) {
+    const errorMessage = String(body.errorMessage || body.error || "AI_PRE_EXECUTION_FAILED").slice(0,2000);
+    const errorCode = String(body.errorCode || body.error || "AI_PRE_EXECUTION_FAILED").slice(0,500);
+    const httpStatus = body.httpStatus != null ? Number(body.httpStatus) : null;
+    const payload = [{
+      case_id: body.caseId,
+      operation_id: null,
+      organization_id: ctx.organizationId,
+      user_id: ctx.userId,
+      prompt_snapshot: String(body.prompt),
+      output_snapshot: null,
+      output_json: null,
+      provider_code: body.provider || null,
+      model_code: body.model || body.requestedModel || null,
+      requested_level: Number(body.level ?? 1),
+      input_tokens: 0,
+      output_tokens: 0,
+      cost_usd: 0,
+      latency_ms: body.latencyMs == null ? null : Number(body.latencyMs),
+      fallback_used: false,
+      auto_score: null,
+      auto_pass: null,
+      auto_details: null,
+      run_status: "FAILED",
+      error_code: errorCode,
+      error_message: errorMessage,
+      http_status: httpStatus,
+      diagnostics: {
+        phase: "PRE_EXECUTION",
+        stage: body.stage || null,
+        provider: body.provider || null,
+        model: body.model || body.requestedModel || null,
+        requestedModel: body.requestedModel || null,
+        latencyMs: body.latencyMs ?? null,
+        httpStatus,
+      },
+    }];
+    const result = await rest("nexus_ai_benchmark_runs", { method: "POST", body: payload, prefer: "return=representation" }, ctx.token);
+    if (!result.ok) return json("Falha ao registrar diagnóstico pré-execução.", result.status, { details: result.data });
+    return NextResponse.json({ ok: true, run: result.data?.[0], failed: true, preExecution: true }, { status: 201 });
+  }
+
+  if (!body?.operationId) return json("operationId é obrigatório para execuções iniciadas.", 400);
   const op = await rest(`nexus_ai_operations?select=id,organization_id,user_id,requested_level,input_tokens,output_tokens,cost_usd,latency_ms,fallback_used,status,error_code&id=eq.${encodeURIComponent(body.operationId)}&limit=1`, {}, ctx.token);
   const operation = op.data?.[0];
   if (!op.ok || !operation) return json("Operação de IA não encontrada.", 404);
-  const caseRow=(await rest(`nexus_ai_benchmark_cases?select=id,code&id=eq.${encodeURIComponent(body.caseId)}&limit=1`,{},ctx.token)).data?.[0];
 
   const failed = body.failed === true || operation.status === "FAILED";
   const outputSnapshot=failed ? null : safeText(body.output);
