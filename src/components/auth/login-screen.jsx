@@ -21,8 +21,7 @@ export function LoginScreen() {
     <main className="login-page">
       <section className="login-brand-panel">
         <div className="login-brand-top">
-          <img src="/branding/plenium-logo.png" alt="PLENIUM" />
-          <div><strong>PLENIUM</strong><span>Ecossistema inteligente de soluções</span></div>
+          <img src="/branding/plenium-brand-horizontal-dark.png" alt="PLENIUM — Ecossistema de Soluções" />
         </div>
         <div className="login-message">
           <span className="login-kicker">Uma plataforma. Múltiplos portfólios.</span>
