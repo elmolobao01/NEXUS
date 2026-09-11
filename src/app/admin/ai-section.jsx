@@ -81,22 +81,28 @@ function BenchmarkPanel({ onError }) {
     const payload = await response.json();
     if (!response.ok) {
       let persisted = null;
-      if (payload?.operationId) {
-        try {
-          const failureRecord = await fetch("/api/admin/ai/benchmark", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              caseId: selectedCase.id, operationId: payload.operationId, prompt, level,
-              failed: true, errorCode: payload.error || "AI_EXECUTION_FAILED",
-              errorMessage: payload.error || "Falha ao executar o AI Router.",
-              httpStatus: response.status, provider: payload.provider, model: payload.model,
-              requestedModel: targetModelCode || payload.requestedModel, latencyMs: payload.latencyMs,
-            }),
-          });
-          const savedFailure = await failureRecord.json();
-          if (failureRecord.ok) persisted = savedFailure;
-        } catch {}
-      }
+      try {
+        const failureRecord = await fetch("/api/admin/ai/benchmark", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            caseId: selectedCase.id,
+            operationId: payload?.operationId || null,
+            prompt,
+            level,
+            failed: true,
+            errorCode: payload.error || "AI_EXECUTION_FAILED",
+            errorMessage: payload.error || "Falha ao executar o AI Router.",
+            httpStatus: response.status,
+            provider: payload.provider || null,
+            model: payload.model || targetModelCode || null,
+            requestedModel: targetModelCode || payload.requestedModel || null,
+            latencyMs: payload.latencyMs,
+            stage: payload.stage || null,
+          }),
+        });
+        const savedFailure = await failureRecord.json();
+        if (failureRecord.ok) persisted = savedFailure;
+      } catch {}
       const err = new Error(payload.error || "Falha ao executar o AI Router.");
       err.diagnostics = { ...payload, httpStatus: response.status, runId: persisted?.run?.id || null, persisted: Boolean(persisted?.run?.id) };
       throw err;
@@ -181,7 +187,7 @@ function BenchmarkPanel({ onError }) {
 
   return <section className="ai2-benchmark-grid">
     <article className="ai2-panel ai2-benchmark-runner">
-      <header><div><span>BENCHMARK OPERACIONAL · v3</span><h3>Qualidade × custo × latência</h3></div></header>
+      <header><div><span>BENCHMARK OPERACIONAL · v4</span><h3>Qualidade × custo × latência</h3></div></header>
       <div className="ai2-benchmark-controls">
         <label>Caso de teste<select value={selectedId} onChange={(e) => selectCase(e.target.value)}>{bench.cases.map((item) => <option key={item.id} value={item.id}>{item.category} · {item.title}</option>)}</select></label>
         <label>Nível<select value={level} onChange={(e) => { setLevel(Number(e.target.value)); setComparison([]); }}>{levels.map((x) => <option key={x.id} value={x.id}>{x.name} — {x.label}</option>)}</select></label>
