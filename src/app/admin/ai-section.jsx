@@ -253,7 +253,7 @@ export default function AISection() {
     <div className="ai2-shell">
       <section className="ai2-hero">
         <div>
-          <span>PLENIUM AI ENGINE · v0.6.1</span>
+          <span>PLENIUM AI ENGINE · v0.7</span>
           <h2>Controle a inteligência e preserve a margem.</h2>
           <p>Administre providers, modelos, níveis L0–L4, rotas, consumo, limites e custo real sem expor fornecedores aos clientes.</p>
         </div>
