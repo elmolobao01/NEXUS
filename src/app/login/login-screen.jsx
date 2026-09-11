@@ -61,20 +61,14 @@ export default function LoginScreen() {
         <div className="nexus-login-orb nexus-login-orb-one" aria-hidden="true" />
         <div className="nexus-login-orb nexus-login-orb-two" aria-hidden="true" />
 
-        <header className="nexus-login-brand">
-          <div className="nexus-login-logo-box nexus-logo-premium">
-            <Image
-              src="/branding/plenium-logo.png"
-              alt="Logomarca PLENIUM"
-              width={96}
-              height={96}
-              priority
-            />
-          </div>
-          <div>
-            <strong>PLENIUM</strong>
-            <span>Sistema Inteligente de Gestão Integrada</span>
-          </div>
+        <header className="nexus-login-brand nexus-login-brand-official">
+          <Image
+            src="/branding/plenium-brand-horizontal-dark.png"
+            alt="PLENIUM — Ecossistema de Soluções"
+            width={540}
+            height={122}
+            priority
+          />
         </header>
 
         <div className="nexus-login-presentation">
