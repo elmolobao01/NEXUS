@@ -30,8 +30,7 @@ export default function HomePage() {
     <main className="nexus-home">
       <header className="nexus-home-header">
         <Link href="/" className="nexus-home-brand" aria-label="PLENIUM - início">
-          <img src="/branding/plenium-logo.png" alt="" />
-          <span><strong>PLENIUM</strong><small>INTELLIGENT SYSTEMS</small></span>
+          <img className="plenium-brand-horizontal" src="/branding/plenium-brand-horizontal.png" alt="PLENIUM — Ecossistema de Soluções" />
         </Link>
         <nav className="nexus-home-nav" aria-label="Navegação principal">
           <a href="#produtos">Produtos</a>
@@ -55,7 +54,7 @@ export default function HomePage() {
         </div>
         <div className="home-hero-visual" aria-hidden="true">
           <div className="home-orbit orbit-one" /><div className="home-orbit orbit-two" />
-          <div className="home-nx-card"><img src="/branding/plenium-logo.png" alt="" /><strong>PLENIUM</strong><span>Conexão • Inteligência • Futuro</span></div>
+          <div className="home-nx-card home-brand-showcase"><img src="/branding/plenium-brand-expanded.png" alt="PLENIUM — Ecossistema de Soluções" /></div>
         </div>
       </section>
 
@@ -102,8 +101,8 @@ export default function HomePage() {
 
       <footer className="nexus-home-footer">
         <div className="nexus-footer-brand">
-          <strong>PLENIUM</strong>
-          <span>Tecnologia • Gestão • Inteligência Artificial</span>
+          <img src="/branding/plenium-brand-horizontal-dark.png" alt="PLENIUM — Ecossistema de Soluções" />
+          <span>Soluções hoje. Grandes amanhãs.</span>
         </div>
         <div className="nexus-footer-legal">
           <span>CNPJ 68.473.390/0001-50</span>

@@ -2874,3 +2874,32 @@ body { margin: 0; }
 
 /* PLENIUM AI v0.4 — Benchmark Operacional */
 .ai2-benchmark-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:18px;align-items:start}.ai2-benchmark-controls{display:grid;grid-template-columns:1fr 190px;gap:12px;margin-bottom:12px}.ai2-benchmark-controls label,.ai2-benchmark-prompt{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:700;color:#475569}.ai2-benchmark-controls select,.ai2-benchmark-prompt textarea,.ai2-score-grid input{width:100%;border:1px solid #dbe3ee;border-radius:10px;background:#fff;color:#0f172a;padding:10px 12px;font:inherit}.ai2-benchmark-prompt textarea{resize:vertical;line-height:1.5;min-height:110px}.ai2-benchmark-info{display:grid;gap:4px;padding:12px 14px;margin:0 0 12px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc}.ai2-benchmark-info strong{font-size:13px;color:#0f172a}.ai2-benchmark-info small{font-size:11px;color:#64748b}.ai2-benchmark-result{margin-top:18px;padding-top:18px;border-top:1px solid #e5e7eb}.ai2-benchmark-result-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}.ai2-benchmark-result-meta span{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;font-size:12px;color:#334155}.ai2-benchmark-result-meta b{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em}.ai2-benchmark-output{margin:12px 0}.ai2-benchmark-output>span{display:block;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.08em;color:#64748b}.ai2-benchmark-output pre{max-height:340px;overflow:auto;margin:0;padding:14px;border-radius:12px;background:#0f172a;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}.ai2-score-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0}.ai2-score-grid label{display:flex;flex-direction:column;gap:5px;font-size:10px;font-weight:800;color:#64748b}.ai2-score-grid input{padding:8px}.ai2-benchmark-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}.ai2-benchmark-actions button{border:1px solid #cbd5e1;border-radius:9px;background:#fff;padding:9px 12px;font-weight:700;cursor:pointer}.ai2-benchmark-actions strong{font-size:13px;color:#0f766e}@media(max-width:1100px){.ai2-benchmark-grid{grid-template-columns:1fr}.ai2-score-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:720px){.ai2-benchmark-controls,.ai2-benchmark-result-meta,.ai2-score-grid{grid-template-columns:1fr}}
+
+
+/* =========================================================
+   PLENIUM — IDENTIDADE OFICIAL CONSOLIDADA 2026-09-11
+   Rebranding visual apenas; identificadores NEXUS técnicos preservados.
+   ========================================================= */
+:root{
+  --plenium-navy:#071d33;
+  --plenium-blue:#1685ff;
+  --plenium-cyan:#19c6d3;
+  --plenium-purple:#7b3ff2;
+  --plenium-orange:#ff8a1f;
+}
+.plenium-brand-horizontal{width:min(330px,42vw)!important;height:auto!important;object-fit:contain!important;border-radius:0!important;box-shadow:none!important;}
+.nexus-home-brand{min-width:260px;}
+.home-nx-card.home-brand-showcase{padding:28px 34px;}
+.home-nx-card.home-brand-showcase img{width:min(520px,92%);height:auto;object-fit:contain;filter:drop-shadow(0 16px 32px rgba(0,48,106,.16));}
+.nexus-footer-brand img{width:240px;max-width:70vw;height:auto;object-fit:contain;margin-bottom:4px;}
+.nexus-login-brand-official{width:min(520px,100%);}
+.nexus-login-brand-official>img{width:min(480px,100%);height:auto;object-fit:contain;filter:drop-shadow(0 14px 28px rgba(0,0,0,.22));}
+.nexus-activation-mark{background:#f6f9fd!important;overflow:hidden;padding:7px;}
+.nexus-activation-mark img{width:100%;height:100%;object-fit:contain;}
+.client-brand-mark{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 8px 20px rgba(5,34,64,.16);}
+.client-brand-mark img{width:100%;height:100%;object-fit:contain;}
+.client-hero-mark{background:linear-gradient(145deg,#071d33,#0a365f)!important;padding:15px;overflow:hidden;}
+.client-hero-mark img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.18));}
+.user-avatar-brand{padding:3px;overflow:hidden;background:#fff!important;}
+.user-avatar-brand img{width:100%;height:100%;object-fit:contain;}
+@media(max-width:700px){.plenium-brand-horizontal{width:min(245px,62vw)!important}.nexus-home-brand{min-width:0}.nexus-login-brand-official>img{width:min(400px,100%)}}
