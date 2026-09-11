@@ -54,7 +54,7 @@ export default function HomePage() {
         </div>
         <div className="home-hero-visual" aria-hidden="true">
           <div className="home-orbit orbit-one" /><div className="home-orbit orbit-two" />
-          <div className="home-nx-card home-brand-showcase"><img src="/branding/plenium-brand-expanded.png" alt="PLENIUM — Ecossistema de Soluções" /></div>
+          <div className="home-nx-card home-brand-showcase"><img src="/branding/plenium-instagram.png" alt="PLENIUM — Ecossistema de Soluções" /></div>
         </div>
       </section>
 
