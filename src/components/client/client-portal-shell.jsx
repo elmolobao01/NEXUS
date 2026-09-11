@@ -28,7 +28,7 @@ export function ClientPortalShell() {
   return (
     <main className={`client-shell theme-${organization.portfolio}`} style={cssVars}>
       <aside className="client-sidebar">
-        <div className="client-brand"><img src="/branding/plenium-logo.png" alt="PLENIUM" /><div><strong>{theme.name}</strong><span>Portal do Cliente</span></div></div>
+        <div className="client-brand"><img src="/branding/plenium-symbol.png" alt="PLENIUM" /><div><strong>{theme.name}</strong><span>Portal do Cliente</span></div></div>
         <div className="client-identity"><small>Organização</small><strong>{organization.nome}</strong><span>{organization.unidade}</span></div>
         <nav className="client-navigation" aria-label="Módulos contratados">{organization.modulos.map((item) => <button key={item} className={activeModule === item ? "client-nav active" : "client-nav"} type="button" onClick={() => setActiveModule(item)}><span />{item}</button>)}</nav>
         <div className="client-user"><span className="user-avatar">GL</span><div><strong>Gestor Local</strong><small>{organization.perfil}</small></div></div>
@@ -42,7 +42,7 @@ export function ClientPortalShell() {
 
         {activeModule === "Visão geral" ? (
           <>
-            <section className="client-hero"><div><span className="hero-badge">{organization.perfil}</span><h2>Bem-vindo ao {theme.name}</h2><p>{theme.description}</p></div><div className="client-hero-mark">NX</div></section>
+            <section className="client-hero"><div><span className="hero-badge">{organization.perfil}</span><h2>Bem-vindo ao {theme.name}</h2><p>{theme.description}</p></div><div className="client-hero-mark"><img src="/branding/plenium-symbol.png" alt="" /></div></section>
             <section className="client-metrics">{indicators.map(([label, value, detail]) => <article key={label}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>)}</section>
             <section className="client-content-grid">
               <article className="client-panel"><div className="panel-heading"><div><span className="eyebrow">Operação</span><h3>Atividades prioritárias</h3></div><span className="tag">Hoje</span></div><div className="activity-list">{organization.modulos.slice(1, 5).map((item, index) => <div key={item}><span className="activity-index">0{index + 1}</span><div><strong>{item}</strong><small>{index % 2 === 0 ? "Atualizações disponíveis para acompanhamento" : "Nenhuma pendência crítica identificada"}</small></div><span className="activity-status">Acessar</span></div>)}</div></article>
