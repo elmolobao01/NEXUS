@@ -38,7 +38,7 @@ function Overview({ theme }) {
           <p>{theme.description}</p>
         </div>
         <div className="hero-logo-wrap">
-          <img src="/branding/plenium-logo.png" alt="Logomarca PLENIUM" className="hero-logo" />
+          <img src="/branding/plenium-brand-expanded.png" alt="PLENIUM — Ecossistema de Soluções" className="hero-logo" />
         </div>
       </section>
 
@@ -168,7 +168,7 @@ export function NexusShell() {
 
   return <main className={`app-shell theme-${portfolio}`} style={cssVars}>
     <aside className="sidebar">
-      <div className="brand-block"><img src="/branding/plenium-logo.png" alt="PLENIUM" className="brand-logo" /><div><strong>PLENIUM Administração</strong><span>Gestão interna da plataforma</span></div></div>
+      <div className="brand-block"><img src="/branding/plenium-symbol.png" alt="PLENIUM" className="brand-logo" /><div><strong>PLENIUM</strong><span>Ecossistema de Soluções</span></div></div>
       <nav className="navigation" aria-label="Navegação principal">{navItems.map((item) => <button className={activeSection === item ? "nav-item active" : "nav-item"} key={item} type="button" onClick={() => setActiveSection(item)}><span className="nav-dot" />{item}</button>)}</nav>
       <div className="portfolio-picker"><label htmlFor="portfolio">Identidade do portfólio</label><select id="portfolio" value={portfolio} onChange={(event) => setPortfolio(event.target.value)}>{Object.entries(portfolioThemes).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></div>
       <div className="sidebar-status"><span className="status-light" /><div><strong>Fundação operacional</strong><small>Com gestão comercial inicial</small></div></div>
