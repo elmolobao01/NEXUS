@@ -144,7 +144,7 @@ function autoEvaluate(caseCode, output){
 
 async function backfillAutoScores(runs, authToken){
   if(!SERVICE || !Array.isArray(runs) || !runs.length) return runs || [];
-  const pending=runs.filter(run=>run?.id && run?.case?.code && run.auto_score == null && run.output_snapshot != null);
+  const pending=runs.filter(run=>run?.id && run?.run_status !== "FAILED" && run?.case?.code && run.auto_score == null && run.output_snapshot != null);
   if(!pending.length) return runs;
   const computed=new Map();
   for(const run of pending){
@@ -165,7 +165,7 @@ async function backfillAutoScores(runs, authToken){
 function buildRanking(runs){
   const byModel=new Map();
   for(const run of runs){
-    if(!run.model_code) continue;
+    if(!run.model_code || run.run_status === "FAILED") continue;
     const item=byModel.get(run.model_code)||{model:run.model_code,provider:run.provider_code,runs:0,cost:0,latency:0,autoQuality:0,autoRuns:0,humanQuality:0,humanRuns:0,effectiveQuality:0,passes:0};
     const hasHuman=run.score?.final_score != null;
     const hasAuto=run.auto_score != null;
@@ -240,13 +240,18 @@ export async function POST(request) {
   let body; try { body = await request.json(); } catch { return json("JSON inválido.", 400); }
   if (!body?.caseId || !body?.operationId || !body?.prompt) return json("caseId, operationId e prompt são obrigatórios.", 400);
 
-  const op = await rest(`nexus_ai_operations?select=id,organization_id,user_id,requested_level,input_tokens,output_tokens,cost_usd,latency_ms,fallback_used,status&id=eq.${encodeURIComponent(body.operationId)}&limit=1`, {}, ctx.token);
+  const op = await rest(`nexus_ai_operations?select=id,organization_id,user_id,requested_level,input_tokens,output_tokens,cost_usd,latency_ms,fallback_used,status,error_code&id=eq.${encodeURIComponent(body.operationId)}&limit=1`, {}, ctx.token);
   const operation = op.data?.[0];
   if (!op.ok || !operation) return json("Operação de IA não encontrada.", 404);
   const caseRow=(await rest(`nexus_ai_benchmark_cases?select=id,code&id=eq.${encodeURIComponent(body.caseId)}&limit=1`,{},ctx.token)).data?.[0];
-  const auto=autoEvaluate(caseRow?.code, body.output);
-  const outputSnapshot=safeText(body.output);
-  const parsed=parseJsonOutput(body.output);
+
+  const failed = body.failed === true || operation.status === "FAILED";
+  const outputSnapshot=failed ? null : safeText(body.output);
+  const parsed=failed ? { valid:false, value:null } : parseJsonOutput(body.output);
+  const auto=failed ? null : autoEvaluate(caseRow?.code, body.output);
+  const errorMessage = failed ? String(body.errorMessage || body.error || operation.error_code || "AI_EXECUTION_FAILED").slice(0,2000) : null;
+  const errorCode = failed ? String(body.errorCode || operation.error_code || "AI_EXECUTION_FAILED").slice(0,500) : null;
+  const httpStatus = failed && body.httpStatus != null ? Number(body.httpStatus) : null;
 
   const payload = [{
     case_id: body.caseId || null,
@@ -257,20 +262,33 @@ export async function POST(request) {
     output_snapshot: outputSnapshot,
     output_json: parsed.valid ? parsed.value : null,
     provider_code: body.provider || null,
-    model_code: body.model || null,
+    model_code: body.model || body.requestedModel || null,
     requested_level: Number(operation.requested_level ?? body.level ?? 1),
     input_tokens: Number(operation.input_tokens || 0),
     output_tokens: Number(operation.output_tokens || 0),
     cost_usd: Number(operation.cost_usd || 0),
-    latency_ms: operation.latency_ms == null ? null : Number(operation.latency_ms),
+    latency_ms: operation.latency_ms == null ? (body.latencyMs == null ? null : Number(body.latencyMs)) : Number(operation.latency_ms),
     fallback_used: Boolean(operation.fallback_used),
-    auto_score:auto.score,
-    auto_pass:auto.passed,
-    auto_details:auto,
+    auto_score:auto?.score ?? null,
+    auto_pass:auto?.passed ?? null,
+    auto_details:auto ?? null,
+    run_status: failed ? "FAILED" : "SUCCESS",
+    error_code: errorCode,
+    error_message: errorMessage,
+    http_status: httpStatus,
+    diagnostics: failed ? {
+      provider: body.provider || null,
+      model: body.model || body.requestedModel || null,
+      requestedModel: body.requestedModel || null,
+      operationStatus: operation.status || null,
+      operationError: operation.error_code || null,
+      latencyMs: operation.latency_ms ?? body.latencyMs ?? null,
+      httpStatus,
+    } : null,
   }];
   const result = await rest("nexus_ai_benchmark_runs", { method: "POST", body: payload, prefer: "return=representation" }, ctx.token);
   if (!result.ok) return json("Falha ao registrar benchmark.", result.status, { details: result.data });
-  return NextResponse.json({ ok: true, run: result.data?.[0], auto }, { status: 201 });
+  return NextResponse.json({ ok: true, run: result.data?.[0], auto, failed }, { status: 201 });
 }
 
 export async function PATCH(request) {
