@@ -79,7 +79,11 @@ function BenchmarkPanel({ onError }) {
       }),
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "Falha ao executar o AI Router.");
+    if (!response.ok) {
+      const err = new Error(payload.error || "Falha ao executar o AI Router.");
+      err.diagnostics = payload;
+      throw err;
+    }
     const record = await fetch("/api/admin/ai/benchmark", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ caseId: selectedCase.id, operationId: payload.operationId, prompt, output: payload.output, provider: payload.provider, model: payload.model, level }),
@@ -117,7 +121,16 @@ function BenchmarkPanel({ onError }) {
           const payload = await runModel(model.code);
           rows.push({ ...payload, requestedModel: model.code, ok: true });
         } catch (err) {
-          rows.push({ requestedModel: model.code, ok: false, error: err.message });
+          const d = err?.diagnostics || {};
+          rows.push({
+            requestedModel: model.code,
+            model: d.model || model.code,
+            provider: d.provider || model.provider?.code || "—",
+            operationId: d.operationId || null,
+            latencyMs: d.latencyMs || null,
+            ok: false,
+            error: err.message,
+          });
         }
       }
       setComparison(rows);
@@ -175,9 +188,10 @@ function BenchmarkPanel({ onError }) {
 
       {!!comparison.length && <div className="ai2-comparison-block">
         <h4>Comparação deste caso</h4>
-        <div className="ai2-table-wrap"><table><thead><tr><th>Modelo</th><th>Status</th><th>Nota auto</th><th>Latência</th><th>Custo</th><th>Tokens</th></tr></thead><tbody>
-          {comparison.map((row, index) => <tr key={`${row.requestedModel}-${index}`}><td><strong>{row.model || row.requestedModel}</strong><small>{row.provider || "—"}</small></td><td>{row.ok ? (row.auto?.passed ? "Aprovado" : "Revisar") : "Erro"}</td><td>{row.ok ? Number(row.auto?.score || 0).toFixed(1) : "—"}</td><td>{row.ok ? `${Number(row.latencyMs || 0).toLocaleString("pt-BR")} ms` : "—"}</td><td>{row.ok ? usd(row.usage?.costUsd, 8) : "—"}</td><td>{row.ok ? Number(row.usage?.inputTokens || 0)+Number(row.usage?.outputTokens || 0) : row.error}</td></tr>)}
+        <div className="ai2-table-wrap"><table><thead><tr><th>Modelo</th><th>Status</th><th>Nota auto</th><th>Latência</th><th>Custo</th><th>Tokens / diagnóstico</th></tr></thead><tbody>
+          {comparison.map((row, index) => <tr key={`${row.requestedModel}-${index}`} className={row.ok ? "" : "ai2-row-error"}><td><strong>{row.model || row.requestedModel}</strong><small>{row.provider || "—"}</small>{row.operationId ? <small>op: {row.operationId}</small> : null}</td><td><span className={`ai2-status ${row.ok ? "on" : "off"}`}>{row.ok ? (row.auto?.passed ? "Aprovado" : "Revisar") : "Erro"}</span></td><td>{row.ok ? Number(row.auto?.score || 0).toFixed(1) : "—"}</td><td>{row.latencyMs ? `${Number(row.latencyMs).toLocaleString("pt-BR")} ms` : "—"}</td><td>{row.ok ? usd(row.usage?.costUsd, 8) : "—"}</td><td>{row.ok ? Number(row.usage?.inputTokens || 0)+Number(row.usage?.outputTokens || 0) : <code className="ai2-error-code">{row.error}</code>}</td></tr>)}
         </tbody></table></div>
+        {comparison.some((row) => !row.ok) ? <div className="ai2-benchmark-alert"><strong>Diagnóstico de execução</strong><span>O modelo com erro não entra no ranking até concluir uma execução válida. A rota produtiva permanece inalterada.</span></div> : null}
       </div>}
     </article>
 
