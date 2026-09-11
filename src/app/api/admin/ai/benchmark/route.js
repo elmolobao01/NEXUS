@@ -32,7 +32,14 @@ async function requireRoot(request) {
   return { token, userId: profile.user_id, organizationId: profile.organization_id };
 }
 
-const PROVIDER_ENV = { google:"GEMINI_API_KEY", deepseek:"DEEPSEEK_API_KEY", openai:"OPENAI_API_KEY", cloudflare:"CLOUDFLARE_API_TOKEN", mock:null };
+const PROVIDER_ENV = {
+  google: "GEMINI_API_KEY",
+  groq: "GROQ_API_KEY",
+  deepseek: "DEEPSEEK_API_KEY",
+  openai: "OPENAI_API_KEY",
+  cloudflare: "CLOUDFLARE_API_TOKEN",
+  mock: null,
+};
 function configuredProvider(code){
   if(code === "mock") return true;
   const envName=PROVIDER_ENV[code];
