@@ -17,6 +17,12 @@ export async function executeGroq({ input, modelCode, metadata = {} }) {
     stream: false,
   };
 
+  // Qwen 3.x permite desligar o raciocínio para tarefas operacionais simples.
+  // Isso reduz latência/consumo e evita incompatibilidades com modos de reasoning.
+  if (/^qwen\/qwen3(?:\.|-)/i.test(modelCode)) {
+    body.reasoning_effort = metadata.reasoningEffort || "none";
+  }
+
   // Para os casos estruturados do Benchmark, pedimos JSON nativo quando possível.
   if (metadata.responseFormat === "json") {
     body.response_format = { type: "json_object" };
@@ -36,8 +42,19 @@ export async function executeGroq({ input, modelCode, metadata = {} }) {
   try { data = await response.json(); } catch { data = null; }
   if (!response.ok) {
     const message = data?.error?.message || data?.message || `HTTP_${response.status}`;
-    if (response.status === 429) throw new Error(`AI_GROQ_RATE_LIMIT:${message}`);
-    throw new Error(`AI_GROQ_ERROR:${message}`);
+    const requestId = response.headers.get("x-request-id") || data?.id || null;
+    const detail = [
+      `status=${response.status}`,
+      requestId ? `request_id=${requestId}` : null,
+      `message=${String(message).slice(0, 700)}`,
+    ].filter(Boolean).join(";");
+
+    if (response.status === 400) throw new Error(`AI_GROQ_BAD_REQUEST:${detail}`);
+    if (response.status === 401) throw new Error(`AI_GROQ_UNAUTHORIZED:${detail}`);
+    if (response.status === 403) throw new Error(`AI_GROQ_ACCESS_DENIED:${detail}`);
+    if (response.status === 404) throw new Error(`AI_GROQ_MODEL_NOT_FOUND:${detail}`);
+    if (response.status === 429) throw new Error(`AI_GROQ_RATE_LIMIT:${detail}`);
+    throw new Error(`AI_GROQ_ERROR:${detail}`);
   }
 
   const output = String(data?.choices?.[0]?.message?.content || "").trim();
