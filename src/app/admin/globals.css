@@ -233,3 +233,11 @@ h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 42px); letter-spacing: -0.04em
 .theme-restaurantes .activity-list small, .theme-restaurantes .client-metrics span, .theme-restaurantes .client-metrics small, .theme-restaurantes .module-placeholder p { color: #b6b6b6; }
 @media (max-width: 980px) { .login-page { grid-template-columns: 1fr; } .login-brand-panel { min-height: auto; } .client-shell { grid-template-columns: 220px minmax(0,1fr); } .client-metrics { grid-template-columns: 1fr 1fr; } .client-content-grid { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .login-form-panel { padding: 22px 15px; } .login-card { padding: 24px; } .access-type-grid { grid-template-columns: 1fr; } .client-shell { display: block; } .client-sidebar { position: static; height: auto; } .client-workspace { padding: 20px 15px; } .client-topbar, .client-hero { align-items: flex-start; flex-direction: column; } .client-top-actions { width: 100%; flex-direction: column; align-items: stretch; } .client-top-actions select { width: 100%; } .client-metrics { grid-template-columns: 1fr; } .client-hero-mark { width: 95px; height: 95px; font-size: 32px; } }
+
+
+/* PLENIUM — identidade oficial */
+.brand-logo{object-fit:contain!important;background:#fff;padding:3px;}
+.hero-logo-wrap{background:#fff!important;}
+.hero-logo{object-fit:contain!important;object-position:center!important;transform:none!important;padding:14px;}
+.login-brand-top img,.client-brand img{object-fit:contain!important;background:#fff;padding:3px;}
+.client-hero-mark img{width:100%;height:100%;object-fit:contain;}

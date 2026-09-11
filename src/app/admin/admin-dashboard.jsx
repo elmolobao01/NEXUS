@@ -41,7 +41,7 @@ export default function AdminDashboard() {
           />
           <div>
             <strong>PLENIUM</strong>
-            <span>Centro de Controle ROOT</span>
+            <span>Ecossistema de Soluções · ROOT</span>
           </div>
         </div>
 
