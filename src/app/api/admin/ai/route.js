@@ -4,6 +4,98 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+const GROQ_SMOKE_MODEL = process.env.GROQ_SMOKE_MODEL || "qwen/qwen3.8-27b";
+
+async function groqFetch(path, options = {}) {
+  const startedAt = Date.now();
+  try {
+    const res = await fetch(`${GROQ_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      cache: "no-store",
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text.slice(0, 1200) }; }
+    return { ok: res.ok, status: res.status, latencyMs: Date.now() - startedAt, data };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      latencyMs: Date.now() - startedAt,
+      data: { error: { message: error?.message || String(error) } },
+    };
+  }
+}
+
+async function runGroqSmoke() {
+  if (!GROQ_API_KEY) {
+    return {
+      ok: false, stage: "environment", code: "GROQ_API_KEY_MISSING",
+      message: "GROQ_API_KEY não está configurada neste deployment.", model: GROQ_SMOKE_MODEL,
+    };
+  }
+
+  const models = await groqFetch("/models", { method: "GET" });
+  if (!models.ok) {
+    return {
+      ok: false, stage: "models_endpoint", code: "GROQ_MODELS_FAILED",
+      message: models.data?.error?.message || "A Groq recusou a consulta ao catálogo de modelos.",
+      groqHttpStatus: models.status, latencyMs: models.latencyMs, model: GROQ_SMOKE_MODEL,
+      groqError: models.data?.error || models.data || null,
+    };
+  }
+
+  const availableModels = Array.isArray(models.data?.data) ? models.data.data.map((item) => item?.id).filter(Boolean) : [];
+  if (!availableModels.includes(GROQ_SMOKE_MODEL)) {
+    return {
+      ok: false, stage: "model_resolution", code: "GROQ_MODEL_NOT_AVAILABLE",
+      message: `O modelo ${GROQ_SMOKE_MODEL} não foi localizado no catálogo retornado pela Groq para esta conta.`,
+      model: GROQ_SMOKE_MODEL, catalogModelCount: availableModels.length,
+      nearbyModels: availableModels.filter((id) => /qwen/i.test(id)).slice(0, 20),
+      latencyMs: models.latencyMs,
+    };
+  }
+
+  const completion = await groqFetch("/chat/completions", {
+    method: "POST",
+    body: JSON.stringify({
+      model: GROQ_SMOKE_MODEL,
+      messages: [
+        { role: "system", content: "Responda apenas JSON válido, sem markdown." },
+        { role: "user", content: 'Classifique esta solicitação em FINANCEIRO, SUPORTE, COMERCIAL ou OUTRO: "Preciso da segunda via do boleto deste mês." Responda com as chaves categoria e justificativa.' },
+      ],
+      temperature: 0,
+      max_tokens: 180,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!completion.ok) {
+    return {
+      ok: false, stage: "chat_completions", code: "GROQ_COMPLETION_FAILED",
+      message: completion.data?.error?.message || "A chamada de Chat Completions da Groq falhou.",
+      groqHttpStatus: completion.status, model: GROQ_SMOKE_MODEL,
+      catalogModelCount: availableModels.length, modelsLatencyMs: models.latencyMs,
+      completionLatencyMs: completion.latencyMs, groqError: completion.data?.error || completion.data || null,
+    };
+  }
+
+  return {
+    ok: true, stage: "completed", code: "GROQ_SMOKE_OK",
+    message: "Conexão direta com a Groq concluída com sucesso.", model: GROQ_SMOKE_MODEL,
+    modelAvailable: true, catalogModelCount: availableModels.length, modelsLatencyMs: models.latencyMs,
+    completionLatencyMs: completion.latencyMs, usage: completion.data?.usage || null,
+    output: completion.data?.choices?.[0]?.message?.content ?? null,
+  };
+}
+
 function json(message, status, extra = {}) {
   return NextResponse.json({ message, ...extra }, { status });
 }
@@ -199,10 +291,18 @@ export async function PATCH(request) {
 export async function POST(request) {
   const ctx = await requireRoot(request);
   if (!ctx) return json("Acesso ROOT necessário.", 403);
-  if (!SERVICE_ROLE) return json("Configure SUPABASE_SERVICE_ROLE_KEY para editar o catálogo de IA.", 503);
 
   let body;
   try { body = await request.json(); } catch { return json("JSON inválido.", 400); }
+
+  // v0.7.5.1: smoke test usa a mesma autenticação ROOT já validada pelo Console.
+  // Não exige service role e não altera catálogo, rotas ou consumo produtivo.
+  if (body?.action === "groq_smoke") {
+    const result = await runGroqSmoke();
+    return NextResponse.json(result, { status: 200 });
+  }
+
+  if (!SERVICE_ROLE) return json("Configure SUPABASE_SERVICE_ROLE_KEY para editar o catálogo de IA.", 503);
 
   if (body?.entity === "route") {
     const payload = {
