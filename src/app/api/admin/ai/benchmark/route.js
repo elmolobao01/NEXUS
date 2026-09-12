@@ -65,11 +65,45 @@ function parseJsonOutput(output){
   try { return { valid:true, value:JSON.parse(clean) }; } catch { return { valid:false, value:null }; }
 }
 function clamp(v){ return Math.max(0,Math.min(100,Number(v||0))); }
-function autoEvaluate(caseCode, output){
+function autoEvaluate(caseCode, output, evaluationSpec = null){
   const text=safeText(output);
   const lower=text.toLowerCase();
   const parsed=parseJsonOutput(output);
   let accuracy=0, adherence=0, structure=0, details=[];
+
+  // v0.8: avaliador declarativo por caso. Permite ampliar a bateria sem alterar código.
+  if (evaluationSpec && typeof evaluationSpec === "object") {
+    const must = Array.isArray(evaluationSpec.must_contain) ? evaluationSpec.must_contain : [];
+    const anyGroups = Array.isArray(evaluationSpec.any_of) ? evaluationSpec.any_of : [];
+    const jsonFields = Array.isArray(evaluationSpec.json_fields) ? evaluationSpec.json_fields : [];
+    const exact = evaluationSpec.json_exact && typeof evaluationSpec.json_exact === "object" ? evaluationSpec.json_exact : {};
+    const checks = [];
+    for (const term of must) checks.push({ ok: lower.includes(String(term).toLowerCase()), label: `Contém: ${term}` });
+    for (const group of anyGroups) {
+      const values = Array.isArray(group) ? group : [group];
+      checks.push({ ok: values.some(v => lower.includes(String(v).toLowerCase())), label: `Um de: ${values.join(" / ")}` });
+    }
+    let jsonOk = true;
+    if (jsonFields.length || Object.keys(exact).length) {
+      jsonOk = parsed.valid && parsed.value && !Array.isArray(parsed.value);
+      checks.push({ ok: jsonOk, label: "JSON válido" });
+      if (jsonOk) {
+        for (const field of jsonFields) checks.push({ ok: Object.prototype.hasOwnProperty.call(parsed.value, field), label: `Campo JSON: ${field}` });
+        for (const [field, expected] of Object.entries(exact)) {
+          const actual = parsed.value?.[field];
+          checks.push({ ok: String(actual ?? "").trim().toLowerCase() === String(expected).trim().toLowerCase(), label: `${field}=${expected}` });
+        }
+      }
+    }
+    const passedChecks = checks.filter(x => x.ok).length;
+    accuracy = checks.length ? (passedChecks / checks.length) * 100 : (text.trim().length ? 100 : 0);
+    adherence = evaluationSpec.max_chars ? (text.length <= Number(evaluationSpec.max_chars) ? 100 : 60) : 100;
+    structure = (jsonFields.length || Object.keys(exact).length) ? (jsonOk ? 100 : 0) : (text.trim().length ? 100 : 0);
+    details = checks.map(x => `${x.ok ? "✓" : "✗"} ${x.label}`);
+    if (evaluationSpec.max_chars) details.push(`${text.length}/${evaluationSpec.max_chars} caracteres`);
+    const score=(clamp(accuracy)*0.60)+(clamp(adherence)*0.20)+(clamp(structure)*0.20);
+    return { score:Number(score.toFixed(2)), passed:score>=80, accuracy:Number(clamp(accuracy).toFixed(2)), adherence:Number(clamp(adherence).toFixed(2)), structure:Number(clamp(structure).toFixed(2)), details };
+  }
 
   if(caseCode === "TXT_CLASSIFY_01"){
     if(!parsed.valid || !parsed.value || Array.isArray(parsed.value)){
@@ -148,7 +182,7 @@ async function backfillAutoScores(runs, authToken){
   if(!pending.length) return runs;
   const computed=new Map();
   for(const run of pending){
-    const auto=autoEvaluate(run.case.code, run.output_json ?? run.output_snapshot);
+    const auto=autoEvaluate(run.case.code, run.output_json ?? run.output_snapshot, run.case?.evaluation_spec);
     computed.set(run.id,auto);
     await rest(`nexus_ai_benchmark_runs?id=eq.${encodeURIComponent(run.id)}`,{
       method:"PATCH",
@@ -208,7 +242,7 @@ export async function GET(request) {
   if (!ctx) return json("Acesso ROOT necessário.", 403);
   const [cases, runs, models] = await Promise.all([
     rest("nexus_ai_benchmark_cases?select=*&active=eq.true&order=sort_order.asc,title.asc", {}, ctx.token),
-    rest("nexus_ai_benchmark_runs?select=*,case:nexus_ai_benchmark_cases(code,title,category),operation:nexus_ai_operations(status,provider_id,model_id)&order=created_at.desc&limit=250", {}, ctx.token),
+    rest("nexus_ai_benchmark_runs?select=*,case:nexus_ai_benchmark_cases(code,title,category,evaluation_spec),operation:nexus_ai_operations(status,provider_id,model_id)&order=created_at.desc&limit=250", {}, ctx.token),
     rest("nexus_ai_models?select=id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active)&active=eq.true&order=level.asc,name.asc", {}, ctx.token),
   ]);
   if (!cases.ok || !runs.ok) return json("Execute as migrations do Benchmark PLENIUM AI.", 500, { details: cases.data || runs.data });
@@ -240,7 +274,7 @@ export async function POST(request) {
   let body; try { body = await request.json(); } catch { return json("JSON inválido.", 400); }
   if (!body?.caseId || !body?.prompt) return json("caseId e prompt são obrigatórios.", 400);
 
-  const caseRow=(await rest(`nexus_ai_benchmark_cases?select=id,code&id=eq.${encodeURIComponent(body.caseId)}&limit=1`,{},ctx.token)).data?.[0];
+  const caseRow=(await rest(`nexus_ai_benchmark_cases?select=id,code,evaluation_spec&id=eq.${encodeURIComponent(body.caseId)}&limit=1`,{},ctx.token)).data?.[0];
   if (!caseRow) return json("Caso de benchmark não encontrado.", 404);
 
   // v0.7.4: falhas podem ocorrer antes da criação de nexus_ai_operations
@@ -296,7 +330,7 @@ export async function POST(request) {
   const failed = body.failed === true || operation.status === "FAILED";
   const outputSnapshot=failed ? null : safeText(body.output);
   const parsed=failed ? { valid:false, value:null } : parseJsonOutput(body.output);
-  const auto=failed ? null : autoEvaluate(caseRow?.code, body.output);
+  const auto=failed ? null : autoEvaluate(caseRow?.code, body.output, caseRow?.evaluation_spec);
   const errorMessage = failed ? String(body.errorMessage || body.error || operation.error_code || "AI_EXECUTION_FAILED").slice(0,2000) : null;
   const errorCode = failed ? String(body.errorCode || operation.error_code || "AI_EXECUTION_FAILED").slice(0,500) : null;
   const httpStatus = failed && body.httpStatus != null ? Number(body.httpStatus) : null;
