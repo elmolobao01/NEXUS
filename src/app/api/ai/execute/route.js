@@ -30,13 +30,26 @@ async function sb(path,{apiKey=SERVICE,authToken=SERVICE,method="GET",body,prefe
 }
 async function context(request){
   const token=bearer(request) || request.cookies.get("nexus_access_token")?.value || null;
-  if(!token||!URL||!PUBLIC_KEY||!SERVICE) return null;
+  if(!token || !URL || !PUBLIC_KEY) return null;
+
+  // Alinha o AI Router ao mesmo fluxo de autenticação já validado no Console ROOT:
+  // 1) valida o JWT no Supabase Auth; 2) busca explicitamente o perfil do mesmo user_id.
+  const authResponse = await fetch(`${URL}/auth/v1/user`, {
+    headers: supabaseHeaders({ apiKey: PUBLIC_KEY, authToken: token }),
+    cache: "no-store",
+  });
+  if(!authResponse.ok) return null;
+  let authUser=null; try{ authUser=await authResponse.json(); }catch{}
+  if(!authUser?.id) return null;
+
+  const profileApiKey = SERVICE || PUBLIC_KEY;
+  const profileAuth = SERVICE || token;
   const rows=await sb(
-    "nexus_user_profiles?select=user_id,organization_id,profile,active&active=eq.true&limit=1",
-    {apiKey:PUBLIC_KEY,authToken:token}
+    `nexus_user_profiles?select=user_id,organization_id,profile,active&user_id=eq.${encodeURIComponent(authUser.id)}&active=eq.true&limit=1`,
+    {apiKey:profileApiKey,authToken:profileAuth}
   );
   const p=rows?.[0];
-  return p?.user_id&&p?.organization_id
+  return p?.user_id && p?.organization_id
     ? {token,userId:p.user_id,organizationId:p.organization_id,profile:p.profile}
     : null;
 }
