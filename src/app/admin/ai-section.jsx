@@ -187,16 +187,16 @@ function BenchmarkPanel({ onError }) {
 
   return <section className="ai2-benchmark-grid">
     <article className="ai2-panel ai2-benchmark-runner">
-      <header><div><span>BENCHMARK COMPETITIVO · v0.8</span><h3>Qualidade × custo × latência por capacidade</h3></div></header>
+      <header><div><span>BENCHMARK COMPETITIVO · v0.8.1</span><h3>Qualidade × custo × latência por capacidade</h3></div></header>
       <div className="ai2-benchmark-controls">
         <label>Caso de teste<select value={selectedId} onChange={(e) => selectCase(e.target.value)}>{bench.cases.map((item) => <option key={item.id} value={item.id}>{item.category} · {item.title}</option>)}</select></label>
         <label>Nível<select value={level} onChange={(e) => { setLevel(Number(e.target.value)); setComparison([]); }}>{levels.map((x) => <option key={x.id} value={x.id}>{x.name} — {x.label}</option>)}</select></label>
       </div>
-      {selectedCase && <div className="ai2-benchmark-info"><strong>{selectedCase.description}</strong><small>Esperado: {selectedCase.expected_format || "—"}</small><small>Critério: {selectedCase.evaluation_notes || "—"}</small><small>Modelos ativos neste nível: {eligibleModels.length}</small></div>}
+      {selectedCase && <div className="ai2-benchmark-info"><strong>{selectedCase.description}</strong><small>Esperado: {selectedCase.expected_format || "—"}</small><small>Critério: {selectedCase.evaluation_notes || "—"}</small><small>IAs competitivas neste nível: {eligibleModels.length} · {eligibleModels.map((m) => `${m.provider?.code || "provider"}/${m.code}`).join(" · ")}</small></div>}
       <label className="ai2-benchmark-prompt">Prompt<textarea rows="10" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></label>
       <div className="ai2-benchmark-actions">
         <button className="root2-button primary" disabled={executing || comparing || !selectedCase} onClick={executeBenchmark}>{executing ? "Executando…" : "▶ Executar pelo Router"}</button>
-        <button className="root2-button" disabled={executing || comparing || !eligibleModels.length} onClick={compareModels}>{comparing ? "Comparando…" : `Comparar modelos (${eligibleModels.length})`}</button>
+        <button className="root2-button" disabled={executing || comparing || !eligibleModels.length} onClick={compareModels}>{comparing ? "Comparando…" : `Comparar IAs (${eligibleModels.length})`}</button>
       </div>
 
       {result && <div className="ai2-benchmark-result">
@@ -308,7 +308,7 @@ export default function AISection() {
     <div className="ai2-shell">
       <section className="ai2-hero">
         <div>
-          <span>PLENIUM AI ENGINE · v0.7.5.1</span>
+          <span>PLENIUM AI ENGINE · v0.8.1</span>
           <h2>Controle a inteligência e preserve a margem.</h2>
           <p>Administre providers, modelos, níveis L0–L4, rotas, consumo, limites e custo real sem expor fornecedores aos clientes.</p>
         </div>
