@@ -244,6 +244,7 @@ export default function AISection() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("Visão geral");
   const [busy, setBusy] = useState("");
+  const [groqSmoke, setGroqSmoke] = useState(null);
   const [routeForm, setRouteForm] = useState({ operationType: "*", level: 1, modelId: "", fallbackModelId: "", minQualityScore: 0 });
   const [limitForm, setLimitForm] = useState({ organizationId: "", operationType: "*", monthlyOperations: "500", monthlyCostUsd: "", hardLimit: true });
 
@@ -283,6 +284,20 @@ export default function AISection() {
     finally { setBusy(""); }
   }
 
+  async function testGroqConnection() {
+    setBusy("groq-smoke"); setError(""); setGroqSmoke(null);
+    try {
+      const response = await fetch("/api/admin/ai", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "groq_smoke" }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "Não foi possível executar o teste Groq.");
+      setGroqSmoke(payload);
+    } catch (err) { setError(err.message); }
+    finally { setBusy(""); }
+  }
+
   const providerMap = useMemo(() => Object.fromEntries((data?.providers || []).map((item) => [item.id, item])), [data]);
   const modelMap = useMemo(() => Object.fromEntries((data?.models || []).map((item) => [item.id, item])), [data]);
   const organizationMap = useMemo(() => Object.fromEntries((data?.organizations || []).map((item) => [item.id, item])), [data]);
@@ -293,7 +308,7 @@ export default function AISection() {
     <div className="ai2-shell">
       <section className="ai2-hero">
         <div>
-          <span>PLENIUM AI ENGINE · v0.7</span>
+          <span>PLENIUM AI ENGINE · v0.7.5.1</span>
           <h2>Controle a inteligência e preserve a margem.</h2>
           <p>Administre providers, modelos, níveis L0–L4, rotas, consumo, limites e custo real sem expor fornecedores aos clientes.</p>
         </div>
@@ -336,7 +351,7 @@ export default function AISection() {
 
       {tab === "Benchmark" && <BenchmarkPanel onError={setError} />}
 
-      {tab === "Providers" && <section className="ai2-panel"><header><div><span>FORNECEDORES</span><h3>Providers conectáveis</h3><p>Ativação do catálogo, credencial e prontidão são estados independentes. Um provider sem credencial não participa do Benchmark nem do Router produtivo.</p></div></header><div className="ai2-table-wrap"><table><thead><tr><th>Provider</th><th>Código</th><th>Prioridade</th><th>Credencial</th><th>Benchmark</th><th>Produção</th><th>Catálogo</th><th>Ação</th></tr></thead><tbody>{(data?.providers || []).map((item) => { const r=item.readiness||{}; return <tr key={item.id}><td><strong>{item.name}</strong></td><td>{item.code}</td><td>{item.priority}</td><td><span className={`ai2-status ${r.configured ? "on" : "off"}`}>{r.configured ? "Configurado" : "Sem credencial"}</span>{!r.configured && r.credentialEnv ? <small>{r.credentialEnv}</small> : null}</td><td><span className={`ai2-status ${r.benchmarkEnabled ? "on" : "off"}`}>{r.benchmarkEnabled ? "Habilitado" : "Bloqueado"}</span></td><td><span className={`ai2-status ${r.productionEnabled ? "on" : "off"}`}>{r.productionEnabled ? "Habilitada" : "Bloqueada"}</span></td><td><span className={`ai2-status ${item.active ? "on" : "off"}`}>{item.active ? "Ativo" : "Inativo"}</span></td><td><button disabled={busy === `provider:${item.id}` || (!item.active && !r.configured)} title={!item.active && !r.configured ? `Configure ${r.credentialEnv || "a credencial"} antes de ativar` : ""} onClick={() => patch("provider", item.id, { active: !item.active })}>{item.active ? "Desativar" : "Ativar"}</button></td></tr>})}</tbody></table></div></section>}
+      {tab === "Providers" && <section className="ai2-panel"><header><div><span>FORNECEDORES</span><h3>Providers conectáveis</h3><p>Ativação do catálogo, credencial e prontidão são estados independentes. Um provider sem credencial não participa do Benchmark nem do Router produtivo.</p></div></header><div className="ai2-table-wrap"><table><thead><tr><th>Provider</th><th>Código</th><th>Prioridade</th><th>Credencial</th><th>Benchmark</th><th>Produção</th><th>Catálogo</th><th>Ação</th></tr></thead><tbody>{(data?.providers || []).map((item) => { const r=item.readiness||{}; return <tr key={item.id}><td><strong>{item.name}</strong></td><td>{item.code}</td><td>{item.priority}</td><td><span className={`ai2-status ${r.configured ? "on" : "off"}`}>{r.configured ? "Configurado" : "Sem credencial"}</span>{!r.configured && r.credentialEnv ? <small>{r.credentialEnv}</small> : null}</td><td><span className={`ai2-status ${r.benchmarkEnabled ? "on" : "off"}`}>{r.benchmarkEnabled ? "Habilitado" : "Bloqueado"}</span></td><td><span className={`ai2-status ${r.productionEnabled ? "on" : "off"}`}>{r.productionEnabled ? "Habilitada" : "Bloqueada"}</span></td><td><span className={`ai2-status ${item.active ? "on" : "off"}`}>{item.active ? "Ativo" : "Inativo"}</span></td><td><div className="ai2-actions"><button disabled={busy === `provider:${item.id}` || (!item.active && !r.configured)} title={!item.active && !r.configured ? `Configure ${r.credentialEnv || "a credencial"} antes de ativar` : ""} onClick={() => patch("provider", item.id, { active: !item.active })}>{item.active ? "Desativar" : "Ativar"}</button>{item.code === "groq" ? <button disabled={busy === "groq-smoke" || !r.configured} onClick={testGroqConnection}>{busy === "groq-smoke" ? "Testando…" : "Testar conexão"}</button> : null}</div></td></tr>})}</tbody></table></div>{groqSmoke ? <div className={groqSmoke.ok ? "ai2-warning" : "ai2-error"} style={{ marginTop: 16 }}><strong>{groqSmoke.ok ? "Groq conectado" : "Falha no teste Groq"}</strong><div style={{ marginTop: 8 }}>Etapa: <code>{groqSmoke.stage}</code> · Código: <code>{groqSmoke.code}</code> · Modelo: <code>{groqSmoke.model || "—"}</code></div><div style={{ marginTop: 6 }}>{groqSmoke.message}</div>{groqSmoke.groqHttpStatus ? <div style={{ marginTop: 6 }}>HTTP Groq: <strong>{groqSmoke.groqHttpStatus}</strong></div> : null}{groqSmoke.completionLatencyMs != null ? <div style={{ marginTop: 6 }}>Latência Chat Completion: <strong>{Number(groqSmoke.completionLatencyMs).toLocaleString("pt-BR")} ms</strong></div> : null}{Array.isArray(groqSmoke.nearbyModels) && groqSmoke.nearbyModels.length ? <div style={{ marginTop: 6 }}>Modelos Qwen disponíveis: <code>{groqSmoke.nearbyModels.join(", ")}</code></div> : null}{groqSmoke.output ? <pre style={{ whiteSpace: "pre-wrap", marginTop: 10 }}>{groqSmoke.output}</pre> : null}</div> : null}</section>}
 
       {tab === "Modelos" && <section className="ai2-panel"><header><div><span>CATÁLOGO</span><h3>Modelos e custo de inferência</h3></div></header><div className="ai2-table-wrap"><table><thead><tr><th>Modelo</th><th>Provider</th><th>Nível</th><th>Input / 1M</th><th>Output / 1M</th><th>Status</th></tr></thead><tbody>{(data?.models || []).map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.code}</small></td><td>{item.provider?.name || providerMap[item.provider_id]?.name || "—"}</td><td><span className="ai2-level-pill">{levelName(item.level)}</span></td><td>{usd(item.input_cost_per_million, 3)}</td><td>{usd(item.output_cost_per_million, 3)}</td><td><div className="ai2-actions"><button onClick={() => { const input = window.prompt("Custo de entrada por 1M tokens (USD)", item.input_cost_per_million); if (input === null) return; const output = window.prompt("Custo de saída por 1M tokens (USD)", item.output_cost_per_million); if (output === null) return; patch("model", item.id, { input_cost_per_million: Number(input), output_cost_per_million: Number(output) }); }}>Editar custos</button><button className={item.active ? "ai2-toggle on" : "ai2-toggle"} disabled={busy === `model:${item.id}`} onClick={() => patch("model", item.id, { active: !item.active })}>{item.active ? "Ativo" : "Inativo"}</button></div></td></tr>)}</tbody></table></div></section>}
 
