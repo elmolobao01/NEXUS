@@ -9,22 +9,33 @@ export async function executeGroq({ input, modelCode, metadata = {} }) {
   if (!apiKey) throw new Error("AI_GROQ_API_KEY_NOT_CONFIGURED");
   if (!modelCode) throw new Error("AI_GROQ_MODEL_NOT_CONFIGURED");
 
+  const wantsJson = metadata.responseFormat === "json";
+  const messages = [];
+  if (wantsJson) {
+    // JSON Object Mode exige instrução explícita para produzir JSON.
+    // Reproduz o mesmo padrão do smoke test que já foi validado em produção.
+    messages.push({ role: "system", content: "Responda apenas JSON válido, sem markdown." });
+  }
+  messages.push({ role: "user", content: textOf(input) });
+
   const body = {
     model: modelCode,
-    messages: [{ role: "user", content: textOf(input) }],
-    temperature: Number.isFinite(Number(metadata.temperature)) ? Number(metadata.temperature) : 0.2,
-    max_completion_tokens: Number.isFinite(Number(metadata.maxOutputTokens)) ? Number(metadata.maxOutputTokens) : 2048,
+    messages,
+    temperature: Number.isFinite(Number(metadata.temperature))
+      ? Number(metadata.temperature)
+      : (metadata.benchmark ? 0 : 0.2),
+    // Mantém paridade com o smoke test Groq validado no Console.
+    max_tokens: Number.isFinite(Number(metadata.maxOutputTokens)) ? Number(metadata.maxOutputTokens) : 2048,
     stream: false,
   };
 
-  // Qwen 3.x permite desligar o raciocínio para tarefas operacionais simples.
-  // Isso reduz latência/consumo e evita incompatibilidades com modos de reasoning.
-  if (/^qwen\/qwen3(?:\.|-)/i.test(modelCode)) {
-    body.reasoning_effort = metadata.reasoningEffort || "none";
+  // Não força reasoning_effort por padrão. O Qwen 3.8 já usa modo não-reasoning
+  // como padrão e o smoke test aprovado não envia este parâmetro.
+  if (metadata.reasoningEffort && /^qwen\/qwen3(?:\.|-)/i.test(modelCode)) {
+    body.reasoning_effort = metadata.reasoningEffort;
   }
 
-  // Para os casos estruturados do Benchmark, pedimos JSON nativo quando possível.
-  if (metadata.responseFormat === "json") {
+  if (wantsJson) {
     body.response_format = { type: "json_object" };
   }
 
