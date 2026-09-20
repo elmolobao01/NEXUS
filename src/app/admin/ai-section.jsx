@@ -67,7 +67,8 @@ function BenchmarkPanel({ onError }) {
   function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
   function isRateLimit(response, payload) {
-    return response?.status === 429 || String(payload?.error || "").includes("RATE_LIMIT");
+    const blob = JSON.stringify(payload || {});
+    return response?.status === 429 || payload?.rateLimited === true || payload?.errorCode === "RATE_LIMITED" || /RATE_LIMIT|TOO LARGE|TPM|RPM|RPD|TPD/i.test(blob);
   }
 
   async function runCaseModel(testCase, casePrompt, caseLevel, targetModelCode = null, options = {}) {
@@ -96,8 +97,11 @@ function BenchmarkPanel({ onError }) {
       });
       payload = await response.json();
       if (response.ok || !isRateLimit(response, payload) || attempt >= maxRateLimitRetries) break;
+      // Permanent/oversized quota errors do not improve by retrying.
+      if (payload?.retryable === false) break;
       rateLimitAttempts += 1;
-      await sleep(retryDelays[Math.min(attempt, retryDelays.length - 1)]);
+      const retryAfter = Number(response.headers.get("retry-after"));
+      await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : retryDelays[Math.min(attempt, retryDelays.length - 1)]);
     }
     if (!response.ok) {
       // HTTP 429 is capacity exhaustion, not a quality failure. Do not persist it as FAILED.
