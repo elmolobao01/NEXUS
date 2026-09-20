@@ -329,6 +329,12 @@ export async function POST(request) {
   const caseRow=(await rest(`nexus_ai_benchmark_cases?select=id,code,evaluation_spec&id=eq.${encodeURIComponent(body.caseId)}&limit=1`,{},ctx.token)).data?.[0];
   if (!caseRow) return json("Caso de benchmark não encontrado.", 404);
 
+  // v0.8.5: rate limit is provider capacity, never a quality failure.
+  // Do not persist it as FAILED in benchmark history.
+  if (body.rateLimited === true || body.errorCode === "RATE_LIMITED" || Number(body.httpStatus) === 429) {
+    return NextResponse.json({ ok: true, rateLimited: true, persisted: false }, { status: 202 });
+  }
+
   // v0.7.4: falhas podem ocorrer antes da criação de nexus_ai_operations
   // (ex.: resolução/autorização de modelo). Nesses casos persistimos a tentativa
   // diretamente no benchmark com operation_id nulo e diagnóstico completo.
