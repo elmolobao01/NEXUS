@@ -194,7 +194,7 @@ function BenchmarkPanel({ onError }) {
             rows.push({ caseId: testCase.id, caseTitle: testCase.title, category: testCase.category, model: model.code, provider: model.provider?.code, ok: true, auto: payload?.auto, latencyMs: payload?.latencyMs, costUsd: payload?.usage?.costUsd });
           } catch (err) {
             const d = err?.diagnostics || {};
-            rows.push({ caseId: testCase.id, caseTitle: testCase.title, category: testCase.category, model: d.model || model.code, provider: d.provider || model.provider?.code, ok: false, error: err.message, httpStatus: d.httpStatus || null });
+            rows.push({ caseId: testCase.id, caseTitle: testCase.title, category: testCase.category, model: d.model || model.code, provider: d.provider || model.provider?.code, ok: false, error: err.message, errorCode: d.error || d.errorCode || "AI_EXECUTION_FAILED", stage: d.stage || null, httpStatus: d.httpStatus || null, latencyMs: d.latencyMs || null, runId: d.runId || null, persisted: Boolean(d.persisted) });
           }
           done += 1;
           setBatchProgress({ done, total, current: `${done}/${total} execuções concluídas` });
@@ -224,6 +224,29 @@ function BenchmarkPanel({ onError }) {
     } catch (err) { onError(err.message); }
   }
 
+  const batchDiagnostics = useMemo(() => {
+    if (!batchResults.length) return { total: 0, success: 0, failed: 0, byModel: [], byCapability: [], failures: [] };
+    const summarize = (keyFn) => {
+      const map = new Map();
+      for (const row of batchResults) {
+        const key = keyFn(row) || "—";
+        const item = map.get(key) || { key, total: 0, success: 0, failed: 0 };
+        item.total += 1;
+        if (row.ok) item.success += 1; else item.failed += 1;
+        map.set(key, item);
+      }
+      return [...map.values()].map((x) => ({ ...x, successRate: x.total ? (x.success / x.total) * 100 : 0 }));
+    };
+    return {
+      total: batchResults.length,
+      success: batchResults.filter((x) => x.ok).length,
+      failed: batchResults.filter((x) => !x.ok).length,
+      byModel: summarize((x) => `${x.provider || "—"}/${x.model || "—"}`),
+      byCapability: summarize((x) => x.category || "Outros"),
+      failures: batchResults.filter((x) => !x.ok),
+    };
+  }, [batchResults]);
+
   function renderOutput(output) {
     return typeof output === "string" ? output : JSON.stringify(output, null, 2);
   }
@@ -232,7 +255,7 @@ function BenchmarkPanel({ onError }) {
 
   return <section className="ai2-benchmark-grid">
     <article className="ai2-panel ai2-benchmark-runner">
-      <header><div><span>BENCHMARK COMPETITIVO · v0.8.2</span><h3>Qualidade × custo × latência por capacidade</h3></div></header>
+      <header><div><span>BENCHMARK COMPETITIVO · v0.8.3</span><h3>Qualidade × custo × latência por capacidade</h3></div></header>
       <div className="ai2-benchmark-controls">
         <label>Caso de teste<select value={selectedId} onChange={(e) => selectCase(e.target.value)}>{bench.cases.map((item) => <option key={item.id} value={item.id}>{item.category} · {item.title}</option>)}</select></label>
         <label>Nível<select value={level} onChange={(e) => { setLevel(Number(e.target.value)); setComparison([]); }}>{levels.map((x) => <option key={x.id} value={x.id}>{x.name} — {x.label}</option>)}</select></label>
@@ -245,6 +268,24 @@ function BenchmarkPanel({ onError }) {
         <button className="root2-button" disabled={executing || comparing || batchRunning || !eligibleModels.length || !eligibleCases.length} onClick={executeFullBatch}>{batchRunning ? `Bateria ${batchProgress.done}/${batchProgress.total}` : `Executar bateria completa (${eligibleCases.length * eligibleModels.length})`}</button>
       </div>
       {(batchRunning || batchResults.length) && <div className="ai2-benchmark-info"><strong>{batchRunning ? "Bateria competitiva em execução" : "Bateria competitiva concluída"}</strong><small>{batchProgress.current}</small><small>{batchResults.length ? `${batchResults.filter((x) => x.ok).length} sucesso(s) · ${batchResults.filter((x) => !x.ok).length} falha(s)` : `0/${batchProgress.total} concluídas`}</small></div>}
+
+      {!!batchResults.length && <div className="ai2-comparison-block">
+        <h4>Diagnóstico da bateria</h4>
+        <div className="ai2-benchmark-result-meta">
+          <span><b>Execuções</b>{batchDiagnostics.total}</span><span><b>SUCCESS</b>{batchDiagnostics.success}</span><span><b>FAILED</b>{batchDiagnostics.failed}</span><span><b>Taxa de sucesso</b>{pct(batchDiagnostics.total ? (batchDiagnostics.success / batchDiagnostics.total) * 100 : 0)}</span>
+        </div>
+        <h4>Taxa de sucesso por modelo</h4>
+        <div className="ai2-table-wrap"><table><thead><tr><th>Modelo</th><th>Execuções</th><th>SUCCESS</th><th>FAILED</th><th>Taxa</th></tr></thead><tbody>
+          {batchDiagnostics.byModel.map((x) => <tr key={x.key}><td><strong>{x.key}</strong></td><td>{x.total}</td><td>{x.success}</td><td>{x.failed}</td><td>{pct(x.successRate)}</td></tr>)}
+        </tbody></table></div>
+        <h4>Taxa de sucesso por capacidade</h4>
+        <div className="ai2-table-wrap"><table><thead><tr><th>Capacidade</th><th>Execuções</th><th>SUCCESS</th><th>FAILED</th><th>Taxa</th></tr></thead><tbody>
+          {batchDiagnostics.byCapability.map((x) => <tr key={x.key}><td><strong>{x.key}</strong></td><td>{x.total}</td><td>{x.success}</td><td>{x.failed}</td><td>{pct(x.successRate)}</td></tr>)}
+        </tbody></table></div>
+        {batchDiagnostics.failures.length ? <><h4>Falhas técnicas da bateria</h4><div className="ai2-table-wrap"><table><thead><tr><th>Caso</th><th>Capacidade</th><th>Modelo</th><th>HTTP</th><th>Código / estágio</th><th>Motivo</th></tr></thead><tbody>
+          {batchDiagnostics.failures.map((row, index) => <tr key={`${row.caseId}-${row.model}-${index}`} className="ai2-row-error"><td><strong>{row.caseTitle || row.caseId}</strong>{row.runId ? <small>run: {row.runId}</small> : null}</td><td>{row.category || "—"}</td><td><strong>{row.model || "—"}</strong><small>{row.provider || "—"}</small></td><td>{row.httpStatus || "—"}</td><td><code className="ai2-error-code">{row.errorCode || "—"}{row.stage ? ` · ${row.stage}` : ""}</code></td><td><code className="ai2-error-code">{row.error || "Falha de execução"}</code>{row.persisted ? <small>Registrada no histórico</small> : null}</td></tr>)}
+        </tbody></table></div></> : <div className="ai2-benchmark-alert"><strong>Nenhuma falha técnica</strong><span>Todas as execuções da bateria foram concluídas com sucesso.</span></div>}
+      </div>}
 
       {result && <div className="ai2-benchmark-result">
         <div className="ai2-benchmark-result-meta">
