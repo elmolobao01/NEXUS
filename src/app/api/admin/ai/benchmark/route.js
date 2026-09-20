@@ -237,6 +237,57 @@ function buildRanking(runs){
   }).sort((a,b)=>b.rankingScore-a.rankingScore);
 }
 
+function buildCapabilityMatrix(runs){
+  const latestByCaseModel = new Map();
+  for (const run of runs || []) {
+    if (!run?.case?.code || !run?.model_code || run.run_status === "FAILED") continue;
+    if ((run.provider_code || "").toLowerCase() === "mock") continue;
+    const key = `${run.case.code}::${run.model_code}`;
+    if (!latestByCaseModel.has(key)) latestByCaseModel.set(key, run);
+  }
+
+  const byCapability = new Map();
+  for (const run of latestByCaseModel.values()) {
+    const capability = run.case?.category || "Outros";
+    const model = run.model_code;
+    const bucket = byCapability.get(capability) || new Map();
+    const item = bucket.get(model) || {
+      model, provider: run.provider_code, runs: 0, quality: 0, passes: 0, cost: 0, latency: 0,
+    };
+    const effective = run.score?.final_score != null ? Number(run.score.final_score) : Number(run.auto_score || 0);
+    item.runs += 1;
+    item.quality += effective;
+    item.passes += run.auto_pass === true ? 1 : 0;
+    item.cost += Number(run.cost_usd || 0);
+    item.latency += Number(run.latency_ms || 0);
+    bucket.set(model, item);
+    byCapability.set(capability, bucket);
+  }
+
+  const result = [];
+  for (const [capability, bucket] of byCapability.entries()) {
+    const rows = [...bucket.values()].map(x => ({
+      ...x,
+      avgQuality: x.runs ? x.quality / x.runs : 0,
+      passRate: x.runs ? (x.passes / x.runs) * 100 : 0,
+      avgCost: x.runs ? x.cost / x.runs : 0,
+      avgLatency: x.runs ? x.latency / x.runs : 0,
+    }));
+    const positiveCosts = rows.filter(x => x.avgCost > 0).map(x => x.avgCost);
+    const positiveLatencies = rows.filter(x => x.avgLatency > 0).map(x => x.avgLatency);
+    const minCost = positiveCosts.length ? Math.min(...positiveCosts) : 1;
+    const minLatency = positiveLatencies.length ? Math.min(...positiveLatencies) : 1;
+    const ranked = rows.map(x => {
+      const costScore = x.avgCost > 0 ? Math.min(100, (minCost / x.avgCost) * 100) : 100;
+      const latencyScore = x.avgLatency > 0 ? Math.min(100, (minLatency / x.avgLatency) * 100) : 100;
+      const rankingScore = (x.avgQuality * 0.70) + (costScore * 0.20) + (latencyScore * 0.10);
+      return { ...x, rankingScore: Number(rankingScore.toFixed(2)) };
+    }).sort((a,b) => b.rankingScore - a.rankingScore);
+    result.push({ capability, winner: ranked[0] || null, models: ranked });
+  }
+  return result.sort((a,b) => a.capability.localeCompare(b.capability, "pt-BR"));
+}
+
 export async function GET(request) {
   const ctx = await requireRoot(request);
   if (!ctx) return json("Acesso ROOT necessário.", 403);
@@ -264,6 +315,7 @@ export async function GET(request) {
       .map(x=>({ ...x, provider:{ ...x.provider, configured:true, benchmarkEnabled:true } })),
     runs:decoratedRuns,
     ranking:buildRanking(decoratedRuns),
+    capabilityMatrix:buildCapabilityMatrix(decoratedRuns),
   });
 }
 
