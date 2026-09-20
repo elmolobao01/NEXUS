@@ -19,13 +19,16 @@ function levelName(value) { return levels.find((item) => item.id === Number(valu
 
 
 function BenchmarkPanel({ onError }) {
-  const [bench, setBench] = useState({ cases: [], runs: [], models: [], ranking: [] });
+  const [bench, setBench] = useState({ cases: [], runs: [], models: [], ranking: [], capabilityMatrix: [] });
   const [loadingBench, setLoadingBench] = useState(true);
   const [selectedId, setSelectedId] = useState("");
   const [prompt, setPrompt] = useState("");
   const [level, setLevel] = useState(1);
   const [executing, setExecuting] = useState(false);
   const [comparing, setComparing] = useState(false);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0, current: "" });
+  const [batchResults, setBatchResults] = useState([]);
   const [result, setResult] = useState(null);
   const [comparison, setComparison] = useState([]);
   const [scores, setScores] = useState({ accuracy: 0, adherence: 0, quality: 0, structureScore: 0, stability: 0, notes: "" });
@@ -50,6 +53,7 @@ function BenchmarkPanel({ onError }) {
 
   const selectedCase = bench.cases.find((item) => item.id === selectedId) || null;
   const eligibleModels = bench.models.filter((item) => Number(item.level) === Number(level) && item.active && item.provider?.active);
+  const eligibleCases = bench.cases.filter((item) => Number(item.level || 1) === Number(level));
 
   function selectCase(id) {
     const item = bench.cases.find((x) => x.id === id);
@@ -60,19 +64,19 @@ function BenchmarkPanel({ onError }) {
     if (item) { setPrompt(item.prompt); setLevel(Number(item.level || 1)); }
   }
 
-  async function runModel(targetModelCode = null) {
-    if (!selectedCase || !prompt.trim()) return null;
-    const expectsJson = /json/i.test(selectedCase.expected_format || "");
+  async function runCaseModel(testCase, casePrompt, caseLevel, targetModelCode = null) {
+    if (!testCase || !String(casePrompt || "").trim()) return null;
+    const expectsJson = /json/i.test(testCase.expected_format || "");
     const response = await fetch("/api/ai/execute", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        operationType: selectedCase.operation_type,
-        level,
-        input: prompt,
+        operationType: testCase.operation_type,
+        level: caseLevel,
+        input: casePrompt,
         metadata: {
           benchmark: true,
-          benchmarkCaseId: selectedCase.id,
-          benchmarkCode: selectedCase.code,
+          benchmarkCaseId: testCase.id,
+          benchmarkCode: testCase.code,
           targetModelCode: targetModelCode || undefined,
           responseFormat: expectsJson ? "json" : "text",
         }
@@ -85,10 +89,10 @@ function BenchmarkPanel({ onError }) {
         const failureRecord = await fetch("/api/admin/ai/benchmark", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            caseId: selectedCase.id,
+            caseId: testCase.id,
             operationId: payload?.operationId || null,
-            prompt,
-            level,
+            prompt: casePrompt,
+            level: caseLevel,
             failed: true,
             errorCode: payload.error || "AI_EXECUTION_FAILED",
             errorMessage: payload.error || "Falha ao executar o AI Router.",
@@ -109,11 +113,15 @@ function BenchmarkPanel({ onError }) {
     }
     const record = await fetch("/api/admin/ai/benchmark", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ caseId: selectedCase.id, operationId: payload.operationId, prompt, output: payload.output, provider: payload.provider, model: payload.model, level }),
+      body: JSON.stringify({ caseId: testCase.id, operationId: payload.operationId, prompt: casePrompt, output: payload.output, provider: payload.provider, model: payload.model, level: caseLevel }),
     });
     const saved = await record.json();
     if (!record.ok) throw new Error(saved.message || "A resposta foi gerada, mas o benchmark não foi registrado.");
     return { ...payload, runId: saved.run?.id, auto: saved.auto };
+  }
+
+  async function runModel(targetModelCode = null) {
+    return runCaseModel(selectedCase, prompt, level, targetModelCode);
   }
 
   async function executeBenchmark() {
@@ -165,6 +173,43 @@ function BenchmarkPanel({ onError }) {
     finally { setComparing(false); }
   }
 
+  async function executeFullBatch() {
+    if (!eligibleCases.length || !eligibleModels.length) return;
+    const total = eligibleCases.length * eligibleModels.length;
+    setBatchRunning(true);
+    setBatchResults([]);
+    setComparison([]);
+    setResult(null);
+    setBatchProgress({ done: 0, total, current: "Preparando bateria…" });
+    onError("");
+    const rows = [];
+    let done = 0;
+    try {
+      for (const testCase of eligibleCases) {
+        const caseLevel = Number(testCase.level || level);
+        for (const model of eligibleModels) {
+          setBatchProgress({ done, total, current: `${testCase.category} · ${testCase.title} → ${model.provider?.code}/${model.code}` });
+          try {
+            const payload = await runCaseModel(testCase, testCase.prompt, caseLevel, model.code);
+            rows.push({ caseId: testCase.id, caseTitle: testCase.title, category: testCase.category, model: model.code, provider: model.provider?.code, ok: true, auto: payload?.auto, latencyMs: payload?.latencyMs, costUsd: payload?.usage?.costUsd });
+          } catch (err) {
+            const d = err?.diagnostics || {};
+            rows.push({ caseId: testCase.id, caseTitle: testCase.title, category: testCase.category, model: d.model || model.code, provider: d.provider || model.provider?.code, ok: false, error: err.message, httpStatus: d.httpStatus || null });
+          }
+          done += 1;
+          setBatchProgress({ done, total, current: `${done}/${total} execuções concluídas` });
+        }
+      }
+      setBatchResults(rows);
+      await loadBenchmark();
+    } catch (err) {
+      onError(err.message);
+    } finally {
+      setBatchRunning(false);
+      setBatchProgress((p) => ({ ...p, current: p.total ? `Bateria concluída: ${p.done}/${p.total}` : "" }));
+    }
+  }
+
   async function saveEvaluation() {
     if (!result?.runId || !result?.operationId) return;
     try {
@@ -187,7 +232,7 @@ function BenchmarkPanel({ onError }) {
 
   return <section className="ai2-benchmark-grid">
     <article className="ai2-panel ai2-benchmark-runner">
-      <header><div><span>BENCHMARK COMPETITIVO · v0.8.1</span><h3>Qualidade × custo × latência por capacidade</h3></div></header>
+      <header><div><span>BENCHMARK COMPETITIVO · v0.8.2</span><h3>Qualidade × custo × latência por capacidade</h3></div></header>
       <div className="ai2-benchmark-controls">
         <label>Caso de teste<select value={selectedId} onChange={(e) => selectCase(e.target.value)}>{bench.cases.map((item) => <option key={item.id} value={item.id}>{item.category} · {item.title}</option>)}</select></label>
         <label>Nível<select value={level} onChange={(e) => { setLevel(Number(e.target.value)); setComparison([]); }}>{levels.map((x) => <option key={x.id} value={x.id}>{x.name} — {x.label}</option>)}</select></label>
@@ -195,9 +240,11 @@ function BenchmarkPanel({ onError }) {
       {selectedCase && <div className="ai2-benchmark-info"><strong>{selectedCase.description}</strong><small>Esperado: {selectedCase.expected_format || "—"}</small><small>Critério: {selectedCase.evaluation_notes || "—"}</small><small>IAs competitivas neste nível: {eligibleModels.length} · {eligibleModels.map((m) => `${m.provider?.code || "provider"}/${m.code}`).join(" · ")}</small></div>}
       <label className="ai2-benchmark-prompt">Prompt<textarea rows="10" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></label>
       <div className="ai2-benchmark-actions">
-        <button className="root2-button primary" disabled={executing || comparing || !selectedCase} onClick={executeBenchmark}>{executing ? "Executando…" : "▶ Executar pelo Router"}</button>
-        <button className="root2-button" disabled={executing || comparing || !eligibleModels.length} onClick={compareModels}>{comparing ? "Comparando…" : `Comparar IAs (${eligibleModels.length})`}</button>
+        <button className="root2-button primary" disabled={executing || comparing || batchRunning || !selectedCase} onClick={executeBenchmark}>{executing ? "Executando…" : "▶ Executar pelo Router"}</button>
+        <button className="root2-button" disabled={executing || comparing || batchRunning || !eligibleModels.length} onClick={compareModels}>{comparing ? "Comparando…" : `Comparar IAs (${eligibleModels.length})`}</button>
+        <button className="root2-button" disabled={executing || comparing || batchRunning || !eligibleModels.length || !eligibleCases.length} onClick={executeFullBatch}>{batchRunning ? `Bateria ${batchProgress.done}/${batchProgress.total}` : `Executar bateria completa (${eligibleCases.length * eligibleModels.length})`}</button>
       </div>
+      {(batchRunning || batchResults.length) && <div className="ai2-benchmark-info"><strong>{batchRunning ? "Bateria competitiva em execução" : "Bateria competitiva concluída"}</strong><small>{batchProgress.current}</small><small>{batchResults.length ? `${batchResults.filter((x) => x.ok).length} sucesso(s) · ${batchResults.filter((x) => !x.ok).length} falha(s)` : `0/${batchProgress.total} concluídas`}</small></div>}
 
       {result && <div className="ai2-benchmark-result">
         <div className="ai2-benchmark-result-meta">
@@ -227,6 +274,13 @@ function BenchmarkPanel({ onError }) {
       <div className="ai2-table-wrap"><table><thead><tr><th>#</th><th>Modelo</th><th>Ranking</th><th>Auto</th><th>Humana</th><th>Efetiva</th><th>Aprovação auto</th><th>Custo médio</th><th>Latência média</th></tr></thead><tbody>
         {bench.ranking.map((row, index) => <tr key={row.model}><td>{index + 1}</td><td><strong>{row.model}</strong><small>{row.provider}</small></td><td><strong>{Number(row.rankingScore || 0).toFixed(1)}</strong></td><td>{Number(row.avgAutoQuality || 0).toFixed(1)}</td><td>{row.avgHumanQuality == null ? "—" : Number(row.avgHumanQuality).toFixed(1)}</td><td><strong>{Number(row.avgQuality || 0).toFixed(1)}</strong></td><td>{pct(row.passRate)}</td><td>{usd(row.avgCost, 8)}</td><td>{Math.round(row.avgLatency || 0).toLocaleString("pt-BR")} ms</td></tr>)}
         {!bench.ranking.length && <tr><td colSpan="9" className="ai2-empty">Execute benchmarks para formar o ranking.</td></tr>}
+      </tbody></table></div>
+
+      <header className="ai2-history-header"><div><span>MATRIZ DE CAPACIDADE</span><h3>Melhor IA por tipo de tarefa</h3></div></header>
+      <div className="ai2-ranking-note">A matriz usa a execução válida mais recente de cada caso por modelo. O vencedor combina qualidade 70% + custo 20% + latência 10%, excluindo o Mock da competição.</div>
+      <div className="ai2-table-wrap"><table><thead><tr><th>Capacidade</th><th>Vencedor</th><th>Score</th><th>Qualidade</th><th>Aprovação</th><th>Latência</th><th>Custo</th><th>Concorrentes</th></tr></thead><tbody>
+        {(bench.capabilityMatrix || []).map((item) => <tr key={item.capability}><td><strong>{item.capability}</strong></td><td><strong>{item.winner?.model || "—"}</strong><small>{item.winner?.provider || "—"}</small></td><td>{item.winner ? Number(item.winner.rankingScore || 0).toFixed(1) : "—"}</td><td>{item.winner ? Number(item.winner.avgQuality || 0).toFixed(1) : "—"}</td><td>{item.winner ? pct(item.winner.passRate) : "—"}</td><td>{item.winner ? `${Math.round(item.winner.avgLatency || 0).toLocaleString("pt-BR")} ms` : "—"}</td><td>{item.winner ? usd(item.winner.avgCost, 8) : "—"}</td><td>{(item.models || []).map((m) => `${m.model} (${Number(m.rankingScore || 0).toFixed(1)})`).join(" · ") || "—"}</td></tr>)}
+        {!(bench.capabilityMatrix || []).length && <tr><td colSpan="8" className="ai2-empty">Execute a bateria completa para formar a matriz de capacidade.</td></tr>}
       </tbody></table></div>
 
       <header className="ai2-history-header"><div><span>HISTÓRICO</span><h3>Últimos testes</h3></div></header>
@@ -308,7 +362,7 @@ export default function AISection() {
     <div className="ai2-shell">
       <section className="ai2-hero">
         <div>
-          <span>PLENIUM AI ENGINE · v0.8.1</span>
+          <span>PLENIUM AI ENGINE · v0.8.2</span>
           <h2>Controle a inteligência e preserve a margem.</h2>
           <p>Administre providers, modelos, níveis L0–L4, rotas, consumo, limites e custo real sem expor fornecedores aos clientes.</p>
         </div>
