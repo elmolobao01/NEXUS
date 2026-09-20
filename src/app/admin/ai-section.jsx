@@ -64,26 +64,48 @@ function BenchmarkPanel({ onError }) {
     if (item) { setPrompt(item.prompt); setLevel(Number(item.level || 1)); }
   }
 
-  async function runCaseModel(testCase, casePrompt, caseLevel, targetModelCode = null) {
+  function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+  function isRateLimit(response, payload) {
+    return response?.status === 429 || String(payload?.error || "").includes("RATE_LIMIT");
+  }
+
+  async function runCaseModel(testCase, casePrompt, caseLevel, targetModelCode = null, options = {}) {
     if (!testCase || !String(casePrompt || "").trim()) return null;
     const expectsJson = /json/i.test(testCase.expected_format || "");
-    const response = await fetch("/api/ai/execute", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operationType: testCase.operation_type,
-        level: caseLevel,
-        input: casePrompt,
-        metadata: {
-          benchmark: true,
-          benchmarkCaseId: testCase.id,
-          benchmarkCode: testCase.code,
-          targetModelCode: targetModelCode || undefined,
-          responseFormat: expectsJson ? "json" : "text",
-        }
-      }),
-    });
-    const payload = await response.json();
+    const maxRateLimitRetries = Number(options.maxRateLimitRetries ?? 3);
+    const retryDelays = [5000, 10000, 20000];
+    let response = null;
+    let payload = null;
+    let rateLimitAttempts = 0;
+    for (let attempt = 0; attempt <= maxRateLimitRetries; attempt += 1) {
+      response = await fetch("/api/ai/execute", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operationType: testCase.operation_type,
+          level: caseLevel,
+          input: casePrompt,
+          metadata: {
+            benchmark: true,
+            benchmarkCaseId: testCase.id,
+            benchmarkCode: testCase.code,
+            targetModelCode: targetModelCode || undefined,
+            responseFormat: expectsJson ? "json" : "text",
+          }
+        }),
+      });
+      payload = await response.json();
+      if (response.ok || !isRateLimit(response, payload) || attempt >= maxRateLimitRetries) break;
+      rateLimitAttempts += 1;
+      await sleep(retryDelays[Math.min(attempt, retryDelays.length - 1)]);
+    }
     if (!response.ok) {
+      // HTTP 429 is capacity exhaustion, not a quality failure. Do not persist it as FAILED.
+      if (isRateLimit(response, payload)) {
+        const err = new Error(payload.error || "Limite temporário do provider atingido.");
+        err.diagnostics = { ...payload, httpStatus: response.status, rateLimited: true, rateLimitAttempts, persisted: false };
+        throw err;
+      }
       let persisted = null;
       try {
         const failureRecord = await fetch("/api/admin/ai/benchmark", {
@@ -190,11 +212,13 @@ function BenchmarkPanel({ onError }) {
         for (const model of eligibleModels) {
           setBatchProgress({ done, total, current: `${testCase.category} · ${testCase.title} → ${model.provider?.code}/${model.code}` });
           try {
-            const payload = await runCaseModel(testCase, testCase.prompt, caseLevel, model.code);
+            // Pace the Groq free tier to reduce TPM/RPM bursts during the full battery.
+            if (model.provider?.code === "groq" && done > 0) await sleep(3500);
+            const payload = await runCaseModel(testCase, testCase.prompt, caseLevel, model.code, { maxRateLimitRetries: 3 });
             rows.push({ caseId: testCase.id, caseTitle: testCase.title, category: testCase.category, model: model.code, provider: model.provider?.code, ok: true, auto: payload?.auto, latencyMs: payload?.latencyMs, costUsd: payload?.usage?.costUsd });
           } catch (err) {
             const d = err?.diagnostics || {};
-            rows.push({ caseId: testCase.id, caseTitle: testCase.title, category: testCase.category, model: d.model || model.code, provider: d.provider || model.provider?.code, ok: false, error: err.message, errorCode: d.error || d.errorCode || "AI_EXECUTION_FAILED", stage: d.stage || null, httpStatus: d.httpStatus || null, latencyMs: d.latencyMs || null, runId: d.runId || null, persisted: Boolean(d.persisted) });
+            rows.push({ caseId: testCase.id, caseTitle: testCase.title, category: testCase.category, model: d.model || model.code, provider: d.provider || model.provider?.code, ok: false, rateLimited: Boolean(d.rateLimited), error: err.message, errorCode: d.rateLimited ? "RATE_LIMITED" : (d.error || d.errorCode || "AI_EXECUTION_FAILED"), stage: d.stage || null, httpStatus: d.httpStatus || null, latencyMs: d.latencyMs || null, runId: d.runId || null, persisted: Boolean(d.persisted) });
           }
           done += 1;
           setBatchProgress({ done, total, current: `${done}/${total} execuções concluídas` });
@@ -225,14 +249,15 @@ function BenchmarkPanel({ onError }) {
   }
 
   const batchDiagnostics = useMemo(() => {
-    if (!batchResults.length) return { total: 0, success: 0, failed: 0, byModel: [], byCapability: [], failures: [] };
+    if (!batchResults.length) return { total: 0, success: 0, failed: 0, rateLimited: 0, evaluated: 0, byModel: [], byCapability: [], failures: [], rateLimits: [] };
     const summarize = (keyFn) => {
       const map = new Map();
       for (const row of batchResults) {
         const key = keyFn(row) || "—";
         const item = map.get(key) || { key, total: 0, success: 0, failed: 0 };
         item.total += 1;
-        if (row.ok) item.success += 1; else item.failed += 1;
+        if (row.rateLimited) item.rateLimited = (item.rateLimited || 0) + 1;
+        else if (row.ok) item.success += 1; else item.failed += 1;
         map.set(key, item);
       }
       return [...map.values()].map((x) => ({ ...x, successRate: x.total ? (x.success / x.total) * 100 : 0 }));
@@ -240,10 +265,13 @@ function BenchmarkPanel({ onError }) {
     return {
       total: batchResults.length,
       success: batchResults.filter((x) => x.ok).length,
-      failed: batchResults.filter((x) => !x.ok).length,
+      failed: batchResults.filter((x) => !x.ok && !x.rateLimited).length,
+      rateLimited: batchResults.filter((x) => x.rateLimited).length,
+      evaluated: batchResults.filter((x) => !x.rateLimited).length,
       byModel: summarize((x) => `${x.provider || "—"}/${x.model || "—"}`),
       byCapability: summarize((x) => x.category || "Outros"),
-      failures: batchResults.filter((x) => !x.ok),
+      failures: batchResults.filter((x) => !x.ok && !x.rateLimited),
+      rateLimits: batchResults.filter((x) => x.rateLimited),
     };
   }, [batchResults]);
 
@@ -255,7 +283,7 @@ function BenchmarkPanel({ onError }) {
 
   return <section className="ai2-benchmark-grid">
     <article className="ai2-panel ai2-benchmark-runner">
-      <header><div><span>BENCHMARK COMPETITIVO · v0.8.3</span><h3>Qualidade × custo × latência por capacidade</h3></div></header>
+      <header><div><span>BENCHMARK COMPETITIVO · v0.8.4</span><h3>Qualidade × custo × latência por capacidade</h3></div></header>
       <div className="ai2-benchmark-controls">
         <label>Caso de teste<select value={selectedId} onChange={(e) => selectCase(e.target.value)}>{bench.cases.map((item) => <option key={item.id} value={item.id}>{item.category} · {item.title}</option>)}</select></label>
         <label>Nível<select value={level} onChange={(e) => { setLevel(Number(e.target.value)); setComparison([]); }}>{levels.map((x) => <option key={x.id} value={x.id}>{x.name} — {x.label}</option>)}</select></label>
@@ -267,21 +295,22 @@ function BenchmarkPanel({ onError }) {
         <button className="root2-button" disabled={executing || comparing || batchRunning || !eligibleModels.length} onClick={compareModels}>{comparing ? "Comparando…" : `Comparar IAs (${eligibleModels.length})`}</button>
         <button className="root2-button" disabled={executing || comparing || batchRunning || !eligibleModels.length || !eligibleCases.length} onClick={executeFullBatch}>{batchRunning ? `Bateria ${batchProgress.done}/${batchProgress.total}` : `Executar bateria completa (${eligibleCases.length * eligibleModels.length})`}</button>
       </div>
-      {(batchRunning || batchResults.length) && <div className="ai2-benchmark-info"><strong>{batchRunning ? "Bateria competitiva em execução" : "Bateria competitiva concluída"}</strong><small>{batchProgress.current}</small><small>{batchResults.length ? `${batchResults.filter((x) => x.ok).length} sucesso(s) · ${batchResults.filter((x) => !x.ok).length} falha(s)` : `0/${batchProgress.total} concluídas`}</small></div>}
+      {(batchRunning || batchResults.length) && <div className="ai2-benchmark-info"><strong>{batchRunning ? "Bateria competitiva em execução" : "Bateria competitiva concluída"}</strong><small>{batchProgress.current}</small><small>{batchResults.length ? `${batchResults.filter((x) => x.ok).length} sucesso(s) · ${batchResults.filter((x) => !x.ok && !x.rateLimited).length} falha(s) · ${batchResults.filter((x) => x.rateLimited).length} rate limited` : `0/${batchProgress.total} concluídas`}</small></div>}
 
       {!!batchResults.length && <div className="ai2-comparison-block">
         <h4>Diagnóstico da bateria</h4>
         <div className="ai2-benchmark-result-meta">
-          <span><b>Execuções</b>{batchDiagnostics.total}</span><span><b>SUCCESS</b>{batchDiagnostics.success}</span><span><b>FAILED</b>{batchDiagnostics.failed}</span><span><b>Taxa de sucesso</b>{pct(batchDiagnostics.total ? (batchDiagnostics.success / batchDiagnostics.total) * 100 : 0)}</span>
+          <span><b>Execuções</b>{batchDiagnostics.total}</span><span><b>SUCCESS</b>{batchDiagnostics.success}</span><span><b>FAILED</b>{batchDiagnostics.failed}</span><span><b>RATE LIMITED</b>{batchDiagnostics.rateLimited}</span><span><b>Taxa avaliada</b>{pct(batchDiagnostics.evaluated ? (batchDiagnostics.success / batchDiagnostics.evaluated) * 100 : 0)}</span>
         </div>
         <h4>Taxa de sucesso por modelo</h4>
-        <div className="ai2-table-wrap"><table><thead><tr><th>Modelo</th><th>Execuções</th><th>SUCCESS</th><th>FAILED</th><th>Taxa</th></tr></thead><tbody>
-          {batchDiagnostics.byModel.map((x) => <tr key={x.key}><td><strong>{x.key}</strong></td><td>{x.total}</td><td>{x.success}</td><td>{x.failed}</td><td>{pct(x.successRate)}</td></tr>)}
+        <div className="ai2-table-wrap"><table><thead><tr><th>Modelo</th><th>Execuções</th><th>SUCCESS</th><th>FAILED</th><th>RATE LIMITED</th><th>Taxa avaliada</th></tr></thead><tbody>
+          {batchDiagnostics.byModel.map((x) => <tr key={x.key}><td><strong>{x.key}</strong></td><td>{x.total}</td><td>{x.success}</td><td>{x.failed}</td><td>{x.rateLimited || 0}</td><td>{pct(x.successRate)}</td></tr>)}
         </tbody></table></div>
         <h4>Taxa de sucesso por capacidade</h4>
-        <div className="ai2-table-wrap"><table><thead><tr><th>Capacidade</th><th>Execuções</th><th>SUCCESS</th><th>FAILED</th><th>Taxa</th></tr></thead><tbody>
-          {batchDiagnostics.byCapability.map((x) => <tr key={x.key}><td><strong>{x.key}</strong></td><td>{x.total}</td><td>{x.success}</td><td>{x.failed}</td><td>{pct(x.successRate)}</td></tr>)}
+        <div className="ai2-table-wrap"><table><thead><tr><th>Capacidade</th><th>Execuções</th><th>SUCCESS</th><th>FAILED</th><th>RATE LIMITED</th><th>Taxa avaliada</th></tr></thead><tbody>
+          {batchDiagnostics.byCapability.map((x) => <tr key={x.key}><td><strong>{x.key}</strong></td><td>{x.total}</td><td>{x.success}</td><td>{x.failed}</td><td>{x.rateLimited || 0}</td><td>{pct(x.successRate)}</td></tr>)}
         </tbody></table></div>
+        {batchDiagnostics.rateLimits.length ? <><h4>Limites de capacidade (neutros)</h4><div className="ai2-benchmark-alert"><strong>{batchDiagnostics.rateLimits.length} execução(ões) não avaliada(s)</strong><span>HTTP 429 não reduz a qualidade nem a taxa de sucesso do modelo. O Benchmark tentou novamente com backoff antes de marcar RATE LIMITED.</span></div><div className="ai2-table-wrap"><table><thead><tr><th>Caso</th><th>Capacidade</th><th>Modelo</th><th>HTTP</th><th>Status</th></tr></thead><tbody>{batchDiagnostics.rateLimits.map((row, index) => <tr key={`rl-${row.caseId}-${row.model}-${index}`}><td><strong>{row.caseTitle || row.caseId}</strong></td><td>{row.category || "—"}</td><td><strong>{row.model || "—"}</strong><small>{row.provider || "—"}</small></td><td>{row.httpStatus || 429}</td><td><code className="ai2-error-code">RATE LIMITED · NEUTRO</code></td></tr>)}</tbody></table></div></> : null}
         {batchDiagnostics.failures.length ? <><h4>Falhas técnicas da bateria</h4><div className="ai2-table-wrap"><table><thead><tr><th>Caso</th><th>Capacidade</th><th>Modelo</th><th>HTTP</th><th>Código / estágio</th><th>Motivo</th></tr></thead><tbody>
           {batchDiagnostics.failures.map((row, index) => <tr key={`${row.caseId}-${row.model}-${index}`} className="ai2-row-error"><td><strong>{row.caseTitle || row.caseId}</strong>{row.runId ? <small>run: {row.runId}</small> : null}</td><td>{row.category || "—"}</td><td><strong>{row.model || "—"}</strong><small>{row.provider || "—"}</small></td><td>{row.httpStatus || "—"}</td><td><code className="ai2-error-code">{row.errorCode || "—"}{row.stage ? ` · ${row.stage}` : ""}</code></td><td><code className="ai2-error-code">{row.error || "Falha de execução"}</code>{row.persisted ? <small>Registrada no histórico</small> : null}</td></tr>)}
         </tbody></table></div></> : <div className="ai2-benchmark-alert"><strong>Nenhuma falha técnica</strong><span>Todas as execuções da bateria foram concluídas com sucesso.</span></div>}
