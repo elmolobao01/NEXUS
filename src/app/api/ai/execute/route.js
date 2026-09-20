@@ -196,8 +196,10 @@ export async function POST(request){
       :message.includes("NOT_AVAILABLE")||message.includes("MODEL_NOT_FOUND")?404
       :message.includes("LIMIT_EXCEEDED")||message.includes("RATE_LIMIT")?429
       :500;
+    const rateLimited = code === 429 || /RATE_LIMIT|TOO LARGE|TPM|RPM|RPD|TPD/i.test(message);
     return NextResponse.json({
       error:message,
+      errorCode: rateLimited ? "RATE_LIMITED" : "AI_EXECUTION_FAILED",
       operationId:op?.id || null,
       provider:diagnosticSelected?.provider?.code || null,
       model:diagnosticSelected?.code || diagnosticBenchmarkModel || null,
@@ -205,7 +207,9 @@ export async function POST(request){
       benchmark:Boolean(diagnosticBenchmarkModel),
       stage:diagnosticStage,
       latencyMs:Date.now()-started,
-      failed:true,
+      failed:!rateLimited,
+      rateLimited,
+      retryable: rateLimited && !/too large|requested .*tokens|expected output token/i.test(message),
     },{status:code,headers:{"Cache-Control":"no-store"}});
   }
 }
