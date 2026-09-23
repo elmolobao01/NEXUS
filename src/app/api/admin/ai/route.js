@@ -255,17 +255,40 @@ export async function GET(request) {
     monthlyRevenueByOrg[client.organization_id] = (monthlyRevenueByOrg[client.organization_id] || 0) + monthly;
   }
   const clientEconomicsMap = {};
+  let internalOperations = 0, internalBilledUsd = 0, internalReferenceUsd = 0;
+  let unassignedOperations = 0, unassignedBilledUsd = 0, unassignedReferenceUsd = 0;
+  const classifyOperation = (op) => {
+    const persisted = String(op?.economic_scope || "").toUpperCase();
+    if (persisted === "INTERNAL") return { scope: "INTERNAL" };
+    const client = op?.client_id ? clientById[op.client_id] : clientByOrg[op?.organization_id];
+    if (persisted === "CLIENT" && client) return { scope: "CLIENT", client };
+    if (client) return { scope: "CLIENT", client };
+    // Histórico anterior à v0.9.3 sem cliente correspondente é custo interno PLENIUM,
+    // evitando exibir UUID técnico como se fosse cliente comercial.
+    if (op?.organization_id) return { scope: "INTERNAL" };
+    return { scope: "UNASSIGNED" };
+  };
   for (const op of monthOps) {
-    const orgId = op.organization_id || "unassigned";
-    const row = clientEconomicsMap[orgId] ||= { organizationId: orgId, clientName: clientByOrg[orgId]?.trade_name || clientByOrg[orgId]?.legal_name || (orgId === "unassigned" ? "Sem cliente atribuído" : orgId), operations: 0, billedUsd: 0, referenceUsd: 0, monthlyRevenueBrl: Number(monthlyRevenueByOrg[orgId] || 0) };
+    const attribution = classifyOperation(op);
+    if (attribution.scope === "INTERNAL") { internalOperations += 1; continue; }
+    if (attribution.scope === "UNASSIGNED") { unassignedOperations += 1; continue; }
+    const client = attribution.client;
+    const orgId = client.organization_id;
+    const row = clientEconomicsMap[orgId] ||= { organizationId: orgId, clientId: client.id, clientName: client.trade_name || client.legal_name || orgId, operations: 0, billedUsd: 0, referenceUsd: 0, monthlyRevenueBrl: Number(monthlyRevenueByOrg[orgId] || 0) };
     row.operations += 1;
   }
   for (const c of monthCosts) {
     const op = opById[c.operation_id];
-    const orgId = op?.organization_id || "unassigned";
-    const row = clientEconomicsMap[orgId] ||= { organizationId: orgId, clientName: clientByOrg[orgId]?.trade_name || clientByOrg[orgId]?.legal_name || (orgId === "unassigned" ? "Sem cliente atribuído" : orgId), operations: 0, billedUsd: 0, referenceUsd: 0, monthlyRevenueBrl: Number(monthlyRevenueByOrg[orgId] || 0) };
-    row.billedUsd += Number(c.provider_cost_usd || 0);
-    row.referenceUsd += economicReference(c);
+    const attribution = classifyOperation(op);
+    const billed = Number(c.provider_cost_usd || 0);
+    const reference = economicReference(c);
+    if (attribution.scope === "INTERNAL") { internalBilledUsd += billed; internalReferenceUsd += reference; continue; }
+    if (attribution.scope === "UNASSIGNED") { unassignedBilledUsd += billed; unassignedReferenceUsd += reference; continue; }
+    const client = attribution.client;
+    const orgId = client.organization_id;
+    const row = clientEconomicsMap[orgId] ||= { organizationId: orgId, clientId: client.id, clientName: client.trade_name || client.legal_name || orgId, operations: 0, billedUsd: 0, referenceUsd: 0, monthlyRevenueBrl: Number(monthlyRevenueByOrg[orgId] || 0) };
+    row.billedUsd += billed;
+    row.referenceUsd += reference;
   }
   const clientEconomics = Object.values(clientEconomicsMap).map(row => {
     const billedBrl = row.billedUsd * usdBrlRate;
@@ -273,6 +296,11 @@ export async function GET(request) {
     const revenue = row.monthlyRevenueBrl;
     return { ...row, billedBrl, referenceBrl, savingsUsd: Math.max(0,row.referenceUsd-row.billedUsd), aiRevenueShareBilled: revenue > 0 ? (billedBrl/revenue)*100 : null, aiRevenueShareReference: revenue > 0 ? (referenceBrl/revenue)*100 : null, aiMarginBrl: revenue > 0 ? revenue-billedBrl : null, aiMarginReferenceBrl: revenue > 0 ? revenue-referenceBrl : null };
   }).sort((a,b)=>b.referenceUsd-a.referenceUsd);
+  const attributionSummary = {
+    internal: { operations: internalOperations, billedUsd: internalBilledUsd, referenceUsd: internalReferenceUsd },
+    clients: { operations: clientEconomics.reduce((n,r)=>n+r.operations,0), billedUsd: clientEconomics.reduce((n,r)=>n+r.billedUsd,0), referenceUsd: clientEconomics.reduce((n,r)=>n+r.referenceUsd,0) },
+    unassigned: { operations: unassignedOperations, billedUsd: unassignedBilledUsd, referenceUsd: unassignedReferenceUsd },
+  };
   const simulationVolumes = [1000,5000,10000];
   const avgReference = monthOps.length ? referenceMonthUsd/monthOps.length : 0;
   const avgBilled = monthOps.length ? billedMonthUsd/monthOps.length : 0;
@@ -307,7 +335,7 @@ export async function GET(request) {
       savingsMonthUsd: Math.max(0, referenceMonthUsd-billedMonthUsd),
       freeOperations: freeOps, freeShare: monthCosts.length ? (freeOps/monthCosts.length)*100 : 0,
       savingsRate: referenceMonthUsd > 0 ? (Math.max(0,referenceMonthUsd-billedMonthUsd)/referenceMonthUsd)*100 : 0,
-      usdBrlRate, clientEconomics, simulations,
+      usdBrlRate, clientEconomics, attributionSummary, simulations,
       avgBilledPerOperation: monthOps.length ? billedMonthUsd/monthOps.length : 0,
       avgReferencePerOperation: monthOps.length ? referenceMonthUsd/monthOps.length : 0,
       projectedBilledMonthUsd: billedMonthUsd*projectionFactor,
