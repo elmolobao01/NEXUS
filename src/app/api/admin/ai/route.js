@@ -177,7 +177,7 @@ export async function GET(request) {
   const ctx = await requireRoot(request);
   if (!ctx) return json("Acesso ROOT necessário.", 403);
 
-  const [providers, models, routes, limits, operations, costs, organizations] = await Promise.all([
+  const [providers, models, routes, limits, operations, costs, organizations, clients, contracts] = await Promise.all([
     rest("nexus_ai_providers?select=*&order=priority.asc,name.asc", {}, ctx.token),
     rest("nexus_ai_models?select=*,provider:nexus_ai_providers(code,name)&order=level.asc,name.asc", {}, ctx.token),
     rest("nexus_ai_routes?select=*,model:nexus_ai_models!nexus_ai_routes_model_id_fkey(code,name),fallback:nexus_ai_models!nexus_ai_routes_fallback_model_id_fkey(code,name)&order=level.asc,priority.asc", {}, ctx.token),
@@ -185,6 +185,8 @@ export async function GET(request) {
     rest("nexus_ai_operations?select=*&order=created_at.desc&limit=5000", {}, ctx.token),
     rest("nexus_ai_costs?select=*&order=created_at.desc&limit=5000", {}, ctx.token),
     rest("nexus_organizations?select=id,name,legal_name&order=name.asc", {}, ctx.token),
+    rest("nexus_clients?select=id,organization_id,legal_name,trade_name,status&order=created_at.desc", {}, ctx.token),
+    rest("nexus_contracts?select=id,client_id,duration_months,value,net_value,status,start_date,end_date", {}, ctx.token),
   ]);
 
   // v0.7.4.1: não atribuir toda falha à migration inicial.
@@ -237,6 +239,45 @@ export async function GET(request) {
   const elapsedDays = Math.max(1, (Date.now()-monthStart.getTime())/86400000);
   const daysInMonth = new Date(Date.UTC(monthStart.getUTCFullYear(),monthStart.getUTCMonth()+1,0)).getUTCDate();
   const projectionFactor = daysInMonth/elapsedDays;
+  // v0.9.2 — rentabilidade por cliente/plano. A receita mensal segue a mesma regra do módulo Contratos:
+  // valor líquido total do contrato / duração em meses. Custos de IA são convertidos para BRL
+  // por uma taxa operacional configurável em PLENIUM_USD_BRL_RATE (fallback conservador: 5.50).
+  const usdBrlRate = Number(process.env.PLENIUM_USD_BRL_RATE || 5.50);
+  const clientRows = clients.ok ? (clients.data || []) : [];
+  const contractRows = contracts.ok ? (contracts.data || []) : [];
+  const clientById = Object.fromEntries(clientRows.map(c => [c.id, c]));
+  const clientByOrg = Object.fromEntries(clientRows.map(c => [c.organization_id, c]));
+  const monthlyRevenueByOrg = {};
+  for (const c of contractRows.filter(c => c.status === "active")) {
+    const client = clientById[c.client_id];
+    if (!client?.organization_id) continue;
+    const monthly = Number(c.net_value ?? c.value ?? 0) / Math.max(1, Number(c.duration_months || 1));
+    monthlyRevenueByOrg[client.organization_id] = (monthlyRevenueByOrg[client.organization_id] || 0) + monthly;
+  }
+  const clientEconomicsMap = {};
+  for (const op of monthOps) {
+    const orgId = op.organization_id || "unassigned";
+    const row = clientEconomicsMap[orgId] ||= { organizationId: orgId, clientName: clientByOrg[orgId]?.trade_name || clientByOrg[orgId]?.legal_name || (orgId === "unassigned" ? "Sem cliente atribuído" : orgId), operations: 0, billedUsd: 0, referenceUsd: 0, monthlyRevenueBrl: Number(monthlyRevenueByOrg[orgId] || 0) };
+    row.operations += 1;
+  }
+  for (const c of monthCosts) {
+    const op = opById[c.operation_id];
+    const orgId = op?.organization_id || "unassigned";
+    const row = clientEconomicsMap[orgId] ||= { organizationId: orgId, clientName: clientByOrg[orgId]?.trade_name || clientByOrg[orgId]?.legal_name || (orgId === "unassigned" ? "Sem cliente atribuído" : orgId), operations: 0, billedUsd: 0, referenceUsd: 0, monthlyRevenueBrl: Number(monthlyRevenueByOrg[orgId] || 0) };
+    row.billedUsd += Number(c.provider_cost_usd || 0);
+    row.referenceUsd += economicReference(c);
+  }
+  const clientEconomics = Object.values(clientEconomicsMap).map(row => {
+    const billedBrl = row.billedUsd * usdBrlRate;
+    const referenceBrl = row.referenceUsd * usdBrlRate;
+    const revenue = row.monthlyRevenueBrl;
+    return { ...row, billedBrl, referenceBrl, savingsUsd: Math.max(0,row.referenceUsd-row.billedUsd), aiRevenueShareBilled: revenue > 0 ? (billedBrl/revenue)*100 : null, aiRevenueShareReference: revenue > 0 ? (referenceBrl/revenue)*100 : null, aiMarginBrl: revenue > 0 ? revenue-billedBrl : null, aiMarginReferenceBrl: revenue > 0 ? revenue-referenceBrl : null };
+  }).sort((a,b)=>b.referenceUsd-a.referenceUsd);
+  const simulationVolumes = [1000,5000,10000];
+  const avgReference = monthOps.length ? referenceMonthUsd/monthOps.length : 0;
+  const avgBilled = monthOps.length ? billedMonthUsd/monthOps.length : 0;
+  const simulations = simulationVolumes.map(operations => ({ operations, billedUsd: operations*avgBilled, referenceUsd: operations*avgReference, billedBrl: operations*avgBilled*usdBrlRate, referenceBrl: operations*avgReference*usdBrlRate }));
+
   const byModelMap = {};
   for(const op of monthOps){ const m=modelById[op.model_id]; const key=m?.code||op.model_id||"unknown"; const row=byModelMap[key] ||= {model:key,provider:m?.provider?.code||"—",operations:0,inputTokens:0,outputTokens:0,billedCostUsd:0,referenceCostUsd:0}; row.operations++; row.inputTokens+=Number(op.input_tokens||0); row.outputTokens+=Number(op.output_tokens||0); }
   for(const c of monthCosts){ const op=ops.find(o=>o.id===c.operation_id); const m=op?modelById[op.model_id]:null; const key=m?.code||op?.model_id||"unknown"; const row=byModelMap[key] ||= {model:key,provider:m?.provider?.code||"—",operations:0,inputTokens:0,outputTokens:0,billedCostUsd:0,referenceCostUsd:0}; row.billedCostUsd+=Number(c.provider_cost_usd||0); row.referenceCostUsd+=economicReference(c); }
@@ -265,6 +306,8 @@ export async function GET(request) {
       monthOperations: monthOps.length, billedMonthUsd, referenceMonthUsd,
       savingsMonthUsd: Math.max(0, referenceMonthUsd-billedMonthUsd),
       freeOperations: freeOps, freeShare: monthCosts.length ? (freeOps/monthCosts.length)*100 : 0,
+      savingsRate: referenceMonthUsd > 0 ? (Math.max(0,referenceMonthUsd-billedMonthUsd)/referenceMonthUsd)*100 : 0,
+      usdBrlRate, clientEconomics, simulations,
       avgBilledPerOperation: monthOps.length ? billedMonthUsd/monthOps.length : 0,
       avgReferencePerOperation: monthOps.length ? referenceMonthUsd/monthOps.length : 0,
       projectedBilledMonthUsd: billedMonthUsd*projectionFactor,
