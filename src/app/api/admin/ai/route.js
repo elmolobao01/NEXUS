@@ -218,16 +218,28 @@ export async function GET(request) {
   const monthStart = new Date(); monthStart.setUTCDate(1); monthStart.setUTCHours(0,0,0,0);
   const monthCosts = costRows.filter((item) => new Date(item.created_at) >= monthStart);
   const monthOps = ops.filter((item) => new Date(item.created_at) >= monthStart && item.status === "SUCCESS");
+  const modelById = Object.fromEntries((models.data||[]).map(m=>[m.id,m]));
+  const opById = Object.fromEntries(ops.map(o=>[o.id,o]));
+  const economicReference = (costRow) => {
+    const stored = Number(costRow.reference_cost_usd || 0);
+    if (stored > 0) return stored;
+    const op = opById[costRow.operation_id];
+    const model = op ? modelById[op.model_id] : null;
+    if (!op || !model) return Number(costRow.provider_cost_usd || 0);
+    const inputRate = Number(model.reference_input_cost_per_million ?? model.input_cost_per_million ?? 0);
+    const outputRate = Number(model.reference_output_cost_per_million ?? model.output_cost_per_million ?? 0);
+    const calculated = ((Number(op.input_tokens||0) * inputRate) + (Number(op.output_tokens||0) * outputRate)) / 1000000;
+    return calculated > 0 ? calculated : Number(costRow.provider_cost_usd || 0);
+  };
   const billedMonthUsd = monthCosts.reduce((sum,item)=>sum+Number(item.provider_cost_usd||0),0);
-  const referenceMonthUsd = monthCosts.reduce((sum,item)=>sum+Number(item.reference_cost_usd ?? item.provider_cost_usd ?? 0),0);
-  const freeOps = monthCosts.filter((item)=>item.billing_mode === "FREE_TIER" || (Number(item.provider_cost_usd||0)===0 && Number(item.reference_cost_usd||0)>0)).length;
+  const referenceMonthUsd = monthCosts.reduce((sum,item)=>sum+economicReference(item),0);
+  const freeOps = monthCosts.filter((item)=>item.billing_mode === "FREE_TIER" || (Number(item.provider_cost_usd||0)===0 && economicReference(item)>0)).length;
   const elapsedDays = Math.max(1, (Date.now()-monthStart.getTime())/86400000);
   const daysInMonth = new Date(Date.UTC(monthStart.getUTCFullYear(),monthStart.getUTCMonth()+1,0)).getUTCDate();
   const projectionFactor = daysInMonth/elapsedDays;
-  const modelById = Object.fromEntries((models.data||[]).map(m=>[m.id,m]));
   const byModelMap = {};
   for(const op of monthOps){ const m=modelById[op.model_id]; const key=m?.code||op.model_id||"unknown"; const row=byModelMap[key] ||= {model:key,provider:m?.provider?.code||"—",operations:0,inputTokens:0,outputTokens:0,billedCostUsd:0,referenceCostUsd:0}; row.operations++; row.inputTokens+=Number(op.input_tokens||0); row.outputTokens+=Number(op.output_tokens||0); }
-  for(const c of monthCosts){ const op=ops.find(o=>o.id===c.operation_id); const m=op?modelById[op.model_id]:null; const key=m?.code||op?.model_id||"unknown"; const row=byModelMap[key] ||= {model:key,provider:m?.provider?.code||"—",operations:0,inputTokens:0,outputTokens:0,billedCostUsd:0,referenceCostUsd:0}; row.billedCostUsd+=Number(c.provider_cost_usd||0); row.referenceCostUsd+=Number(c.reference_cost_usd ?? c.provider_cost_usd ?? 0); }
+  for(const c of monthCosts){ const op=ops.find(o=>o.id===c.operation_id); const m=op?modelById[op.model_id]:null; const key=m?.code||op?.model_id||"unknown"; const row=byModelMap[key] ||= {model:key,provider:m?.provider?.code||"—",operations:0,inputTokens:0,outputTokens:0,billedCostUsd:0,referenceCostUsd:0}; row.billedCostUsd+=Number(c.provider_cost_usd||0); row.referenceCostUsd+=economicReference(c); }
 
   return NextResponse.json({
     providers: (providers.data || []).map((provider) => ({ ...provider, readiness: providerReadiness(provider) })),
