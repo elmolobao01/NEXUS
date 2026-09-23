@@ -16,6 +16,16 @@ function usd(value, digits = 4) {
 function pct(value) { return `${Number(value || 0).toFixed(1).replace(".", ",")}%`; }
 function levelName(value) { return levels.find((item) => item.id === Number(value))?.name || `L${value}`; }
 
+function Metric({ label, value, hint }) {
+  return (
+    <article>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {hint ? <small>{hint}</small> : null}
+    </article>
+  );
+}
+
 
 
 function BenchmarkPanel({ onError }) {
