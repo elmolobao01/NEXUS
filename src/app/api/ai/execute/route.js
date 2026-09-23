@@ -55,7 +55,7 @@ async function context(request){
 }
 async function chooseRoute(level,operationType){
   const op=encodeURIComponent(operationType);
-  const select="id,operation_type,level,priority,min_quality_score,model:nexus_ai_models!nexus_ai_routes_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active)),fallback:nexus_ai_models!nexus_ai_routes_fallback_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active))";
+  const select="id,operation_type,level,priority,min_quality_score,model:nexus_ai_models!nexus_ai_routes_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,reference_input_cost_per_million,reference_output_cost_per_million,billing_mode,provider:nexus_ai_providers(id,code,name,active)),fallback:nexus_ai_models!nexus_ai_routes_fallback_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,reference_input_cost_per_million,reference_output_cost_per_million,billing_mode,provider:nexus_ai_providers(id,code,name,active))";
   const rows=await sb(`nexus_ai_routes?select=${select}&active=eq.true&level=eq.${level}&operation_type=in.(${op},*)&order=priority.asc&limit=20`);
   const available=(rows||[]).filter(r=>
     r?.model?.active && r?.model?.provider?.active && Number(r?.model?.level) === Number(level)
@@ -67,7 +67,7 @@ async function chooseRoute(level,operationType){
 async function chooseBenchmarkModel(modelCode, level){
   if(!modelCode) return null;
   const wanted=String(modelCode).trim();
-  const select="id,code,name,level,active,input_cost_per_million,output_cost_per_million,provider:nexus_ai_providers(id,code,name,active)";
+  const select="id,code,name,level,active,input_cost_per_million,output_cost_per_million,reference_input_cost_per_million,reference_output_cost_per_million,billing_mode,provider:nexus_ai_providers(id,code,name,active)";
   // Evita ambiguidades de encoding em códigos que contêm "/" (ex.: qwen/qwen3.8-27b).
   // Carregamos os modelos ativos do mesmo nível e resolvemos o código exatamente em memória.
   const rows=await sb(`nexus_ai_models?select=${select}&active=eq.true&level=eq.${Number(level)}&limit=100`);
@@ -93,6 +93,14 @@ function modelCost(model,result){
     outputTokens:result.outputTokens,
     inputCostPerMillion:model.input_cost_per_million,
     outputCostPerMillion:model.output_cost_per_million
+  });
+}
+function referenceModelCost(model,result){
+  return estimateTokenCost({
+    inputTokens:result.inputTokens,
+    outputTokens:result.outputTokens,
+    inputCostPerMillion:model.reference_input_cost_per_million ?? model.input_cost_per_million,
+    outputCostPerMillion:model.reference_output_cost_per_million ?? model.output_cost_per_million
   });
 }
 function normalizeStructuredOutput(output){
@@ -168,6 +176,8 @@ export async function POST(request){
     const wantsJson = req.metadata?.responseFormat === "json";
     const normalized = wantsJson ? normalizeStructuredOutput(result.output) : { output: result.output, parsed: null };
     const cost=modelCost(selected,result);
+    const referenceCost=referenceModelCost(selected,result);
+    const billingMode=selected.billing_mode || (cost === 0 ? "FREE_TIER" : "PAID");
     const latencyMs=Date.now()-started;
     await sb(`nexus_ai_operations?id=eq.${op.id}`,{method:"PATCH",body:{
       status:"SUCCESS",provider_id:selected.provider.id,model_id:selected.id,
@@ -175,7 +185,7 @@ export async function POST(request){
       cost_usd:cost,latency_ms:latencyMs,fallback_used:fallbackUsed,completed_at:new Date().toISOString()
     }});
     await sb("nexus_ai_usage",{method:"POST",body:[{operation_id:op.id,organization_id:ctx.organizationId,provider_id:selected.provider.id,model_id:selected.id,input_tokens:result.inputTokens||0,output_tokens:result.outputTokens||0}]});
-    await sb("nexus_ai_costs",{method:"POST",body:[{operation_id:op.id,organization_id:ctx.organizationId,provider_cost_usd:cost}]});
+    await sb("nexus_ai_costs",{method:"POST",body:[{operation_id:op.id,organization_id:ctx.organizationId,provider_cost_usd:cost,reference_cost_usd:referenceCost,billing_mode:billingMode}]});
 
     return NextResponse.json({
       operationId:op.id,
@@ -185,7 +195,7 @@ export async function POST(request){
       provider:selected.provider.code,
       fallbackUsed,
       latencyMs,
-      usage:{inputTokens:result.inputTokens||0,outputTokens:result.outputTokens||0,costUsd:cost}
+      usage:{inputTokens:result.inputTokens||0,outputTokens:result.outputTokens||0,costUsd:cost,referenceCostUsd:referenceCost,billingMode}
     },{headers:{"Cache-Control":"no-store"}});
   }catch(e){
     if(op?.id){try{await sb(`nexus_ai_operations?id=eq.${op.id}`,{method:"PATCH",body:{status:"FAILED",error_code:String(e.message).slice(0,500),latency_ms:Date.now()-started,completed_at:new Date().toISOString()}});}catch{}}
