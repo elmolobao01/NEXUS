@@ -53,6 +53,17 @@ async function context(request){
     ? {token,userId:p.user_id,organizationId:p.organization_id,profile:p.profile}
     : null;
 }
+async function economicAttribution(ctx, metadata = {}){
+  // Benchmark e operações ROOT pertencem ao custo interno da própria PLENIUM.
+  if(metadata?.benchmark === true || ctx?.profile === "NEXUS_ROOT") {
+    return { economicScope: "INTERNAL", clientId: null };
+  }
+  try {
+    const rows = await sb(`nexus_clients?select=id&organization_id=eq.${encodeURIComponent(ctx.organizationId)}&limit=1`);
+    if(rows?.[0]?.id) return { economicScope: "CLIENT", clientId: rows[0].id };
+  } catch {}
+  return { economicScope: "UNASSIGNED", clientId: null };
+}
 async function chooseRoute(level,operationType){
   const op=encodeURIComponent(operationType);
   const select="id,operation_type,level,priority,min_quality_score,model:nexus_ai_models!nexus_ai_routes_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,reference_input_cost_per_million,reference_output_cost_per_million,billing_mode,provider:nexus_ai_providers(id,code,name,active)),fallback:nexus_ai_models!nexus_ai_routes_fallback_model_id_fkey(id,code,name,level,active,input_cost_per_million,output_cost_per_million,reference_input_cost_per_million,reference_output_cost_per_million,billing_mode,provider:nexus_ai_providers(id,code,name,active))";
@@ -151,8 +162,11 @@ export async function POST(request){
     diagnosticSelected = selected;
 
     diagnosticStage="operation_create";
+    const attribution = await economicAttribution(ctx, req.metadata);
     [op]=await sb("nexus_ai_operations",{method:"POST",body:[{
       organization_id:ctx.organizationId,
+      client_id:attribution.clientId,
+      economic_scope:attribution.economicScope,
       user_id:ctx.userId,
       operation_type:req.operationType,
       requested_level:req.level,
