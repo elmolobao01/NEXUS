@@ -182,8 +182,8 @@ export async function GET(request) {
     rest("nexus_ai_models?select=*,provider:nexus_ai_providers(code,name)&order=level.asc,name.asc", {}, ctx.token),
     rest("nexus_ai_routes?select=*,model:nexus_ai_models!nexus_ai_routes_model_id_fkey(code,name),fallback:nexus_ai_models!nexus_ai_routes_fallback_model_id_fkey(code,name)&order=level.asc,priority.asc", {}, ctx.token),
     rest("nexus_ai_client_limits?select=*&order=created_at.desc", {}, ctx.token),
-    rest("nexus_ai_operations?select=*&order=created_at.desc&limit=250", {}, ctx.token),
-    rest("nexus_ai_costs?select=*&order=created_at.desc&limit=250", {}, ctx.token),
+    rest("nexus_ai_operations?select=*&order=created_at.desc&limit=5000", {}, ctx.token),
+    rest("nexus_ai_costs?select=*&order=created_at.desc&limit=5000", {}, ctx.token),
     rest("nexus_organizations?select=id,name,legal_name&order=name.asc", {}, ctx.token),
   ]);
 
@@ -215,6 +215,19 @@ export async function GET(request) {
   const marginUsd = costRows.reduce((sum, item) => sum + Number(item.margin_usd || 0), 0);
   const success = ops.filter((item) => item.status === "SUCCESS").length;
   const fallbacks = ops.filter((item) => item.fallback_used).length;
+  const monthStart = new Date(); monthStart.setUTCDate(1); monthStart.setUTCHours(0,0,0,0);
+  const monthCosts = costRows.filter((item) => new Date(item.created_at) >= monthStart);
+  const monthOps = ops.filter((item) => new Date(item.created_at) >= monthStart && item.status === "SUCCESS");
+  const billedMonthUsd = monthCosts.reduce((sum,item)=>sum+Number(item.provider_cost_usd||0),0);
+  const referenceMonthUsd = monthCosts.reduce((sum,item)=>sum+Number(item.reference_cost_usd ?? item.provider_cost_usd ?? 0),0);
+  const freeOps = monthCosts.filter((item)=>item.billing_mode === "FREE_TIER" || (Number(item.provider_cost_usd||0)===0 && Number(item.reference_cost_usd||0)>0)).length;
+  const elapsedDays = Math.max(1, (Date.now()-monthStart.getTime())/86400000);
+  const daysInMonth = new Date(Date.UTC(monthStart.getUTCFullYear(),monthStart.getUTCMonth()+1,0)).getUTCDate();
+  const projectionFactor = daysInMonth/elapsedDays;
+  const modelById = Object.fromEntries((models.data||[]).map(m=>[m.id,m]));
+  const byModelMap = {};
+  for(const op of monthOps){ const m=modelById[op.model_id]; const key=m?.code||op.model_id||"unknown"; const row=byModelMap[key] ||= {model:key,provider:m?.provider?.code||"—",operations:0,inputTokens:0,outputTokens:0,billedCostUsd:0,referenceCostUsd:0}; row.operations++; row.inputTokens+=Number(op.input_tokens||0); row.outputTokens+=Number(op.output_tokens||0); }
+  for(const c of monthCosts){ const op=ops.find(o=>o.id===c.operation_id); const m=op?modelById[op.model_id]:null; const key=m?.code||op?.model_id||"unknown"; const row=byModelMap[key] ||= {model:key,provider:m?.provider?.code||"—",operations:0,inputTokens:0,outputTokens:0,billedCostUsd:0,referenceCostUsd:0}; row.billedCostUsd+=Number(c.provider_cost_usd||0); row.referenceCostUsd+=Number(c.reference_cost_usd ?? c.provider_cost_usd ?? 0); }
 
   return NextResponse.json({
     providers: (providers.data || []).map((provider) => ({ ...provider, readiness: providerReadiness(provider) })),
@@ -235,6 +248,16 @@ export async function GET(request) {
       totalRevenueUsd,
       marginUsd,
       marginRate: totalRevenueUsd > 0 ? (marginUsd / totalRevenueUsd) * 100 : 0,
+    },
+    economics: {
+      monthOperations: monthOps.length, billedMonthUsd, referenceMonthUsd,
+      savingsMonthUsd: Math.max(0, referenceMonthUsd-billedMonthUsd),
+      freeOperations: freeOps, freeShare: monthCosts.length ? (freeOps/monthCosts.length)*100 : 0,
+      avgBilledPerOperation: monthOps.length ? billedMonthUsd/monthOps.length : 0,
+      avgReferencePerOperation: monthOps.length ? referenceMonthUsd/monthOps.length : 0,
+      projectedBilledMonthUsd: billedMonthUsd*projectionFactor,
+      projectedReferenceMonthUsd: referenceMonthUsd*projectionFactor,
+      byModel: Object.values(byModelMap).sort((a,b)=>b.operations-a.operations),
     },
     serviceRoleConfigured: Boolean(SERVICE_ROLE),
   });
@@ -259,7 +282,7 @@ export async function PATCH(request) {
 
   const allowed = {
     provider: ["active", "priority", "base_url", "config"],
-    model: ["active", "level", "input_cost_per_million", "output_cost_per_million", "capabilities", "config"],
+    model: ["active", "level", "input_cost_per_million", "output_cost_per_million", "reference_input_cost_per_million", "reference_output_cost_per_million", "billing_mode", "capabilities", "config"],
     route: ["active", "priority", "level", "model_id", "fallback_model_id", "min_quality_score", "conditions"],
     limit: ["active", "hard_limit", "monthly_operations", "monthly_input_tokens", "monthly_output_tokens", "monthly_cost_usd"],
   }[body.entity];
