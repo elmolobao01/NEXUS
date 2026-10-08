@@ -71,9 +71,13 @@ async function chooseRoute(level,operationType){
   const available=(rows||[]).filter(r=>
     r?.model?.active && r?.model?.provider?.active && Number(r?.model?.level) === Number(level)
   );
-  return available.find(r=>r.operation_type===operationType)
-    || available.find(r=>r.operation_type==='*')
-    || null;
+  const matching = available.filter(r=>r.operation_type===operationType);
+  const candidates = matching.length ? matching : available.filter(r=>r.operation_type==='*');
+  if (!candidates.length) return null;
+  // Respeita prioridade configurada e mantém uma segunda rota ativa como contingência.
+  const primary = candidates[0];
+  const alternate = candidates.slice(1).find(r=>r.model?.id!==primary.model?.id)?.model || null;
+  return { ...primary, economicFallback: alternate };
 }
 async function chooseBenchmarkModel(modelCode, level){
   if(!modelCode) return null;
@@ -156,7 +160,7 @@ export async function POST(request){
       const route=await chooseRoute(req.level,req.operationType);
       if(!route?.model?.provider) throw new Error("AI_ROUTE_NOT_FOUND");
       selected=route.model;
-      fallback=route.fallback;
+      fallback=route.fallback?.active && route.fallback?.provider?.active ? route.fallback : route.economicFallback;
     }
 
     diagnosticSelected = selected;
@@ -176,13 +180,15 @@ export async function POST(request){
       metadata:req.metadata
     }],prefer:"return=representation"});
 
-    let result, fallbackUsed=false;
+    let result, fallbackUsed=false, routerDecision="CONFIGURED_PRIORITY", fallbackReason=null;
     diagnosticStage="provider_execute";
     try{
       result=await executeProvider(selected.provider.code,{input:req.input,operationType:req.operationType,metadata:req.metadata,modelCode:selected.code});
     }catch(primaryError){
-      if(requestedBenchmarkModel || !fallback?.active || !fallback?.provider?.active) throw primaryError;
-      await sb("nexus_ai_fallbacks",{method:"POST",body:[{operation_id:op.id,from_model_id:selected.id,to_model_id:fallback.id,reason:String(primaryError.message||primaryError).slice(0,500)}]});
+      if(requestedBenchmarkModel || !fallback?.active || !fallback?.provider?.active || fallback.id===selected.id || Number(fallback.level)!==Number(req.level)) throw primaryError;
+      fallbackReason = String(primaryError.message||primaryError).slice(0,500);
+      routerDecision = /429|RATE_LIMIT|TPM|RPM|RPD|TPD/i.test(fallbackReason) ? "CAPACITY_FALLBACK" : "ERROR_FALLBACK";
+      await sb("nexus_ai_fallbacks",{method:"POST",body:[{operation_id:op.id,from_model_id:selected.id,to_model_id:fallback.id,reason:fallbackReason}]});
       selected=fallback; fallbackUsed=true; diagnosticSelected = selected;
       result=await executeProvider(selected.provider.code,{input:req.input,operationType:req.operationType,metadata:req.metadata,modelCode:selected.code});
     }
@@ -208,6 +214,8 @@ export async function POST(request){
       model:selected.code,
       provider:selected.provider.code,
       fallbackUsed,
+      routerDecision: requestedBenchmarkModel ? "BENCHMARK_PINNED" : routerDecision,
+      fallbackReason,
       latencyMs,
       usage:{inputTokens:result.inputTokens||0,outputTokens:result.outputTokens||0,costUsd:cost,referenceCostUsd:referenceCost,billingMode}
     },{headers:{"Cache-Control":"no-store"}});
