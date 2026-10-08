@@ -143,6 +143,10 @@ export async function POST(request){
     diagnosticStage="client_limit";
     await enforceLimit(ctx.organizationId,req.operationType);
 
+    // Somente ROOT pode acionar falha sintética. Nunca enviar a simulação ao provider.
+    const controlledFallbackTest = req.metadata?.rootFallbackTest === true;
+    if (controlledFallbackTest && ctx.profile !== "NEXUS_ROOT") throw new Error("ROOT_FALLBACK_TEST_FORBIDDEN");
+    if (controlledFallbackTest && req.metadata?.benchmark === true) throw new Error("ROOT_FALLBACK_TEST_INVALID_MODE");
     const requestedBenchmarkModel = req.metadata?.benchmark === true ? req.metadata?.targetModelCode : null;
     diagnosticBenchmarkModel = requestedBenchmarkModel || null;
     const canPinBenchmarkModel = ["NEXUS_ROOT","NEXUS_ADMIN"].includes(ctx.profile);
@@ -163,6 +167,9 @@ export async function POST(request){
       fallback=route.fallback?.active && route.fallback?.provider?.active ? route.fallback : route.economicFallback;
     }
 
+    if (controlledFallbackTest && (!fallback?.active || !fallback?.provider?.active || fallback.id === selected.id || Number(fallback.level) !== Number(req.level))) {
+      throw new Error("ROOT_FALLBACK_TEST_NO_ALTERNATE_ROUTE");
+    }
     diagnosticSelected = selected;
 
     diagnosticStage="operation_create";
@@ -183,6 +190,7 @@ export async function POST(request){
     let result, fallbackUsed=false, routerDecision="CONFIGURED_PRIORITY", fallbackReason=null;
     diagnosticStage="provider_execute";
     try{
+      if (controlledFallbackTest) throw new Error("SIMULATED_HTTP_429_ROOT_TEST");
       result=await executeProvider(selected.provider.code,{input:req.input,operationType:req.operationType,metadata:req.metadata,modelCode:selected.code});
     }catch(primaryError){
       if(requestedBenchmarkModel || !fallback?.active || !fallback?.provider?.active || fallback.id===selected.id || Number(fallback.level)!==Number(req.level)) throw primaryError;
@@ -216,6 +224,7 @@ export async function POST(request){
       fallbackUsed,
       routerDecision: requestedBenchmarkModel ? "BENCHMARK_PINNED" : routerDecision,
       fallbackReason,
+      controlledFallbackTest,
       latencyMs,
       usage:{inputTokens:result.inputTokens||0,outputTokens:result.outputTokens||0,costUsd:cost,referenceCostUsd:referenceCost,billingMode}
     },{headers:{"Cache-Control":"no-store"}});
