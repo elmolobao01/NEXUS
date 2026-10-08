@@ -178,6 +178,22 @@ function BenchmarkPanel({ onError }) {
     finally { setExecuting(false); }
   }
 
+  async function testControlledFallback() {
+    if (!selectedCase || !prompt.trim()) return;
+    setExecuting(true); setResult(null); setComparison([]); onError("");
+    try {
+      const response = await fetch("/api/ai/execute", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operationType: selectedCase.operation_type, level, input: prompt,
+          metadata: { rootFallbackTest: true, responseFormat: /json/i.test(selectedCase.expected_format || "") ? "json" : "text" } })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || payload.message || "Falha no teste controlado");
+      setResult(payload);
+    } catch (err) { onError(err.message); }
+    finally { setExecuting(false); }
+  }
+
   async function compareModels() {
     if (!selectedCase || !prompt.trim() || !eligibleModels.length) return;
     setComparing(true); setResult(null); setComparison([]); onError("");
@@ -306,6 +322,7 @@ function BenchmarkPanel({ onError }) {
       <label className="ai2-benchmark-prompt">Prompt<textarea rows="10" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></label>
       <div className="ai2-benchmark-actions">
         <button className="root2-button primary" disabled={executing || comparing || batchRunning || !selectedCase} onClick={executeBenchmark}>{executing ? "Executando…" : "▶ Executar pelo Router"}</button>
+        <button className="root2-button" disabled={executing || comparing || batchRunning || !selectedCase} onClick={testControlledFallback}>Testar fallback ROOT (429 simulado)</button>
         <button className="root2-button" disabled={executing || comparing || batchRunning || !eligibleModels.length} onClick={compareModels}>{comparing ? "Comparando…" : `Comparar IAs (${eligibleModels.length})`}</button>
         <button className="root2-button" disabled={executing || comparing || batchRunning || !eligibleModels.length || !eligibleCases.length} onClick={executeFullBatch}>{batchRunning ? `Bateria ${batchProgress.done}/${batchProgress.total}` : `Executar bateria completa (${eligibleCases.length * eligibleModels.length})`}</button>
       </div>
@@ -332,7 +349,7 @@ function BenchmarkPanel({ onError }) {
 
       {result && <div className="ai2-benchmark-result">
         <div className="ai2-benchmark-result-meta">
-          <span><b>Provider</b>{result.provider}</span><span><b>Modelo</b>{result.model}</span><span><b>Latência</b>{Number(result.latencyMs || 0).toLocaleString("pt-BR")} ms</span><span><b>Tokens</b>{Number(result.usage?.inputTokens || 0) + Number(result.usage?.outputTokens || 0)}</span><span><b>Custo</b>{usd(result.usage?.costUsd, 8)}</span><span><b>Fallback</b>{result.fallbackUsed ? "Sim" : "Não"}</span>
+          <span><b>Provider</b>{result.provider}</span><span><b>Modelo</b>{result.model}</span><span><b>Latência</b>{Number(result.latencyMs || 0).toLocaleString("pt-BR")} ms</span><span><b>Tokens</b>{Number(result.usage?.inputTokens || 0) + Number(result.usage?.outputTokens || 0)}</span><span><b>Custo</b>{usd(result.usage?.costUsd, 8)}</span><span><b>Fallback</b>{result.fallbackUsed ? "Sim" : "Não"}</span>{result.controlledFallbackTest ? <span><b>Teste controlado</b>HTTP 429 simulado · {result.routerDecision} · {result.fallbackReason}</span> : null}
         </div>
         {result.auto && <div className={`ai2-auto-score ${result.auto.passed ? "pass" : "fail"}`}><strong>Avaliação automática: {Number(result.auto.score || 0).toFixed(1)}</strong><span>{result.auto.passed ? "APROVADO" : "REVISAR"}</span><small>{(result.auto.details || []).join(" · ")}</small></div>}
         <div className="ai2-benchmark-output"><span>RESPOSTA NORMALIZADA</span><pre>{renderOutput(result.output)}</pre></div>
