@@ -78,7 +78,7 @@ async function chooseRoute(level,operationType){
   const intelligent = await selectIntelligentRoute(candidates,operationType);
   const primary = intelligent?.primary || candidates[0];
   const alternate = intelligent?.alternate || candidates.find(r=>r.model?.id!==primary.model?.id)?.model || null;
-  return { ...primary, economicFallback: alternate, intelligentSelection: Boolean(intelligent), selectedCapability:intelligent?.capability || null };
+  return { ...primary, economicFallback: alternate, intelligentSelection: Boolean(intelligent), selectedCapability:intelligent?.capability || capabilityFor(operationType), routerDiagnostics: intelligent?.diagnostics || {reason:"Evidências insuficientes ou indisponíveis; prioridade configurada mantida.",candidates:candidates.map(r=>({model:r.model.code,provider:r.model.provider.code,priority:r.priority,minimumQuality:Math.max(70,Number(r.min_quality_score||0)),eligible:false}))} };
 }
 // v0.11: recomendações baseadas apenas em execuções válidas, sem promover
 // modelos inativos nem confundir falhas de capacidade com notas de qualidade.
@@ -118,7 +118,7 @@ async function selectIntelligentRoute(candidates, operationType){
     const maxPrice=Math.max(...eligible.map(x=>x.price),0.000001);
     eligible.forEach(x=>{x.score=x.quality*.8+20*(1-x.price/maxPrice);});
     eligible.sort((a,b)=>b.score-a.score || a.route.priority-b.route.priority);
-    return {primary:eligible[0].route,alternate:eligible[1].route.model,capability};
+    return {primary:eligible[0].route,alternate:eligible[1].route.model,capability,diagnostics:{reason:"Seleção por qualidade (80%) e custo de referência (20%).",candidates:eligible.map(x=>({model:x.route.model.code,provider:x.route.model.provider.code,quality:Number(x.quality.toFixed(2)),score:Number(x.score.toFixed(2)),referencePricePerMillionCombined:x.price,samples:stats.get(x.route.model.id)?.n,minimumQuality:Math.max(70,Number(x.route.min_quality_score||0)),eligible:true}))}};
   }catch{
     return null; // Falha de leitura do benchmark nunca derruba o Router.
   }
@@ -198,6 +198,7 @@ export async function POST(request){
     let fallback = null;
     let intelligentSelection = false;
     let selectedCapability = null;
+    let routerDiagnostics = null;
 
     if(requestedBenchmarkModel){
       diagnosticStage="benchmark_authorization";
@@ -212,6 +213,7 @@ export async function POST(request){
       selected=route.model;
       intelligentSelection=Boolean(route.intelligentSelection);
       selectedCapability=route.selectedCapability;
+      routerDiagnostics=route.routerDiagnostics;
       fallback=route.fallback?.active && route.fallback?.provider?.active ? route.fallback : route.economicFallback;
     }
 
@@ -272,6 +274,7 @@ export async function POST(request){
       fallbackUsed,
       routerDecision: requestedBenchmarkModel ? "BENCHMARK_PINNED" : routerDecision,
       selectedCapability,
+      routerDiagnostics: requestedBenchmarkModel ? {reason:"Modelo fixado para comparação de benchmark; seleção inteligente não aplicada.",candidates:[]} : routerDiagnostics,
       fallbackReason,
       controlledFallbackTest,
       latencyMs,
