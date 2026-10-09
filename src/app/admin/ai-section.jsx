@@ -351,6 +351,13 @@ function BenchmarkPanel({ onError }) {
         <div className="ai2-benchmark-result-meta">
           <span><b>Provider</b>{result.provider}</span><span><b>Modelo</b>{result.model}</span><span><b>Latência</b>{Number(result.latencyMs || 0).toLocaleString("pt-BR")} ms</span><span><b>Tokens</b>{Number(result.usage?.inputTokens || 0) + Number(result.usage?.outputTokens || 0)}</span><span><b>Custo</b>{usd(result.usage?.costUsd, 8)}</span><span><b>Fallback</b>{result.fallbackUsed ? "Sim" : "Não"}</span>{result.controlledFallbackTest ? <span><b>Teste controlado</b>HTTP 429 simulado · {result.routerDecision} · {result.fallbackReason}</span> : null}
         </div>
+        <div className="ai2-benchmark-alert" style={{marginTop:12}}>
+          <strong>Decisão do Router: {result.routerDecision || "NÃO INFORMADA"}</strong>
+          <span>Capacidade: {result.selectedCapability || "Não identificada"} · Modelo utilizado: {result.provider}/{result.model}</span>
+          {result.routerDiagnostics?.reason ? <span>{result.routerDiagnostics.reason}</span> : null}
+          {Array.isArray(result.routerDiagnostics?.candidates) && result.routerDiagnostics.candidates.length ? <div className="ai2-table-wrap" style={{marginTop:8}}><table><thead><tr><th>Modelo considerado</th><th>Qualidade</th><th>Pontuação</th><th>Amostras</th><th>Custo ref. / 1M (entrada + saída)</th><th>Elegível</th></tr></thead><tbody>{result.routerDiagnostics.candidates.map((candidate,index)=><tr key={`${candidate.model}-${index}`}><td>{candidate.provider}/{candidate.model}</td><td>{candidate.quality == null ? "—" : Number(candidate.quality).toFixed(1)}</td><td>{candidate.score == null ? "—" : Number(candidate.score).toFixed(1)}</td><td>{candidate.samples ?? "—"}</td><td>{candidate.referencePricePerMillionCombined == null ? "—" : usd(candidate.referencePricePerMillionCombined,4)}</td><td>{candidate.eligible ? "Sim" : "Não avaliado"}</td></tr>)}</tbody></table></div> : null}
+          {result.fallbackUsed ? <span>Fallback: {result.fallbackReason || "Alternativa executada"}</span> : null}
+        </div>
         {result.auto && <div className={`ai2-auto-score ${result.auto.passed ? "pass" : "fail"}`}><strong>Avaliação automática: {Number(result.auto.score || 0).toFixed(1)}</strong><span>{result.auto.passed ? "APROVADO" : "REVISAR"}</span><small>{(result.auto.details || []).join(" · ")}</small></div>}
         <div className="ai2-benchmark-output"><span>RESPOSTA NORMALIZADA</span><pre>{renderOutput(result.output)}</pre></div>
         <div className="ai2-score-grid">
