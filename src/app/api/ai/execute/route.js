@@ -75,9 +75,53 @@ async function chooseRoute(level,operationType){
   const candidates = matching.length ? matching : available.filter(r=>r.operation_type==='*');
   if (!candidates.length) return null;
   // Respeita prioridade configurada e mantém uma segunda rota ativa como contingência.
-  const primary = candidates[0];
-  const alternate = candidates.slice(1).find(r=>r.model?.id!==primary.model?.id)?.model || null;
-  return { ...primary, economicFallback: alternate };
+  const intelligent = await selectIntelligentRoute(candidates,operationType);
+  const primary = intelligent?.primary || candidates[0];
+  const alternate = intelligent?.alternate || candidates.find(r=>r.model?.id!==primary.model?.id)?.model || null;
+  return { ...primary, economicFallback: alternate, intelligentSelection: Boolean(intelligent), selectedCapability:intelligent?.capability || null };
+}
+// v0.11: recomendações baseadas apenas em execuções válidas, sem promover
+// modelos inativos nem confundir falhas de capacidade com notas de qualidade.
+const CAPABILITY_BY_OPERATION = {assistant:"Texto",docs:"Documentos",analytics:"Análise",knowledge:"Confiabilidade"};
+function capabilityFor(operationType){
+  const aliases={classify_text:"Texto",summarize_text:"Texto",draft_communication:"Comunicação",extract_structured:"Extração",analyze_metrics:"Análise"};
+  return aliases[operationType] || CAPABILITY_BY_OPERATION[operationType] || null;
+}
+async function selectIntelligentRoute(candidates, operationType){
+  const capability=capabilityFor(operationType);
+  if(!capability || candidates.length<2) return null;
+  try{
+    const runs=await sb("nexus_ai_benchmark_runs?select=auto_score,run_status,operation:nexus_ai_operations(model_id),case:nexus_ai_benchmark_cases(category)&run_status=eq.SUCCESS&auto_score=not.is.null&order=created_at.desc&limit=250");
+    const stats=new Map();
+    for(const run of runs||[]){
+      if(String(run.case?.category||"").toLowerCase()!==capability.toLowerCase()) continue;
+      const id=run.operation?.model_id;
+      if(!id || !Number.isFinite(Number(run.auto_score))) continue;
+      const record=stats.get(id)||{n:0,total:0};
+      record.n++;record.total+=Math.max(0,Math.min(100,Number(run.auto_score)));
+      stats.set(id,record);
+    }
+    const eligible=candidates.map(route=>{
+      const st=stats.get(route.model.id);
+      if(!st || st.n<2) return null;
+      const quality=st.total/st.n;
+      const minimum=Number(route.min_quality_score||0);
+      if(quality<Math.max(70,minimum)) return null;
+      const m=route.model;
+      // Referência paga mesmo para modelos atualmente subsidiados por Free Tier.
+      const input=Number(m.reference_input_cost_per_million ?? m.input_cost_per_million ?? 0);
+      const output=Number(m.reference_output_cost_per_million ?? m.output_cost_per_million ?? 0);
+      const price=Math.max(0,input)+Math.max(0,output);
+      return {route,quality,price};
+    }).filter(Boolean);
+    if(eligible.length<2) return null; // Sem evidência comparável: prioridade manual.
+    const maxPrice=Math.max(...eligible.map(x=>x.price),0.000001);
+    eligible.forEach(x=>{x.score=x.quality*.8+20*(1-x.price/maxPrice);});
+    eligible.sort((a,b)=>b.score-a.score || a.route.priority-b.route.priority);
+    return {primary:eligible[0].route,alternate:eligible[1].route.model,capability};
+  }catch{
+    return null; // Falha de leitura do benchmark nunca derruba o Router.
+  }
 }
 async function chooseBenchmarkModel(modelCode, level){
   if(!modelCode) return null;
@@ -152,6 +196,8 @@ export async function POST(request){
     const canPinBenchmarkModel = ["NEXUS_ROOT","NEXUS_ADMIN"].includes(ctx.profile);
     let selected = null;
     let fallback = null;
+    let intelligentSelection = false;
+    let selectedCapability = null;
 
     if(requestedBenchmarkModel){
       diagnosticStage="benchmark_authorization";
@@ -164,6 +210,8 @@ export async function POST(request){
       const route=await chooseRoute(req.level,req.operationType);
       if(!route?.model?.provider) throw new Error("AI_ROUTE_NOT_FOUND");
       selected=route.model;
+      intelligentSelection=Boolean(route.intelligentSelection);
+      selectedCapability=route.selectedCapability;
       fallback=route.fallback?.active && route.fallback?.provider?.active ? route.fallback : route.economicFallback;
     }
 
@@ -187,7 +235,7 @@ export async function POST(request){
       metadata:req.metadata
     }],prefer:"return=representation"});
 
-    let result, fallbackUsed=false, routerDecision="CONFIGURED_PRIORITY", fallbackReason=null;
+    let result, fallbackUsed=false, routerDecision=intelligentSelection ? "BENCHMARK_COST_QUALITY" : "CONFIGURED_PRIORITY", fallbackReason=null;
     diagnosticStage="provider_execute";
     try{
       if (controlledFallbackTest) throw new Error("SIMULATED_HTTP_429_ROOT_TEST");
@@ -223,6 +271,7 @@ export async function POST(request){
       provider:selected.provider.code,
       fallbackUsed,
       routerDecision: requestedBenchmarkModel ? "BENCHMARK_PINNED" : routerDecision,
+      selectedCapability,
       fallbackReason,
       controlledFallbackTest,
       latencyMs,
