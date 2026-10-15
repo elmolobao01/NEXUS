@@ -18,14 +18,26 @@ async function authorize(request) {
   if (!profile?.organization_id) return null;
   return { headers, profile };
 }
+async function entitlement(ctx) {
+  const r = await fetch(`${URL}/rest/v1/rpc/nexus_chatbot_entitlement`, {
+    method: "POST", headers: ctx.headers,
+    body: JSON.stringify({ p_organization_id: ctx.profile.organization_id }), cache: "no-store"
+  });
+  if (!r.ok) return { error: true, plan: "NONE" };
+  const plan = await r.json();
+  return { error: false, plan: ["CHATBOT_BASIC", "CHATBOT_AI"].includes(plan) ? plan : "NONE" };
+}
 export async function GET(request) {
   try {
     const ctx = await authorize(request);
     if (!ctx) return response("Acesso não autorizado.", 401);
+    const license = await entitlement(ctx);
+    if (license.error) return response("Não foi possível verificar a contratação do chatbot.", 503);
+    if (license.plan === "NONE") return NextResponse.json({ plan: "NONE", config: null });
     const org = encodeURIComponent(ctx.profile.organization_id);
     const r = await fetch(`${URL}/rest/v1/nexus_chatbot_configs?organization_id=eq.${org}&select=*&limit=1`, { headers: ctx.headers, cache: "no-store" });
     if (!r.ok) return response("Não foi possível consultar a configuração. Verifique a migração do banco.", 502);
-    return NextResponse.json({ config: (await r.json())?.[0] || null });
+    return NextResponse.json({ plan: license.plan, config: (await r.json())?.[0] || null });
   } catch { return response("Falha ao consultar chatbot.", 500); }
 }
 export async function PUT(request) {
@@ -33,6 +45,9 @@ export async function PUT(request) {
     const ctx = await authorize(request);
     if (!ctx) return response("Acesso não autorizado.", 401);
     if (!["NEXUS_ROOT","NEXUS_ADMIN","CLIENT_ADMIN"].includes(ctx.profile.profile)) return response("Perfil sem permissão de edição.", 403);
+    const license = await entitlement(ctx);
+    if (license.error) return response("Não foi possível verificar a contratação do chatbot.", 503);
+    if (license.plan === "NONE") return response("Chatbot não contratado ou contrato inativo.", 403);
     const body = await request.json();
     const clean = (value, max) => String(value ?? "").trim().slice(0, max);
     const tone = ["acolhedor","profissional","descontraido"].includes(body.tone) ? body.tone : "acolhedor";
@@ -40,6 +55,6 @@ export async function PUT(request) {
     const payload = { organization_id: ctx.profile.organization_id, assistant_name: clean(body.assistant_name, 120) || "Assistente PLENIUM", welcome_message: clean(body.welcome_message, 1500) || "Olá! Como posso ajudar?", closing_message: clean(body.closing_message, 1500), instructions: clean(body.instructions, 8000), tone, faq, active: body.active === true, updated_at: new Date().toISOString() };
     const r = await fetch(`${URL}/rest/v1/nexus_chatbot_configs?on_conflict=organization_id`, { method: "POST", headers: { ...ctx.headers, Prefer: "resolution=merge-duplicates,return=representation" }, body: JSON.stringify(payload), cache: "no-store" });
     if (!r.ok) return response("Não foi possível salvar a configuração. Verifique permissões e migração.", 502);
-    return NextResponse.json({ ok: true, config: (await r.json())?.[0] });
+    return NextResponse.json({ ok: true, plan: license.plan, config: (await r.json())?.[0] });
   } catch { return response("Falha ao salvar chatbot.", 500); }
 }
