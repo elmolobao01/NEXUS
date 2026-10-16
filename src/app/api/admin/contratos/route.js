@@ -40,18 +40,21 @@ export async function POST(request) {
     if (!(await getRootContext(token))) return json("Acesso não autorizado.", 403);
     const body = await request.json();
     const productIds = Array.isArray(body.productIds) ? [...new Set(body.productIds.map(String).filter(Boolean))] : [];
-    if (!body.clientId || !String(body.number || "").trim() || !body.startDate || !productIds.length) return json("Cliente, número, data inicial e produto são obrigatórios.", 400);
+    if (!body.clientId || !body.startDate || !productIds.length) return json("Cliente, data inicial e produto são obrigatórios.", 400);
     const durationMonths = Number(body.durationMonths || 0);
     if (!Number.isInteger(durationMonths) || durationMonths < 1 || durationMonths > 120) return json("Informe um prazo válido.", 400);
     if (body.billingCycle === "annual" && durationMonths % 12 !== 0) return json("Contratos anuais devem usar prazo múltiplo de 12 meses.", 400);
+    const primaryProductId = String(body.primaryProductId || productIds[0]);
+    if (!productIds.includes(primaryProductId)) return json("Selecione um produto principal válido.", 400);
+    const orderedProductIds = [primaryProductId, ...productIds.filter((id) => id !== primaryProductId)];
     const payload = {
       p_client_id: String(body.clientId),
-      p_number: String(body.number).trim(),
+      p_number: "",
       p_start_date: String(body.startDate),
       p_billing_cycle: body.billingCycle === "annual" ? "annual" : "monthly",
       p_duration_months: durationMonths,
       p_status: String(body.status || "draft"),
-      p_product_ids: productIds,
+      p_product_ids: orderedProductIds,
       p_referral_name: String(body.referralName || "").trim() || null,
       p_referral_discount_pct: Number(body.referralDiscountPct || 0),
       p_manual_discount_pct: Number(body.manualDiscountPct || 0),
