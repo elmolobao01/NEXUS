@@ -35,10 +35,11 @@ export async function GET(request) {
   try {
     const token = getToken(request);
     if (!(await getRootContext(token))) return json("Acesso não autorizado.", 403);
+    if (!SERVICE_ROLE_KEY) return json("Configuração de leitura de contratos indisponível.", 503);
     const params = new URLSearchParams();
     params.set("select", "id,client_id,number,start_date,end_date,billing_cycle,duration_months,value,gross_value,discount_pct,discount_value,net_value,status,notes,created_at,nexus_clients(legal_name,trade_name),nexus_contract_items(nexus_products(name))");
     params.set("order", "created_at.desc");
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/nexus_contracts?${params.toString()}`, { headers: supabaseHeaders(token), cache: "no-store" });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/nexus_contracts?${params.toString()}`, { headers: supabaseHeaders(SERVICE_ROLE_KEY, { apikey: SERVICE_ROLE_KEY }), cache: "no-store" });
     const data = await response.json();
     if (!response.ok) return json("Não foi possível carregar os contratos.", response.status, { details: data });
     const contracts = (Array.isArray(data) ? data : []).map((item) => ({
