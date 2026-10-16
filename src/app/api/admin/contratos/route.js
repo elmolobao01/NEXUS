@@ -2,17 +2,33 @@ import { NextResponse } from "next/server";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function json(message, status, extra = {}) { return NextResponse.json({ message, ...extra }, { status }); }
 function getToken(request) { return request.cookies.get("nexus_access_token")?.value || request.cookies.get("sb-access-token")?.value || ""; }
 function supabaseHeaders(token, extra = {}) { return { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...extra }; }
 async function getRootContext(token) {
   if (!SUPABASE_URL || !SUPABASE_KEY || !token) return null;
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/nexus_user_profiles?select=user_id,organization_id,profile,active&limit=1`, { headers: supabaseHeaders(token), cache: "no-store" });
+  // Verify the caller's token with Supabase Auth, rather than trusting a profile list.
+  const authResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: supabaseHeaders(token), cache: "no-store",
+  });
+  if (!authResponse.ok) return null;
+  const user = await authResponse.json();
+  if (!user?.id) return null;
+  const params = new URLSearchParams({
+    select: "user_id,organization_id,profile,active",
+    user_id: `eq.${user.id}`,
+    active: "eq.true",
+    limit: "1",
+  });
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/nexus_user_profiles?${params}`, {
+    headers: supabaseHeaders(token), cache: "no-store",
+  });
   if (!response.ok) return null;
   const rows = await response.json();
   const profile = Array.isArray(rows) ? rows[0] : null;
-  return profile?.active && ["NEXUS_ROOT", "NEXUS_ADMIN"].includes(profile.profile) ? profile : null;
+  return profile && ["NEXUS_ROOT", "NEXUS_ADMIN"].includes(profile.profile) ? profile : null;
 }
 
 export async function GET(request) {
@@ -38,6 +54,7 @@ export async function POST(request) {
   try {
     const token = getToken(request);
     if (!(await getRootContext(token))) return json("Acesso não autorizado.", 403);
+    if (!SERVICE_ROLE_KEY) return json("Configure SUPABASE_SERVICE_ROLE_KEY na Vercel para cadastrar contratos.", 503);
     const body = await request.json();
     const productIds = Array.isArray(body.productIds) ? [...new Set(body.productIds.map(String).filter(Boolean))] : [];
     if (!body.clientId || !body.startDate || !productIds.length) return json("Cliente, data inicial e produto são obrigatórios.", 400);
@@ -61,7 +78,7 @@ export async function POST(request) {
       p_manual_discount_reason: String(body.manualDiscountReason || "").trim() || null,
       p_notes: String(body.notes || "").trim() || null,
     };
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/nexus_create_contract_v2`, { method: "POST", headers: supabaseHeaders(token), body: JSON.stringify(payload), cache: "no-store" });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/nexus_create_contract_v2`, { method: "POST", headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(payload), cache: "no-store" });
     const data = await response.json();
     if (!response.ok) {
       const duplicate = String(data?.message || "").includes("nexus_contracts_number_key") || String(data?.details || "").includes("number");
