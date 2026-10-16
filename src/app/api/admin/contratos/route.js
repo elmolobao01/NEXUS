@@ -35,11 +35,11 @@ export async function GET(request) {
   try {
     const token = getToken(request);
     if (!(await getRootContext(token))) return json("Acesso não autorizado.", 403);
-    if (!SERVICE_ROLE_KEY) return json("Configuração de leitura de contratos indisponível.", 503);
+    if (!SERVICE_ROLE_KEY) return json("Configuração do servidor incompleta.", 503);
     const params = new URLSearchParams();
     params.set("select", "id,client_id,number,start_date,end_date,billing_cycle,duration_months,value,gross_value,discount_pct,discount_value,net_value,status,notes,created_at,nexus_clients(legal_name,trade_name),nexus_contract_items(nexus_products(name))");
     params.set("order", "created_at.desc");
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/nexus_contracts?${params.toString()}`, { headers: supabaseHeaders(SERVICE_ROLE_KEY, { apikey: SERVICE_ROLE_KEY }), cache: "no-store" });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/nexus_contracts?${params.toString()}`, { headers: supabaseHeaders(SERVICE_ROLE_KEY), cache: "no-store" });
     const data = await response.json();
     if (!response.ok) return json("Não foi possível carregar os contratos.", response.status, { details: data });
     const contracts = (Array.isArray(data) ? data : []).map((item) => ({
@@ -87,4 +87,37 @@ export async function POST(request) {
     }
     return NextResponse.json({ ok: true, contract: Array.isArray(data) ? data[0] : data }, { status: 201 });
   } catch { return json("Falha inesperada ao cadastrar contrato.", 500); }
+}
+
+// Alterações de estado e renovação são transações auditadas no banco.
+export async function PATCH(request) {
+  try {
+    const token = getToken(request);
+    const actor = await getRootContext(token);
+    if (!actor) return json("Acesso não autorizado.", 403);
+    if (!SERVICE_ROLE_KEY) return json("Configuração do servidor incompleta.", 503);
+    const body = await request.json();
+    const action = String(body.action || "");
+    if (!["suspend", "reactivate", "cancel", "renew", "end"].includes(action)) return json("Operação inválida.", 400);
+    if (!/^[0-9a-f-]{36}$/i.test(String(body.contractId || ""))) return json("Contrato inválido.", 400);
+    const reason = String(body.reason || "").trim();
+    if (reason.length < 10 || reason.length > 2000) return json("Informe uma justificativa com 10 a 2000 caracteres.", 400);
+    const payload = {
+      p_contract_id: body.contractId,
+      p_action: action,
+      p_reason: reason,
+      p_actor_id: actor.user_id,
+      p_start_date: action === "renew" ? body.startDate : null,
+      p_duration_months: action === "renew" ? Number(body.durationMonths) : null,
+    };
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/nexus_manage_contract_lifecycle`, {
+      method: "POST",
+      headers: supabaseHeaders(SERVICE_ROLE_KEY),
+      body: JSON.stringify(payload),
+      cache: "no-store",
+    });
+    const data = await response.json();
+    if (!response.ok) return json("Não foi possível executar a operação contratual.", response.status, { details: data });
+    return NextResponse.json({ ok: true, result: data });
+  } catch { return json("Falha inesperada na gestão contratual.", 500); }
 }
