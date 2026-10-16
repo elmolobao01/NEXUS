@@ -74,6 +74,46 @@ export default function ContractsSection() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [form, setForm] = useState(INITIAL);
+  const [selectedContract, setSelectedContract] = useState(null);
+  const [operation, setOperation] = useState("");
+  const [reason, setReason] = useState("");
+  const [renewStart, setRenewStart] = useState("");
+  const [renewMonths, setRenewMonths] = useState(12);
+  const [actionSaving, setActionSaving] = useState(false);
+
+  function openAction(contract, action) {
+    setSelectedContract(contract);
+    setOperation(action);
+    setReason("");
+    setRenewStart(contract.end_date ? new Date(`${contract.end_date}T00:00:00Z`).toISOString().slice(0,10) : "");
+    if (contract.end_date) {
+      const d = new Date(`${contract.end_date}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate()+1);
+      setRenewStart(d.toISOString().slice(0,10));
+    }
+    setRenewMonths(contract.duration_months || 12);
+  }
+
+  async function submitAction(event) {
+    event.preventDefault();
+    if (!selectedContract || !operation) return;
+    setActionSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/contratos", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractId: selectedContract.id, action: operation, reason, startDate: operation === "renew" ? renewStart : null, durationMonths: operation === "renew" ? Number(renewMonths) : null }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.details?.message || data.message || "Operação não concluída.");
+      setSelectedContract(null);
+      setOperation("");
+      await load();
+      setMessage(operation === "renew" ? "Renovação registrada em novo contrato com histórico vinculado." : "Operação contratual registrada com sucesso.");
+    } catch (error) { setMessage(error.message || "Falha ao alterar contrato."); }
+    finally { setActionSaving(false); }
+  }
+
 
   async function load() {
     setLoading(true);
@@ -94,10 +134,8 @@ export default function ContractsSection() {
       setContracts(contractsData.contracts || []);
       setClients(clientsData.clients || []);
       setProducts((productsData.products || []).filter((item) => item.active));
-      return true;
     } catch (error) {
       setMessage(error.message || "Falha ao carregar contratos.");
-      return false;
     } finally {
       setLoading(false);
     }
@@ -200,9 +238,8 @@ export default function ContractsSection() {
       if (!response.ok) throw new Error(data.message);
       setOpen(false);
       setForm(INITIAL);
-      const refreshed = await load();
-      if (refreshed) setMessage("Contrato cadastrado com numeração automática e cálculo de produtos, prazo e descontos.");
-      else setMessage("Contrato cadastrado, mas a listagem não pôde ser atualizada. Atualize a página ou verifique a consulta de contratos.");
+      await load();
+      setMessage("Contrato cadastrado com numeração automática e cálculo de produtos, prazo e descontos.");
     } catch (error) {
       setMessage(error.message || "Falha ao cadastrar contrato.");
     } finally {
@@ -236,9 +273,9 @@ export default function ContractsSection() {
         <header className="root2-panel-header"><div><span>CARTEIRA CONTRATUAL</span><h3>Contratos cadastrados</h3></div></header>
         <div className="nexus-contract-table-wrap">
           <table className="nexus-contract-table">
-            <thead><tr><th>Contrato</th><th>Cliente</th><th>Produtos</th><th>Vigência</th><th>Prazo</th><th>Bruto</th><th>Desconto</th><th>Líquido</th><th>Status</th></tr></thead>
+            <thead><tr><th>Contrato</th><th>Cliente</th><th>Produtos</th><th>Vigência</th><th>Prazo</th><th>Bruto</th><th>Desconto</th><th>Líquido</th><th>Status</th><th>Ações</th></tr></thead>
             <tbody>
-              {!loading && !contracts.length ? <tr><td colSpan="9">Nenhum contrato cadastrado.</td></tr> : contracts.map((item) => (
+              {!loading && !contracts.length ? <tr><td colSpan="10">Nenhum contrato cadastrado.</td></tr> : contracts.map((item) => (
                 <tr key={item.id}>
                   <td>{item.number}</td>
                   <td>{item.client_name || "—"}</td>
@@ -249,12 +286,48 @@ export default function ContractsSection() {
                   <td>{Number(item.discount_pct || 0).toFixed(2)}%</td>
                   <td>{money(item.net_value || item.value)}</td>
                   <td>{STATUS.find((status) => status[0] === item.status)?.[1] || item.status}</td>
+                  <td><div className="nexus-contract-actions">
+                    <button type="button" onClick={() => openAction(item, "details")}>Detalhes</button>
+                    {item.status === "active" && <button type="button" onClick={() => openAction(item, "suspend")}>Suspender</button>}
+                    {item.status === "suspended" && <button type="button" onClick={() => openAction(item, "reactivate")}>Reativar</button>}
+                    {["active", "suspended"].includes(item.status) && <button type="button" onClick={() => openAction(item, "renew")}>Renovar</button>}
+                    {["active", "suspended", "draft"].includes(item.status) && <button type="button" onClick={() => openAction(item, "cancel")}>Cancelar</button>}
+                  </div></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+
+      {selectedContract && (
+        <div className="root2-modal-backdrop">
+          <section className="root2-modal nexus-contract-action-modal" role="dialog" aria-modal="true" aria-label="Gestão contratual">
+            <header><div><span>GESTÃO CONTRATUAL</span><h3>{selectedContract.number}</h3></div></header>
+            {operation === "details" ? <div className="nexus-contract-detail">
+              <p><strong>Cliente:</strong> {selectedContract.client_name}</p>
+              <p><strong>Produtos:</strong> {selectedContract.product_names?.join(", ") || "—"}</p>
+              <p><strong>Vigência:</strong> {formatDate(selectedContract.start_date)} a {formatDate(selectedContract.end_date)}</p>
+              <p><strong>Status:</strong> {STATUS.find((status) => status[0] === selectedContract.status)?.[1] || selectedContract.status}</p>
+              <p><strong>Bruto:</strong> {money(selectedContract.gross_value)}</p>
+              <p><strong>Desconto:</strong> {Number(selectedContract.discount_pct || 0).toFixed(2)}%</p>
+              <p><strong>Líquido:</strong> {money(selectedContract.net_value)}</p>
+              <p><strong>Observações:</strong> {selectedContract.notes || "—"}</p>
+              <p className="nexus-contract-hint">O histórico de alterações fica registrado no banco em nexus_contract_lifecycle_events.</p>
+              <footer><button type="button" className="root2-button neutral" onClick={() => setSelectedContract(null)}>Fechar</button></footer>
+            </div> : <form onSubmit={submitAction} className="nexus-contract-action-form">
+              <p><strong>{({ suspend: "Suspender", reactivate: "Reativar", cancel: "Cancelar", renew: "Renovar", end: "Encerrar" })[operation]}</strong> contrato de {selectedContract.client_name}.</p>
+              {operation === "renew" && <>
+                <label>Início da nova vigência<input type="date" required value={renewStart} onChange={(e) => setRenewStart(e.target.value)} /></label>
+                <label>Prazo (meses)<input type="number" min="1" max="120" required value={renewMonths} onChange={(e) => setRenewMonths(Number(e.target.value))} /></label>
+                <p className="nexus-contract-hint">A renovação cria um novo contrato numerado, preservando o original e vinculando o histórico. Valores são recalculados pelas regras comerciais atuais.</p>
+              </>}
+              <label>Justificativa obrigatória<textarea required minLength={10} maxLength={2000} rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Informe o motivo e os detalhes da operação" /></label>
+              <footer><button type="button" className="root2-button neutral" disabled={actionSaving} onClick={() => setSelectedContract(null)}>Voltar</button><button type="submit" className="root2-button primary" disabled={actionSaving || reason.trim().length < 10}>{actionSaving ? "Processando…" : "Confirmar operação"}</button></footer>
+            </form>}
+          </section>
+        </div>
+      )}
 
       {open && (
         <div className="root2-modal-backdrop">
