@@ -13,7 +13,7 @@ const STATUS = [
 
 const INITIAL = {
   clientId: "",
-  number: "",
+  primaryProductId: "",
   startDate: "",
   billingCycle: "monthly",
   durationMonths: 1,
@@ -159,12 +159,17 @@ export default function ContractsSection() {
   );
 
   function toggleProduct(productId) {
-    setForm((current) => ({
-      ...current,
-      productIds: current.productIds.includes(productId)
+    setForm((current) => {
+      const productIds = current.productIds.includes(productId)
         ? current.productIds.filter((id) => id !== productId)
-        : [...current.productIds, productId],
-    }));
+        : [...current.productIds, productId];
+      return {
+        ...current,
+        productIds,
+        primaryProductId: productIds.includes(current.primaryProductId)
+          ? current.primaryProductId : (productIds[0] || ""),
+      };
+    });
   }
 
   function setCycle(value) {
@@ -194,7 +199,7 @@ export default function ContractsSection() {
       setOpen(false);
       setForm(INITIAL);
       await load();
-      setMessage("Contrato cadastrado com cálculo automático de produtos, prazo e descontos.");
+      setMessage("Contrato cadastrado com numeração automática e cálculo de produtos, prazo e descontos.");
     } catch (error) {
       setMessage(error.message || "Falha ao cadastrar contrato.");
     } finally {
@@ -261,7 +266,7 @@ export default function ContractsSection() {
                   </select>
                 </label>
 
-                <label><span>Número *</span><input required value={form.number} onChange={(event) => setForm({ ...form, number: event.target.value })} /></label>
+                <label><span>Número do contrato</span><input value="Gerado automaticamente ao salvar" readOnly aria-label="Número gerado automaticamente" /></label>
                 <label><span>Status</span><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>{STATUS.map((status) => <option key={status[0]} value={status[0]}>{status[1]}</option>)}</select></label>
 
                 <div className="span-2 nexus-product-picker">
@@ -274,6 +279,14 @@ export default function ContractsSection() {
                     </label>
                   ))}
                 </div>
+
+                {form.productIds.length > 1 && (
+                  <label className="span-2"><span>Produto principal para numeração *</span>
+                    <select required value={form.primaryProductId} onChange={(event) => setForm({ ...form, primaryProductId: event.target.value })}>
+                      {selectedProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+                    </select>
+                  </label>
+                )}
 
                 <label><span>Periodicidade *</span><select value={form.billingCycle} onChange={(event) => setCycle(event.target.value)}><option value="monthly">Mensal</option><option value="annual">Anual</option></select></label>
                 {form.billingCycle === "monthly" ? (
