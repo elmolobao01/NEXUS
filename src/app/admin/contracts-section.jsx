@@ -94,8 +94,10 @@ export default function ContractsSection() {
       setContracts(contractsData.contracts || []);
       setClients(clientsData.clients || []);
       setProducts((productsData.products || []).filter((item) => item.active));
+      return true;
     } catch (error) {
       setMessage(error.message || "Falha ao carregar contratos.");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -198,8 +200,9 @@ export default function ContractsSection() {
       if (!response.ok) throw new Error(data.message);
       setOpen(false);
       setForm(INITIAL);
-      await load();
-      setMessage("Contrato cadastrado com numeração automática e cálculo de produtos, prazo e descontos.");
+      const refreshed = await load();
+      if (refreshed) setMessage("Contrato cadastrado com numeração automática e cálculo de produtos, prazo e descontos.");
+      else setMessage("Contrato cadastrado, mas a listagem não pôde ser atualizada. Atualize a página ou verifique a consulta de contratos.");
     } catch (error) {
       setMessage(error.message || "Falha ao cadastrar contrato.");
     } finally {
