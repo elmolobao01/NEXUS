@@ -19,6 +19,18 @@ export default function LoginScreen() {
   const [manterConectado, setManterConectado] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [mensagem, setMensagem] = useState("");
+  const [recuperando, setRecuperando] = useState(false);
+
+  async function recuperarSenha() {
+    if (!email.trim()) { setMensagem("Informe seu e-mail para recuperar a senha."); return; }
+    setRecuperando(true); setMensagem("");
+    try {
+      const response = await fetch("/api/auth/recuperar-senha", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+      const data = await response.json();
+      setMensagem(data.message || "Não foi possível processar a solicitação.");
+    } catch { setMensagem("Falha de conexão. Tente novamente."); }
+    finally { setRecuperando(false); }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -166,8 +178,8 @@ export default function LoginScreen() {
                 <span>Manter conectado</span>
               </label>
 
-              <button type="button" className="nexus-link-button">
-                Esqueci minha senha
+              <button type="button" className="nexus-link-button" onClick={recuperarSenha} disabled={recuperando}>
+                {recuperando ? "Enviando…" : "Esqueci minha senha"}
               </button>
             </div>
 
