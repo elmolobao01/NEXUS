@@ -9,6 +9,14 @@ const SEGMENTOS = [
   "Saúde",
   "Hotelaria",
   "Restaurantes",
+  "Imobiliário e Locação por Temporada",
+  "Comércio e Varejo",
+  "Salão de Beleza e Barbearia",
+  "Jurídico",
+  "Pet",
+  "Serviços Profissionais",
+  "Gestão Empresarial",
+  "Avulso",
 ];
 
 const STATUS = [

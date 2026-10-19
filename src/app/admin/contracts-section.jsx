@@ -67,6 +67,9 @@ function termDiscount(months) {
 
 export default function ContractsSection() {
   const [contracts, setContracts] = useState([]);
+  const [clientFilter, setClientFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [contractSearch, setContractSearch] = useState("");
   const [clients, setClients] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -198,6 +201,17 @@ export default function ContractsSection() {
     [contracts]
   );
 
+  const filteredContracts = useMemo(() => {
+    const query = contractSearch.trim().toLocaleLowerCase("pt-BR");
+    return contracts.filter((contract) => {
+      if (clientFilter !== "all" && contract.client_id !== clientFilter) return false;
+      if (statusFilter !== "all" && contract.status !== statusFilter) return false;
+      if (!query) return true;
+      return [contract.number, contract.client_name, ...(contract.product_names || [])]
+        .some((value) => String(value || "").toLocaleLowerCase("pt-BR").includes(query));
+    });
+  }, [contracts, clientFilter, statusFilter, contractSearch]);
+
   function toggleProduct(productId) {
     setForm((current) => {
       const productIds = current.productIds.includes(productId)
@@ -271,11 +285,24 @@ export default function ContractsSection() {
 
       <section className="root2-panel root2-client-management">
         <header className="root2-panel-header"><div><span>CARTEIRA CONTRATUAL</span><h3>Contratos cadastrados</h3></div></header>
+        <div className="nexus-contract-filters" aria-label="Filtros da carteira contratual">
+          <label><span>Cliente</span><select value={clientFilter} onChange={(event) => setClientFilter(event.target.value)}>
+            <option value="all">Todos os clientes</option>
+            {clients.map((client) => <option key={client.id} value={client.id}>{client.trade_name || client.legal_name}</option>)}
+          </select></label>
+          <label><span>Situação</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="all">Todos os status</option>
+            {STATUS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select></label>
+          <label><span>Buscar contrato</span><input type="search" value={contractSearch} onChange={(event) => setContractSearch(event.target.value)} placeholder="Número, cliente ou produto" /></label>
+          <button type="button" onClick={() => { setClientFilter("all"); setStatusFilter("all"); setContractSearch(""); }}>Limpar filtros</button>
+        </div>
+        <p className="nexus-contract-filter-count">Exibindo {filteredContracts.length} de {contracts.length} contratos. Indicadores acima representam a carteira completa.</p>
         <div className="nexus-contract-table-wrap">
           <table className="nexus-contract-table">
             <thead><tr><th>Contrato</th><th>Cliente</th><th>Produtos</th><th>Vigência</th><th>Prazo</th><th>Bruto</th><th>Desconto</th><th>Líquido</th><th>Status</th><th>Ações</th></tr></thead>
             <tbody>
-              {!loading && !contracts.length ? <tr><td colSpan="10">Nenhum contrato cadastrado.</td></tr> : contracts.map((item) => (
+              {!loading && !filteredContracts.length ? <tr><td colSpan="10">Nenhum contrato encontrado para os filtros selecionados.</td></tr> : filteredContracts.map((item) => (
                 <tr key={item.id}>
                   <td>{item.number}</td>
                   <td>{item.client_name || "—"}</td>

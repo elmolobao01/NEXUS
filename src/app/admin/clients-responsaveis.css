@@ -703,3 +703,24 @@
     text-align: left;
   }
 }
+
+/* PLENIUM — legibilidade da ficha do cliente (escopo exclusivo da janela) */
+.root2-modal-client-v11 { font-size: 15px; line-height: 1.5; }
+.root2-modal-client-v11 .root2-modal-header h2 { font-size: 26px; line-height: 1.2; }
+.root2-modal-client-v11 label > span,
+.root2-modal-client-v11 .root2-form-grid label > span { font-size: 14px; line-height: 1.4; }
+.root2-modal-client-v11 input,
+.root2-modal-client-v11 select,
+.root2-modal-client-v11 textarea { font-size: 15px; line-height: 1.45; min-height: 43px; }
+.root2-modal-client-v11 button,
+.root2-modal-client-v11 .nexus-client-tabs button { font-size: 14px; }
+.root2-modal-client-v11 small,
+.root2-modal-client-v11 .nexus-responsaveis-heading p,
+.root2-modal-client-v11 .nexus-responsaveis-empty,
+.root2-modal-client-v11 .nexus-field-error { font-size: 13px; line-height: 1.5; }
+.root2-modal-client-v11 .nexus-responsaveis-heading > div > span,
+.root2-modal-client-v11 .nexus-responsavel-card > header > div > span { font-size: 12px; }
+@media (max-width: 720px) {
+  .root2-modal-client-v11 { font-size: 14px; }
+  .root2-modal-client-v11 .root2-modal-header h2 { font-size: 23px; }
+}
