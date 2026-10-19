@@ -13,9 +13,10 @@ export default function SetPasswordClient() {
   useEffect(() => {
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const token = hash.get("access_token") || "";
+    const error = hash.get("error_description") || hash.get("error");
     const type = hash.get("type") || "";
     setAccessToken(token);
-    if (!token) setMessage("O convite é inválido ou expirou. Solicite um novo convite ao administrador.");
+    if (!token) setMessage(error ? decodeURIComponent(error.replace(/\+/g, " ")) : "O link é inválido ou expirou. Solicite um novo convite ou utilize a recuperação de senha.");
     else if (type && !["invite", "recovery", "signup"].includes(type)) setMessage("Este link não pode ser usado para definir uma senha.");
     setReady(true);
   }, []);
