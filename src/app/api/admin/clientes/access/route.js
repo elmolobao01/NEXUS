@@ -1,3 +1,4 @@
+import { portalBase, sendPleniumEmail } from "../../../../../lib/email/resend";
 import { NextResponse } from "next/server";
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -33,14 +34,15 @@ export async function POST(request) {
     const unitRows = unitResponse.ok ? await unitResponse.json() : [];
     const mainUnit = Array.isArray(unitRows) ? unitRows[0] : null;
 
-    const invite = await fetch(`${URL}/auth/v1/invite?redirect_to=${encodeURIComponent(`${request.nextUrl.origin}/definir-senha`)}`, {
+    const invite = await fetch(`${URL}/auth/v1/admin/generate_link?redirect_to=${encodeURIComponent(`${portalBase()}/definir-senha`)}`, {
       method: "POST",
       headers: { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ email, data: { full_name: String(body.fullName || "").trim(), organization: client.trade_name || client.legal_name, nexus_invited: true } }),
+      body: JSON.stringify({ type: "invite", email, data: { full_name: String(body.fullName || "").trim(), organization: client.trade_name || client.legal_name, nexus_invited: true } }),
       cache: "no-store",
     });
-    const user = await invite.json();
-    if (!invite.ok || !user?.id) return json("Não foi possível enviar o convite ao administrador do cliente.", invite.status, { details: user });
+    const generated = await invite.json().catch(() => ({}));
+    const user = generated?.user || generated;
+    if (!invite.ok || !user?.id || !generated?.action_link) return json("Não foi possível gerar o convite de acesso.", invite.ok ? 502 : invite.status, { details: generated });
 
     const provision = await fetch(`${URL}/rest/v1/rpc/nexus_provision_user_profile`, {
       method: "POST",
@@ -59,6 +61,18 @@ export async function POST(request) {
     });
     const pdata = provision.status === 204 ? null : await provision.json().catch(() => null);
     if (!provision.ok) return json("Convite enviado, mas o perfil CLIENT_ADMIN não foi concluído.", provision.status, { details: pdata });
-    return NextResponse.json({ ok: true, message: "Administrador convidado com sucesso." }, { status: 201 });
+    try {
+      await sendPleniumEmail({
+        to: email,
+        subject: "PLENIUM | Ative seu acesso",
+        heading: "Bem-vindo à PLENIUM",
+        message: `Você recebeu acesso à organização ${client.trade_name || client.legal_name}. Clique no botão para criar sua senha e acessar o Portal do Cliente.`,
+        link: generated.action_link,
+        button: "Criar minha senha",
+      });
+    } catch (error) {
+      return json("O perfil foi preparado, mas não foi possível enviar o convite. Verifique o Resend e tente novamente.", 502, { details: error instanceof Error ? error.message : "Erro no envio" });
+    }
+    return NextResponse.json({ ok: true, message: "Convite enviado em português com sucesso." }, { status: 201 });
   } catch { return json("Falha inesperada ao configurar o acesso do cliente.", 500); }
 }
