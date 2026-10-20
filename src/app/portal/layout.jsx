@@ -1,3 +1,4 @@
+import "../admin/globals.css";
 import { requireAuthenticatedUser } from "./auth-guard";
 
 export default async function PortalLayout({ children }) {
