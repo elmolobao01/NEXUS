@@ -44,7 +44,7 @@ export async function PUT(request) {
   try {
     const ctx = await authorize(request);
     if (!ctx) return response("Acesso não autorizado.", 401);
-    if (!["NEXUS_ROOT","NEXUS_ADMIN","CLIENT_ADMIN"].includes(ctx.profile.profile)) return response("Perfil sem permissão de edição.", 403);
+    if (ctx.profile.profile !== "MANAGER") return response("Somente o gestor ativo da organização pode configurar o chatbot.", 403);
     const license = await entitlement(ctx);
     if (license.error) return response("Não foi possível verificar a contratação do chatbot.", 503);
     if (license.plan === "NONE") return response("Chatbot não contratado ou contrato inativo.", 403);
