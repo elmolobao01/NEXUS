@@ -139,6 +139,7 @@ export const navegacaoRoot = [
   "Planos e módulos",
   "Financeiro",
   "PLENIUM AI",
+  "PLENIUM Chatbots",
   "Infraestrutura",
   "Hospedagem",
   "Implantações",
