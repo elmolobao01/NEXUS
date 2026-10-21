@@ -14,6 +14,8 @@ export default function ChatbotsSection() {
   const [reload, setReload] = useState(0);
   const [oauthTestState, setOauthTestState] = useState("idle");
   const [oauthTestMessage, setOauthTestMessage] = useState("");
+  const [oauthLaunchState, setOauthLaunchState] = useState("idle");
+  const [oauthLaunchMessage, setOauthLaunchMessage] = useState("");
 
   async function testOAuthSession() {
     setOauthTestState("loading");
@@ -28,7 +30,7 @@ export default function ChatbotsSection() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result?.message || "Não foi possível criar a sessão OAuth.");
-      if (result?.status !== "prepared_not_enabled" || !result?.authorization_url) {
+      if (!["prepared_not_enabled", "controlled_test_ready"].includes(result?.status)) {
         throw new Error("Resposta inesperada do servidor. A autorização não foi iniciada.");
       }
       // Never navigate to Meta or expose the state-bearing authorization URL.
@@ -37,6 +39,31 @@ export default function ChatbotsSection() {
     } catch (err) {
       setOauthTestState("error");
       setOauthTestMessage(err?.message || "Falha ao preparar a sessão OAuth.");
+    }
+  }
+
+  async function launchControlledOAuth() {
+    if (!window.confirm("Iniciar o teste de autorização com a Meta? Isso abrirá a Meta e poderá solicitar permissões. Nenhum número WhatsApp será ativado automaticamente no NEXUS.")) return;
+    setOauthLaunchState("loading");
+    setOauthLaunchMessage("");
+    try {
+      const response = await fetch("/api/integrations/meta/start", {
+        method: "POST", credentials: "same-origin", cache: "no-store",
+        headers: { "Content-Type": "application/json" }, body: "{}",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.message || "Falha ao iniciar autorização.");
+      if (result?.status !== "controlled_test_ready" || typeof result.authorization_url !== "string") {
+        throw new Error("Teste real desabilitado no servidor. Configure META_OAUTH_CONTROLLED_TEST_ENABLED=true somente quando estiver pronto para testar.");
+      }
+      const target = new URL(result.authorization_url);
+      if (target.protocol !== "https:" || target.hostname !== "www.facebook.com" || target.pathname !== "/v26.0/dialog/oauth") {
+        throw new Error("Destino OAuth inesperado. Redirecionamento cancelado.");
+      }
+      window.location.assign(target.toString());
+    } catch (err) {
+      setOauthLaunchState("error");
+      setOauthLaunchMessage(err?.message || "Falha no teste OAuth.");
     }
   }
 
@@ -76,13 +103,17 @@ export default function ChatbotsSection() {
         <h3 style={{ marginTop: 8 }}>{tab}</h3>
         {tab === "Conexões Meta" ? <>
           <p>Conexões WhatsApp Business vinculadas às organizações cadastradas no NEXUS.</p>
-          <p>A ativação de novas conexões permanece indisponível até a conclusão do OAuth e da proteção de credenciais.</p>
+          <p>A ativação de números WhatsApp permanece indisponível. O teste de autorização Meta exige liberação explícita no servidor e não ativa conexões.</p>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
             <button type="button" onClick={() => setReload((v) => v + 1)} disabled={state === "loading"}>Atualizar listagem</button>
             <button type="button" onClick={testOAuthSession} disabled={oauthTestState === "loading"}>
               {oauthTestState === "loading" ? "Preparando sessão..." : "Testar sessão OAuth (sem conectar)"}
             </button>
+            <button type="button" onClick={launchControlledOAuth} disabled={oauthLaunchState === "loading"}>
+              {oauthLaunchState === "loading" ? "Iniciando autorização..." : "Testar autorização Meta (controlado)"}
+            </button>
           </div>
+          {oauthLaunchMessage && <p role="alert" style={{ marginTop: 12, color: "#9f1239" }}>{oauthLaunchMessage}</p>}
           {oauthTestMessage && <p role="status" aria-live="polite" style={{ marginTop: 12, color: oauthTestState === "error" ? "#9f1239" : "#166534" }}>{oauthTestMessage}</p>}
           <div role="status" style={{ marginTop: 16 }}>
             {state === "loading" ? "Consultando conexões..." : state === "error" ? `Erro: ${error}` : connections.length === 0 ? "Nenhuma conexão WhatsApp cadastrada." : `${connections.length} conexão(ões) cadastrada(s), ${active} com status ativo.`}
