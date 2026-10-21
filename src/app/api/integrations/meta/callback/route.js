@@ -68,7 +68,22 @@ export async function GET(request) {
     tokenUrl.searchParams.set("redirect_uri", redirectUri);
     tokenUrl.searchParams.set("code", code);
     const exchange = await fetch(tokenUrl, { method: "GET", cache: "no-store", signal: AbortSignal.timeout(12000) });
-    if (!exchange.ok) return reply("A Meta não concluiu a troca do código de autorização. Inicie novamente.", 502);
+    if (!exchange.ok) {
+      // Do not log the request URL, OAuth code, state, access tokens or Meta error messages.
+      // Meta messages may contain identifiers; only numeric codes and a bounded type are safe.
+      let details = {};
+      try {
+        const body = await exchange.json();
+        const err = body && typeof body === "object" ? body.error : null;
+        if (err && typeof err === "object") {
+          if (Number.isSafeInteger(err.code)) details.code = err.code;
+          if (Number.isSafeInteger(err.error_subcode)) details.subcode = err.error_subcode;
+          if (typeof err.type === "string" && /^[A-Za-z_]{1,64}$/.test(err.type)) details.type = err.type;
+        }
+      } catch { /* Response may not be JSON. */ }
+      console.error("meta_oauth_exchange_failed", { http_status: exchange.status, ...details });
+      return reply("A Meta recusou a troca do código OAuth. Consulte o evento meta_oauth_exchange_failed nos logs da Vercel. Não reutilize esta autorização.", 502);
+    }
     const token = await exchange.json();
     if (typeof token?.access_token !== "string" || !token.access_token || token.access_token.length > 16384) return reply("A Meta não retornou uma credencial válida.", 502);
     // Store encrypted credential as PENDING: WABA, phone ownership and embedded signup
