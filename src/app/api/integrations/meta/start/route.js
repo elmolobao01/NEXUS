@@ -20,17 +20,32 @@ export async function POST(request) {
     if (!auth.ok) return json("Sessão inválida.", 401);
     const user = await auth.json();
     if (!user.id) return json("Sessão inválida.", 401);
-    const profiles = await fetch(`${url}/rest/v1/nexus_user_profiles?select=organization_id,profile,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&limit=1`, { headers: userHeaders, cache: "no-store" });
+    // Resolve the user's active organization memberships server-side.
+    // Never accept organization_id or profile from the request body.
+    const profiles = await fetch(`${url}/rest/v1/nexus_user_profiles?select=organization_id,profile,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true`, { headers: userHeaders, cache: "no-store" });
     if (!profiles.ok) return json("Não foi possível verificar o perfil.", 503);
-    const profile = (await profiles.json())?.[0];
-    if (!profile?.organization_id || profile.profile !== "MANAGER") return json("Somente o gestor da organização pode iniciar esta integração.", 403);
+    const memberships = await profiles.json();
+    if (!Array.isArray(memberships)) return json("Resposta de perfis inválida.", 503);
+    const eligible = memberships.filter((item) =>
+      item?.organization_id && ["MANAGER", "CLIENT_ADMIN", "NEXUS_ROOT"].includes(item.profile)
+    );
+    if (eligible.length === 0) return json("Seu perfil não permite iniciar esta integração.", 403);
+    // Fail closed on ambiguous membership. ROOT global access requires a separate,
+    // audited target-organization authorization flow; never infer it from ROOT.
+    const organizations = [...new Set(eligible.map((item) => item.organization_id))];
+    if (organizations.length !== 1) return json("Há mais de uma organização autorizada. Selecione a organização em um fluxo específico.", 409);
+    const organizationId = organizations[0];
+    const org = await fetch(`${url}/rest/v1/nexus_organizations?select=id,status&id=eq.${encodeURIComponent(organizationId)}&limit=1`, { headers: userHeaders, cache: "no-store" });
+    if (!org.ok) return json("Não foi possível validar a organização.", 503);
+    const organization = (await org.json())?.[0];
+    if (!organization || organization.status !== "active") return json("Organização inexistente ou inativa.", 403);
     const issuedAt = String(Math.floor(Date.now() / 1000));
     const nonce = randomBytes(32).toString("base64url");
     const payload = `${issuedAt}.${nonce}`;
     const state = `${payload}.${createHmac("sha256", secret).update(payload).digest("hex")}`;
     const stateDigest = createHash("sha256").update(state).digest("hex");
     const adminHeaders = { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json", Prefer: "return=minimal" };
-    const saved = await fetch(`${url}/rest/v1/nexus_meta_oauth_sessions`, { method: "POST", headers: adminHeaders, cache: "no-store", body: JSON.stringify({ organization_id: profile.organization_id, initiated_by: user.id, state_digest: stateDigest, expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() }) });
+    const saved = await fetch(`${url}/rest/v1/nexus_meta_oauth_sessions`, { method: "POST", headers: adminHeaders, cache: "no-store", body: JSON.stringify({ organization_id: organizationId, initiated_by: user.id, state_digest: stateDigest, expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() }) });
     if (!saved.ok) return json("Não foi possível registrar a autorização.", 503);
     // This URL is an authorization preparation only. It must be tested against
     // the actual Meta Embedded Signup configuration before customer use.
