@@ -57,6 +57,11 @@ export async function POST(request) {
     authorization.searchParams.set("config_id", configId);
     authorization.searchParams.set("response_type", "code");
     authorization.searchParams.set("override_default_response_type", "true");
-    return Response.json({ authorization_url: authorization.toString(), status: "prepared_not_enabled" }, { headers: { "Cache-Control": "no-store" } });
+    const enabled = process.env.META_OAUTH_CONTROLLED_TEST_ENABLED === "true";
+    return Response.json({
+      // Return the one-time URL only when explicitly enabled by server configuration.
+      ...(enabled ? { authorization_url: authorization.toString() } : {}),
+      status: enabled ? "controlled_test_ready" : "prepared_not_enabled",
+    }, { headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
   } catch { return json("Não foi possível iniciar a autorização.", 500); }
 }
