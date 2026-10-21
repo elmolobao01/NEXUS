@@ -12,6 +12,33 @@ export default function ChatbotsSection() {
   const [state, setState] = useState("loading");
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+  const [oauthTestState, setOauthTestState] = useState("idle");
+  const [oauthTestMessage, setOauthTestMessage] = useState("");
+
+  async function testOAuthSession() {
+    setOauthTestState("loading");
+    setOauthTestMessage("");
+    try {
+      const response = await fetch("/api/integrations/meta/start", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.message || "Não foi possível criar a sessão OAuth.");
+      if (result?.status !== "prepared_not_enabled" || !result?.authorization_url) {
+        throw new Error("Resposta inesperada do servidor. A autorização não foi iniciada.");
+      }
+      // Never navigate to Meta or expose the state-bearing authorization URL.
+      setOauthTestState("success");
+      setOauthTestMessage("Sessão de teste criada no servidor. Nenhuma conta WhatsApp foi conectada. A sessão expira automaticamente em aproximadamente 10 minutos.");
+    } catch (err) {
+      setOauthTestState("error");
+      setOauthTestMessage(err?.message || "Falha ao preparar a sessão OAuth.");
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -50,7 +77,13 @@ export default function ChatbotsSection() {
         {tab === "Conexões Meta" ? <>
           <p>Conexões WhatsApp Business vinculadas às organizações cadastradas no NEXUS.</p>
           <p>A ativação de novas conexões permanece indisponível até a conclusão do OAuth e da proteção de credenciais.</p>
-          <button type="button" onClick={() => setReload((v) => v + 1)} disabled={state === "loading"}>Atualizar listagem</button>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+            <button type="button" onClick={() => setReload((v) => v + 1)} disabled={state === "loading"}>Atualizar listagem</button>
+            <button type="button" onClick={testOAuthSession} disabled={oauthTestState === "loading"}>
+              {oauthTestState === "loading" ? "Preparando sessão..." : "Testar sessão OAuth (sem conectar)"}
+            </button>
+          </div>
+          {oauthTestMessage && <p role="status" aria-live="polite" style={{ marginTop: 12, color: oauthTestState === "error" ? "#9f1239" : "#166534" }}>{oauthTestMessage}</p>}
           <div role="status" style={{ marginTop: 16 }}>
             {state === "loading" ? "Consultando conexões..." : state === "error" ? `Erro: ${error}` : connections.length === 0 ? "Nenhuma conexão WhatsApp cadastrada." : `${connections.length} conexão(ões) cadastrada(s), ${active} com status ativo.`}
           </div>
