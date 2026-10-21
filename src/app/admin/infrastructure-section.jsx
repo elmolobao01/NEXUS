@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import WhatsappWalletPanel from "./whatsapp-wallet-panel";
 
-const TABS = ["Visão geral", "Domínios", "Supabase", "Vercel", "GitHub", "APIs", "Serviços", "Contas", "Alertas"];
+const TABS = ["Visão geral", "Domínios", "Supabase", "Vercel", "GitHub", "APIs", "Serviços", "Contas", "Alertas", "WhatsApp"];
 const PRODUCT_OPTIONS = ["PLENIUM", "SIGEE", "ALÔ ID", "Compartilhado", "Outro"];
 
 const money = (value, currency = "BRL") => new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(Number(value || 0));
@@ -274,6 +275,7 @@ export default function InfrastructureSection() {
     {message && <div className="infra-message" role="status">{message}</div>}
     {loading && <div className="infra-loading">Carregando infraestrutura…</div>}
 
+    {tab === "WhatsApp" && <WhatsappWalletPanel />}
     {!loading && tab === "Visão geral" && <>
       <section className="infra-metrics">
         <article><span>Custo mensal equivalente</span><strong>{money(metrics.monthlyEquivalent)}</strong><small>planos recorrentes ativos</small></article>
