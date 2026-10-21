@@ -37,7 +37,18 @@ export async function GET(request) {
   const appSecret = process.env.META_APP_SECRET;
   const vaultKey = encryptionKey();
   // Do not consume OAuth state unless durable, encrypted storage is configured.
-  if (!url || !key || !appId || !appSecret || !vaultKey) return reply("Integração Meta aguardando configuração segura de credenciais.", 503);
+  // Report only configuration *names*, never their values, and only after a
+  // correctly signed, unexpired OAuth state has been presented.
+  const missing = [
+    !url && "NEXT_PUBLIC_SUPABASE_URL",
+    !key && "SUPABASE_SERVICE_ROLE_KEY",
+    !appId && "META_APP_ID",
+    !appSecret && "META_APP_SECRET",
+    !vaultKey && "META_CREDENTIAL_ENCRYPTION_KEY (64 caracteres hexadecimais)",
+  ].filter(Boolean);
+  if (missing.length) {
+    return reply(`Configuração OAuth incompleta ou inválida: ${missing.join(", ")}. Verifique o ambiente Production na Vercel.`, 503);
+  }
   const digest = createHash("sha256").update(state).digest("hex");
   const headers = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=representation" };
   try {
