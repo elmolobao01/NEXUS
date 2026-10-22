@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import MetaSystemTokenValidation from "./meta-system-token-validation";
 
 const sections = ["Visão geral", "Conexões Meta", "Chatbots", "Conversas", "Clientes", "Monitoramento", "Configurações"];
 const activeStatuses = new Set(["active", "connected"]);
@@ -103,6 +104,7 @@ export default function ChatbotsSection() {
         <h3 style={{ marginTop: 8 }}>{tab}</h3>
         {tab === "Conexões Meta" ? <>
           <p>Conexões WhatsApp Business vinculadas às organizações cadastradas no NEXUS.</p>
+          <MetaSystemTokenValidation />
           <p>A ativação de números WhatsApp permanece indisponível. O teste de autorização Meta exige liberação explícita no servidor e não ativa conexões.</p>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
             <button type="button" onClick={() => setReload((v) => v + 1)} disabled={state === "loading"}>Atualizar listagem</button>
