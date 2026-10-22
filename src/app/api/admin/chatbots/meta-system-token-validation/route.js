@@ -6,6 +6,7 @@ const PHONE = "1295394797000036";
 const response = (body, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store", "Pragma": "no-cache", "Referrer-Policy": "no-referrer" } });
 
 // Controlled read-only validation. No token is stored, logged or echoed.
+import { randomBytes, createCipheriv } from "node:crypto";
 export async function POST(request) {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const pub = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -51,6 +52,23 @@ export async function POST(request) {
     const wabaMatches = waba.ok && String(waba.body?.id || "") === WABA;
     const phoneMatches = phone.ok && String(phone.body?.id || "") === PHONE;
     const summarize = r => ({ ok: r.ok, http_status: r.status, meta_error_code: Number.isSafeInteger(r.body?.error?.code) ? r.body.error.code : null, meta_error_subcode: Number.isSafeInteger(r.body?.error?.error_subcode) ? r.body.error.error_subcode : null });
+    if (payload?.import_credential === true) {
+      if (!wabaMatches || !phoneMatches) return response({ valid: false, error: "Meta asset validation failed; nothing saved", database_modified: false, sending_enabled: false }, 422);
+      if (request.headers.get("origin") !== new URL(request.url).origin) return response({ error: "Origin mismatch" }, 403);
+      const keyHex = process.env.META_CREDENTIAL_ENCRYPTION_KEY;
+      if (!/^[a-fA-F0-9]{64}$/.test(keyHex || "")) return response({ error: "Encryption unavailable" }, 503);
+      const iv = randomBytes(12);
+      const cipher = createCipheriv("aes-256-gcm", Buffer.from(keyHex, "hex"), iv);
+      const ciphertext = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+      const encrypted = { algorithm: "aes-256-gcm", iv: iv.toString("base64"), tag: cipher.getAuthTag().toString("base64"), ciphertext: ciphertext.toString("base64") };
+      const rpc = await fetch(`${base}/rest/v1/rpc/nexus_meta_import_system_credential`, {
+        method: "POST", cache: "no-store",
+        headers: { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_organization_id: ORG, p_connection_id: "8cf2e98b-18f8-4a80-b73f-110b8d012d42", p_initiated_by: user.id, p_encrypted_token: encrypted, p_token_type: "bearer" }),
+      });
+      if (!rpc.ok) return response({ valid: true, error: "Atomic import unavailable or connection already linked; no partial import", database_modified: false, sending_enabled: false }, 409);
+      return response({ valid: true, credential_imported: true, credential_linked: true, credential_status: "pending_verification", connection_status: "pending", sending_enabled: false });
+    }
     return response({ valid: wabaMatches && phoneMatches, app_matches: appMatches, token_type: typeof data?.type === "string" ? data.type.slice(0, 32) : null, waba: { ...summarize(waba), id_matches: wabaMatches }, phone: { ...summarize(phone), id_matches: phoneMatches }, database_modified: false, credential_imported: false, sending_enabled: false });
   } catch { return response({ error: "Validation unavailable" }, 503); }
 }
