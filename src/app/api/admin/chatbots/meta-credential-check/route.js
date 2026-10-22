@@ -51,6 +51,7 @@ export async function GET(request) {
     }
 
     const phoneId = connection.phone_number_id;
+    const wabaId = connection.waba_id;
     if (!/^\d{1,30}$/.test(phoneId) || !/^\d{1,30}$/.test(connection.waba_id)) return respond({ valid: false, reason: "invalid_connection_identifiers", sending_enabled: false });
     // Separate token identity, granted scopes, resource access, and field access.
     // Never return raw Meta messages, tokens, user IDs, or business identifiers.
@@ -82,24 +83,38 @@ export async function GET(request) {
     const permissions = metaIdentity.ok ? await graph("me/permissions?limit=100") : null;
     const barePhone = metaIdentity.ok ? await graph(`${phoneId}?fields=id`) : null;
     const phoneDetails = barePhone?.ok ? await graph(`${phoneId}?fields=id,display_phone_number,verified_name`) : null;
+    // Verify the authorized WABA independently from direct phone-number lookup.
+    // Do not expose business identifiers, phone numbers, or raw Graph API responses.
+    const wabaBasic = metaIdentity.ok ? await graph(`${wabaId}?fields=id`) : null;
+    const wabaPhones = wabaBasic?.ok ? await graph(`${wabaId}/phone_numbers?fields=id&limit=100`) : null;
+    const phoneRecords = Array.isArray(wabaPhones?.data?.data) ? wabaPhones.data.data : [];
+    const phoneInWaba = wabaPhones?.ok && phoneRecords.some((item) => String(item?.id) === phoneId);
+    const wabaMatches = wabaBasic?.ok && String(wabaBasic.data?.id) === wabaId;
     const scopes = ["whatsapp_business_management", "whatsapp_business_messaging", "business_management"];
     const granted = Array.isArray(permissions?.data?.data) ? permissions.data.data : [];
     const scopeStatus = Object.fromEntries(scopes.map((name) => [name,
       permissions?.ok ? (granted.find((x) => x.permission === name)?.status || "not_listed") : "not_verified"
     ]));
     const idMatches = barePhone?.ok && String(barePhone.data?.id) === phoneId;
-    const verified = Boolean(metaIdentity.ok && idMatches && phoneDetails?.ok && String(phoneDetails.data?.id) === phoneId);
+    // Either successful direct phone lookup or an authorized WABA listing confirms
+    // the configured phone's asset association. This is read-only access validation,
+    // not proof of permission to send messages.
+    const verified = Boolean(metaIdentity.ok && wabaMatches && phoneInWaba);
     return respond({
       valid: verified,
-      reason: verified ? "phone_read_verified" : "meta_access_diagnostic",
+      reason: verified ? "waba_phone_membership_verified" : "meta_access_diagnostic",
       checks: {
         token_identity: summarize(metaIdentity),
         permissions: permissions ? summarize(permissions) : { skipped: true },
         phone_basic: barePhone ? summarize(barePhone) : { skipped: true },
         phone_details: phoneDetails ? summarize(phoneDetails) : { skipped: true },
+        waba_basic: wabaBasic ? summarize(wabaBasic) : { skipped: true },
+        waba_phone_numbers: wabaPhones ? summarize(wabaPhones) : { skipped: true },
       },
       granted_scope_status: scopeStatus,
       phone_number_id_matches: Boolean(idMatches),
+      waba_id_matches: Boolean(wabaMatches),
+      phone_listed_in_waba: Boolean(phoneInWaba),
       credential_status: credential.status,
       connection_status: connection.connection_status,
       credential_linked: Boolean(connection.credential_reference),
