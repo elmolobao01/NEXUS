@@ -23,6 +23,6 @@ export default function MetaSystemTokenValidation() {
       <button type="submit" disabled={busy || !token.trim()}>{busy ? "Processando..." : "Validar token sem salvar"}</button>
       <button type="button" disabled={busy || !token.trim()} onClick={e => { if (window.confirm("Importar e vincular este token? A conexão continuará pendente e o envio automático desativado.")) validate(e, true); }}>Validar, importar e vincular (ROOT)</button>
     </form>
-    {result && <div role="status" style={{ marginTop: 12 }}><strong>{result.valid ? "result.credential_imported ? "Credencial importada e vinculada; envio desativado" : "Token validado para WABA e número oficial" : "Token ainda não validado"}</strong><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(result, null, 2)}</pre></div>}
+    {result && <div role="status" style={{ marginTop: 12 }}><strong>{result.valid ? (result.credential_imported ? "Credencial importada e vinculada; envio desativado" : "Token validado para WABA e número oficial") : "Token ainda não validado"}</strong><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(result, null, 2)}</pre></div>}
   </section>;
 }
