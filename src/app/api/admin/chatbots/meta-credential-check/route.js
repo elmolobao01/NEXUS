@@ -62,8 +62,37 @@ export async function GET(request) {
     }
     if (!metaResponse.ok) {
       let code = null;
-      try { const data = await metaResponse.json(); if (Number.isSafeInteger(data?.error?.code)) code = data.error.code; } catch { /* no details exposed */ }
-      return respond({ valid: false, reason: "meta_rejected_credential", http_status: metaResponse.status, meta_error_code: code, sending_enabled: false });
+      let subcode = null;
+      let errorType = null;
+      let diagnostic = "unclassified_meta_error";
+      try {
+        const data = await metaResponse.json();
+        const error = data?.error;
+        if (Number.isSafeInteger(error?.code)) code = error.code;
+        if (Number.isSafeInteger(error?.error_subcode)) subcode = error.error_subcode;
+        if (["OAuthException", "GraphMethodException", "FacebookApiException"].includes(error?.type)) errorType = error.type;
+        // Classify the error internally; never return the raw Meta message,
+        // which can contain request-specific identifiers or sensitive material.
+        const message = typeof error?.message === "string" ? error.message.toLowerCase() : "";
+        if (/expired|session has expired/.test(message) || code === 190 && [463, 467].includes(subcode)) diagnostic = "token_expired_or_revoked";
+        else if (/invalid oauth|invalid access token|cannot parse access token|error validating access token/.test(message) || code === 190) diagnostic = "token_invalid_or_unusable";
+        else if (/permission|not authorized|not authorised|does not have access/.test(message)) diagnostic = "insufficient_permissions_or_access";
+        else if (/nonexisting field|nonexistent field|unknown field|field.*does not exist|invalid field/.test(message)) diagnostic = "unsupported_or_invalid_field";
+        else if (/unsupported get request|does not exist|cannot be loaded|missing permissions/.test(message)) diagnostic = "resource_not_accessible_or_invalid_id";
+        else if (/unsupported version|invalid version/.test(message)) diagnostic = "graph_api_version_issue";
+        else if (code === 100) diagnostic = "invalid_parameter_or_resource";
+      } catch { /* Return only sanitized diagnostic fields. */ }
+      return respond({
+        valid: false,
+        reason: "meta_rejected_credential",
+        http_status: metaResponse.status,
+        meta_error_code: code,
+        meta_error_subcode: subcode,
+        meta_error_type: errorType,
+        diagnostic,
+        sending_enabled: false,
+        database_modified: false,
+      });
     }
     const phone = await metaResponse.json();
     if (String(phone?.id) !== phoneId) return respond({ valid: false, reason: "phone_id_mismatch", sending_enabled: false });
