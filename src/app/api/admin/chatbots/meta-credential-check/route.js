@@ -100,6 +100,10 @@ export async function GET(request) {
           valid: typeof info?.is_valid === "boolean" ? info.is_valid : null,
           app_matches: typeof info?.app_id === "string" ? info.app_id === appId : null,
           type: typeof info?.type === "string" ? info.type.slice(0, 40) : null,
+          // The debug_token user_id is the token subject; compare only against the
+          // explicitly configured Meta system user. Never expose its raw ID.
+          subject_id_present: typeof info?.user_id === "string" || typeof info?.user_id === "number",
+          subject_matches_employee: info?.user_id == null ? null : String(info.user_id) === "61595962941130",
           // Only report booleans for the configured WABA, never other target IDs.
           granular_whatsapp_management: grants.filter((g) => g.scope === "whatsapp_business_management").map((g) => ({
             target_ids_present: Array.isArray(g.target_ids),
