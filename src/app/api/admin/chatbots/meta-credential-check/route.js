@@ -78,6 +78,41 @@ export async function GET(request) {
       else if (e?.code === 100) cause = "invalid_parameter_or_resource";
       return { ok: r.ok, http_status: r.http_status, meta_error_code: Number.isSafeInteger(e?.code) ? e.code : null, meta_error_subcode: Number.isSafeInteger(e?.error_subcode) ? e.error_subcode : null, cause };
     };
+    // Inspect token-to-app binding and granular asset grants without exposing
+    // access tokens, Meta user IDs, or business identifiers to the browser.
+    const appId = process.env.META_APP_ID;
+    const appSecret = process.env.META_APP_SECRET;
+    let tokenDebug = null;
+    if (appId && appSecret) {
+      try {
+        const debugUrl = new URL("https://graph.facebook.com/v26.0/debug_token");
+        debugUrl.searchParams.set("input_token", accessToken);
+        const r = await fetch(debugUrl, {
+          headers: { Authorization: `Bearer ${appId}|${appSecret}` },
+          cache: "no-store", signal: AbortSignal.timeout(12000),
+        });
+        const payload = await r.json().catch(() => ({}));
+        const info = payload?.data;
+        const grants = Array.isArray(info?.granular_scopes) ? info.granular_scopes : [];
+        tokenDebug = {
+          checked: true,
+          http_status: r.status,
+          valid: typeof info?.is_valid === "boolean" ? info.is_valid : null,
+          app_matches: typeof info?.app_id === "string" ? info.app_id === appId : null,
+          type: typeof info?.type === "string" ? info.type.slice(0, 40) : null,
+          // Only report booleans for the configured WABA, never other target IDs.
+          granular_whatsapp_management: grants.filter((g) => g.scope === "whatsapp_business_management").map((g) => ({
+            target_ids_present: Array.isArray(g.target_ids),
+            configured_waba_listed: Array.isArray(g.target_ids) ? g.target_ids.map(String).includes(wabaId) : null,
+          })),
+          granular_whatsapp_messaging: grants.filter((g) => g.scope === "whatsapp_business_messaging").map((g) => ({
+            target_ids_present: Array.isArray(g.target_ids),
+            configured_waba_listed: Array.isArray(g.target_ids) ? g.target_ids.map(String).includes(wabaId) : null,
+          })),
+          meta_error_code: Number.isSafeInteger(payload?.error?.code) ? payload.error.code : null,
+        };
+      } catch { tokenDebug = { checked: false, reason: "debug_request_failed" }; }
+    }
     const metaIdentity = await graph("me?fields=id");
     // Do not request permissions when the token cannot even identify its subject.
     const permissions = metaIdentity.ok ? await graph("me/permissions?limit=100") : null;
@@ -112,6 +147,7 @@ export async function GET(request) {
         waba_phone_numbers: wabaPhones ? summarize(wabaPhones) : { skipped: true },
       },
       granted_scope_status: scopeStatus,
+      token_asset_diagnostic: tokenDebug || { checked: false, reason: "app_configuration_missing" },
       phone_number_id_matches: Boolean(idMatches),
       waba_id_matches: Boolean(wabaMatches),
       phone_listed_in_waba: Boolean(phoneInWaba),
