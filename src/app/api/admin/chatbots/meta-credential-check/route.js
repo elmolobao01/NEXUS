@@ -52,51 +52,60 @@ export async function GET(request) {
 
     const phoneId = connection.phone_number_id;
     if (!/^\d{1,30}$/.test(phoneId) || !/^\d{1,30}$/.test(connection.waba_id)) return respond({ valid: false, reason: "invalid_connection_identifiers", sending_enabled: false });
-    let metaResponse;
-    try {
-      metaResponse = await fetch(`https://graph.facebook.com/v26.0/${phoneId}?fields=id,display_phone_number,verified_name`, {
-        headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(12000),
-      });
-    } catch {
-      return respond({ valid: false, reason: "meta_unreachable", sending_enabled: false });
-    }
-    if (!metaResponse.ok) {
-      let code = null;
-      let subcode = null;
-      let errorType = null;
-      let diagnostic = "unclassified_meta_error";
+    // Separate token identity, granted scopes, resource access, and field access.
+    // Never return raw Meta messages, tokens, user IDs, or business identifiers.
+    const graph = async (path) => {
       try {
-        const data = await metaResponse.json();
-        const error = data?.error;
-        if (Number.isSafeInteger(error?.code)) code = error.code;
-        if (Number.isSafeInteger(error?.error_subcode)) subcode = error.error_subcode;
-        if (["OAuthException", "GraphMethodException", "FacebookApiException"].includes(error?.type)) errorType = error.type;
-        // Classify the error internally; never return the raw Meta message,
-        // which can contain request-specific identifiers or sensitive material.
-        const message = typeof error?.message === "string" ? error.message.toLowerCase() : "";
-        if (/expired|session has expired/.test(message) || code === 190 && [463, 467].includes(subcode)) diagnostic = "token_expired_or_revoked";
-        else if (/invalid oauth|invalid access token|cannot parse access token|error validating access token/.test(message) || code === 190) diagnostic = "token_invalid_or_unusable";
-        else if (/permission|not authorized|not authorised|does not have access/.test(message)) diagnostic = "insufficient_permissions_or_access";
-        else if (/nonexisting field|nonexistent field|unknown field|field.*does not exist|invalid field/.test(message)) diagnostic = "unsupported_or_invalid_field";
-        else if (/unsupported get request|does not exist|cannot be loaded|missing permissions/.test(message)) diagnostic = "resource_not_accessible_or_invalid_id";
-        else if (/unsupported version|invalid version/.test(message)) diagnostic = "graph_api_version_issue";
-        else if (code === 100) diagnostic = "invalid_parameter_or_resource";
-      } catch { /* Return only sanitized diagnostic fields. */ }
-      return respond({
-        valid: false,
-        reason: "meta_rejected_credential",
-        http_status: metaResponse.status,
-        meta_error_code: code,
-        meta_error_subcode: subcode,
-        meta_error_type: errorType,
-        diagnostic,
-        sending_enabled: false,
-        database_modified: false,
-      });
-    }
-    const phone = await metaResponse.json();
-    if (String(phone?.id) !== phoneId) return respond({ valid: false, reason: "phone_id_mismatch", sending_enabled: false });
-    return respond({ valid: true, reason: "phone_read_verified", credential_status: credential.status, connection_status: connection.connection_status, credential_linked: Boolean(connection.credential_reference), phone_number_id_matches: true, sending_enabled: false, database_modified: false });
+        const r = await fetch(`https://graph.facebook.com/v26.0/${path}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store", signal: AbortSignal.timeout(12000),
+        });
+        const data = await r.json().catch(() => ({}));
+        return { ok: r.ok, http_status: r.status, data };
+      } catch { return { ok: false, http_status: null, data: {}, network_error: true }; }
+    };
+    const summarize = (r) => {
+      const e = r.data?.error;
+      const msg = typeof e?.message === "string" ? e.message.toLowerCase() : "";
+      let cause = "unknown_meta_error";
+      if (r.network_error) cause = "network_error";
+      else if (r.ok) cause = "ok";
+      else if (e?.code === 190 || /invalid access token|error validating access token|session has expired/.test(msg)) cause = "invalid_expired_or_revoked_token";
+      else if (/permission|not authorized|not authorised|does not have access|access to this resource/.test(msg) || e?.code === 200) cause = "permissions_or_asset_access";
+      else if (/nonexisting field|nonexistent field|unknown field|invalid field/.test(msg)) cause = "field_not_supported";
+      else if (/unsupported get request|does not exist|cannot be loaded/.test(msg)) cause = "resource_not_accessible";
+      else if (e?.code === 100) cause = "invalid_parameter_or_resource";
+      return { ok: r.ok, http_status: r.http_status, meta_error_code: Number.isSafeInteger(e?.code) ? e.code : null, meta_error_subcode: Number.isSafeInteger(e?.error_subcode) ? e.error_subcode : null, cause };
+    };
+    const metaIdentity = await graph("me?fields=id");
+    // Do not request permissions when the token cannot even identify its subject.
+    const permissions = metaIdentity.ok ? await graph("me/permissions?limit=100") : null;
+    const barePhone = metaIdentity.ok ? await graph(`${phoneId}?fields=id`) : null;
+    const phoneDetails = barePhone?.ok ? await graph(`${phoneId}?fields=id,display_phone_number,verified_name`) : null;
+    const scopes = ["whatsapp_business_management", "whatsapp_business_messaging", "business_management"];
+    const granted = Array.isArray(permissions?.data?.data) ? permissions.data.data : [];
+    const scopeStatus = Object.fromEntries(scopes.map((name) => [name,
+      permissions?.ok ? (granted.find((x) => x.permission === name)?.status || "not_listed") : "not_verified"
+    ]));
+    const idMatches = barePhone?.ok && String(barePhone.data?.id) === phoneId;
+    const verified = Boolean(metaIdentity.ok && idMatches && phoneDetails?.ok && String(phoneDetails.data?.id) === phoneId);
+    return respond({
+      valid: verified,
+      reason: verified ? "phone_read_verified" : "meta_access_diagnostic",
+      checks: {
+        token_identity: summarize(metaIdentity),
+        permissions: permissions ? summarize(permissions) : { skipped: true },
+        phone_basic: barePhone ? summarize(barePhone) : { skipped: true },
+        phone_details: phoneDetails ? summarize(phoneDetails) : { skipped: true },
+      },
+      granted_scope_status: scopeStatus,
+      phone_number_id_matches: Boolean(idMatches),
+      credential_status: credential.status,
+      connection_status: connection.connection_status,
+      credential_linked: Boolean(connection.credential_reference),
+      sending_enabled: false,
+      database_modified: false,
+    });
   } catch {
     return respond({ error: "Credential verification unavailable" }, 503);
   }
