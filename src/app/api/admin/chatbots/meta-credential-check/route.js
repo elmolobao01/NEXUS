@@ -83,6 +83,7 @@ export async function GET(request) {
     const appId = process.env.META_APP_ID;
     const appSecret = process.env.META_APP_SECRET;
     let tokenDebug = null;
+    let debugSubjectId = null;
     if (appId && appSecret) {
       try {
         const debugUrl = new URL("https://graph.facebook.com/v26.0/debug_token");
@@ -94,6 +95,7 @@ export async function GET(request) {
         const payload = await r.json().catch(() => ({}));
         const info = payload?.data;
         const grants = Array.isArray(info?.granular_scopes) ? info.granular_scopes : [];
+        debugSubjectId = info?.user_id == null ? null : String(info.user_id);
         tokenDebug = {
           checked: true,
           http_status: r.status,
@@ -118,6 +120,17 @@ export async function GET(request) {
       } catch { tokenDebug = { checked: false, reason: "debug_request_failed" }; }
     }
     const metaIdentity = await graph("me?fields=id");
+    // Compare the Graph /me identity with debug_token's subject. The token
+    // subject may be a business-integration system user rather than a system
+    // user visible in the current Business Settings UI.
+    const subjectConsistency = debugSubjectId == null || !metaIdentity.ok
+      ? null : String(metaIdentity.data?.id) === debugSubjectId;
+    // Read-only probes. Failures here are informational and never gate the
+    // existing credential validation or mutate any Meta/Supabase resource.
+    const employeeLookup = metaIdentity.ok
+      ? await graph("61595962941130?fields=id") : null;
+    const subjectLookup = metaIdentity.ok && debugSubjectId && /^\d{1,30}$/.test(debugSubjectId)
+      ? await graph(`${debugSubjectId}?fields=id`) : null;
     // Do not request permissions when the token cannot even identify its subject.
     const permissions = metaIdentity.ok ? await graph("me/permissions?limit=100") : null;
     const barePhone = metaIdentity.ok ? await graph(`${phoneId}?fields=id`) : null;
@@ -151,6 +164,14 @@ export async function GET(request) {
         waba_phone_numbers: wabaPhones ? summarize(wabaPhones) : { skipped: true },
       },
       granted_scope_status: scopeStatus,
+      identity_access_diagnostic: {
+        debug_subject_matches_me: subjectConsistency,
+        employee_readable_by_token: employeeLookup ? summarize(employeeLookup) : { skipped: true },
+        token_subject_readable_by_token: subjectLookup ? summarize(subjectLookup) : { skipped: true },
+        // An identity mismatch does not prove a faulty token: Meta may issue
+        // Business Integration System User tokens with different subject IDs.
+        subject_differs_from_visible_employee: debugSubjectId == null ? null : debugSubjectId !== "61595962941130",
+      },
       token_asset_diagnostic: tokenDebug || { checked: false, reason: "app_configuration_missing" },
       phone_number_id_matches: Boolean(idMatches),
       waba_id_matches: Boolean(wabaMatches),
