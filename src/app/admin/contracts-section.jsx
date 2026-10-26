@@ -15,6 +15,7 @@ const INITIAL = {
   clientId: "",
   primaryProductId: "",
   startDate: "",
+  paymentDueDay: "",
   billingCycle: "monthly",
   durationMonths: 1,
   status: "draft",
@@ -334,6 +335,8 @@ export default function ContractsSection() {
             {operation === "details" ? <div className="nexus-contract-detail">
               <p><strong>Cliente:</strong> {selectedContract.client_name}</p>
               <p><strong>Produtos:</strong> {selectedContract.product_names?.join(", ") || "—"}</p>
+              <p><strong>Vencimento financeiro:</strong> {selectedContract.payment_due_day ? `Dia ${selectedContract.payment_due_day}` : "Não definido"}</p>
+              <p><strong>Renovação da franquia:</strong> Pela data de início da vigência, independente do vencimento financeiro.</p>
               <p><strong>Vigência:</strong> {formatDate(selectedContract.start_date)} a {formatDate(selectedContract.end_date)}</p>
               <p><strong>Status:</strong> {STATUS.find((status) => status[0] === selectedContract.status)?.[1] || selectedContract.status}</p>
               <p><strong>Bruto:</strong> {money(selectedContract.gross_value)}</p>
@@ -400,6 +403,8 @@ export default function ContractsSection() {
 
                 <label><span>Data inicial *</span><input required type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></label>
                 <label><span>Data final automática</span><input type="date" value={calculated.endDate} readOnly /></label>
+                <label><span>Dia do vencimento financeiro</span><select value={form.paymentDueDay} onChange={(event) => setForm({ ...form, paymentDueDay: event.target.value })}><option value="">Não definido</option>{Array.from({length: 28}, (_, i) => i + 1).map(day => <option key={day} value={day}>Dia {day}</option>)}</select></label>
+                <p className="nexus-contract-hint span-2">O vencimento financeiro não altera o início do contrato nem a data de renovação da franquia de mensagens.</p>
 
                 <label><span>Indicação / indicador</span><input value={form.referralName} onChange={(event) => setForm({ ...form, referralName: event.target.value })} placeholder="Nome ou referência da indicação" /></label>
                 <label><span>Desconto por indicação (%)</span><input type="number" min="0" max="10" step="0.01" value={form.referralDiscountPct} onChange={(event) => setForm({ ...form, referralDiscountPct: Number(event.target.value) })} /></label>
