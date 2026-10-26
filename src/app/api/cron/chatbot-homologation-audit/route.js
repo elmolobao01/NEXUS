@@ -38,12 +38,29 @@ export async function POST(request) {
     if (connections.length !== 1 || connections[0].connection_status !== "active") {
       return json({ error: "Homologation connection unavailable" }, 409);
     }
-    const events = await read(`nexus_whatsapp_webhook_events?select=id,event_payload&organization_id=eq.${ROOT_ID}&phone_number_id=eq.${PHONE_ID}&processing_status=eq.received&order=received_at.asc&limit=50`);
+    const cutoff = process.env.CHATBOT_HOMOLOGATION_CUTOFF_AT;
+    if (!cutoff || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(cutoff) ||
+        !Number.isFinite(Date.parse(cutoff))) {
+      return json({ error: "Invalid or missing CHATBOT_HOMOLOGATION_CUTOFF_AT" }, 503);
+    }
+    // Scan in pages after the cutoff. Avoid the original oldest-50 starvation.
+    // Cap work per invocation; expose has_more rather than claiming full coverage.
+    const PAGE_SIZE = 200;
+    const MAX_PAGES = 10;
+    let eventsScanned = 0;
+    let candidates = 0;
+    let pagesScanned = 0;
+    let hasMore = false;
     const config = {
       active: true, welcome_message: "Olá! Este é o ambiente de homologação da PLENIUM.",
       closing_message: "Obrigado! Esta conversa foi apenas uma simulação.", faq: [],
     };
-    const rows = [];
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const offset = page * PAGE_SIZE;
+      const events = await read(`nexus_whatsapp_webhook_events?select=id,event_payload&organization_id=eq.${ROOT_ID}&phone_number_id=eq.${PHONE_ID}&processing_status=eq.received&received_at=gte.${encodeURIComponent(cutoff)}&order=received_at.asc,id.asc&limit=${PAGE_SIZE}&offset=${offset}`);
+      pagesScanned++;
+      eventsScanned += events.length;
+      const rows = [];
     for (const event of events) {
       const entries = Array.isArray(event.event_payload?.entry) ? event.event_payload.entry : [];
       const messages = entries.flatMap(entry =>
@@ -70,7 +87,7 @@ export async function POST(request) {
         });
       }
     }
-    // Idempotency is enforced by the database unique constraint across runs.
+      // Idempotency is enforced by the database unique constraint across runs.
     // Duplicates are ignored; previous audit rows are never overwritten.
     if (rows.length) {
       const r = await fetch(`${base}/rest/v1/nexus_chatbot_homologation_audit?on_conflict=organization_id,phone_number_id,message_fingerprint`, {
@@ -84,14 +101,19 @@ export async function POST(request) {
       });
       if (!r.ok) throw new Error(`audit_write_${r.status}`);
     }
+      candidates += rows.length;
+      if (events.length < PAGE_SIZE) break;
+      if (page === MAX_PAGES - 1) hasMore = true;
+    }
     return json({
       mode: "homologation_audit", scope: "root_phone_only",
       sending_enabled: false, credits_debited: false,
       contracts_consulted: false, wallets_consulted: false,
       webhook_events_modified: false,
-      events_scanned: events.length, candidates: rows.length,
+      cutoff_utc: cutoff, events_scanned: eventsScanned, candidates,
+      pages_scanned: pagesScanned, has_more: hasMore,
       persistence: "audit_only", idempotency: "database_unique",
-      note: "Candidates include previously audited messages; no message text is stored.",
+      note: "Candidates may include already audited messages. No message text is stored. Run the processing route separately.",
     });
   } catch (error) {
     console.error("homologation_audit_failed", error?.message || "unknown");
