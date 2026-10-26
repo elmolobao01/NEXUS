@@ -10,6 +10,10 @@ const json = (value, status = 200) => Response.json(value, { status, headers: { 
 export async function GET(request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) return json({ error: "Unauthorized" }, 401);
+  // Explicit allowlist: homologation is restricted to one Meta phone ID.
+  // Never process customer phones from this diagnostic route.
+  const testPhoneId = process.env.CHATBOT_HOMOLOGATION_PHONE_NUMBER_ID;
+  if (!testPhoneId || !/^\d{5,30}$/.test(testPhoneId)) return json({ error: "Homologation phone not configured" }, 503);
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!base || !key) return json({ error: "Service unavailable" }, 503);
@@ -21,10 +25,11 @@ export async function GET(request) {
     return r.json();
   };
   try {
-    const events = await get(rest("nexus_whatsapp_webhook_events", "select=id,organization_id,phone_number_id,event_payload&processing_status=eq.received&order=received_at.asc&limit=50"));
+    const events = await get(rest("nexus_whatsapp_webhook_events", `select=id,organization_id,phone_number_id,event_payload&processing_status=eq.received&phone_number_id=eq.${encodeURIComponent(testPhoneId)}&order=received_at.asc&limit=50`));
     if (!Array.isArray(events)) throw new Error("invalid_events");
     const tenants = new Map();
     const decisions = [];
+    const seenMessageIds = new Set();
     for (const event of events) {
       const org = event.organization_id;
       if (!org) { decisions.push({ event_id: event.id, reason: "missing_organization" }); continue; }
@@ -50,13 +55,28 @@ export async function GET(request) {
       const messages = changes.flatMap(c => Array.isArray(c.value?.messages) ? c.value.messages : []);
       if (!messages.length) { decisions.push({ event_id: event.id, reason: "no_incoming_messages" }); continue; }
       for (const message of messages.slice(0, 20)) {
+        // One inbound message must never be processed twice, even if it appears
+        // in multiple persisted webhook envelopes.
+        if (!message?.id) {
+          decisions.push({ event_id: event.id, reason: "missing_message_id" });
+          continue;
+        }
+        if (seenMessageIds.has(message.id)) {
+          decisions.push({ event_id: event.id, message_id_present: true, reason: "duplicate_message_id" });
+          continue;
+        }
+        seenMessageIds.add(message.id);
         const body = message?.type === "text" ? message.text?.body : null;
         const result = typeof body === "string" ? basicReply(config, body) : null;
         const reason = !linked ? "connection_not_active" : !["CHATBOT_BASIC", "CHATBOT_AI"].includes(entitlement) ? "contract_inactive" : !config?.active ? "chatbot_inactive" : !validWallet ? "wallet_unavailable" : !body ? "unsupported_message_type" : !result?.reply ? "no_rule_reply" : "eligible_for_future_processor";
         decisions.push({ event_id: event.id, message_id_present: Boolean(message?.id), reason, response_type: result?.type || null });
       }
     }
-    return json({ mode: "dry_run", sending_enabled: false, database_modified: false, credits_debited: false, events_scanned: events.length, decisions });
+    const reason_counts = decisions.reduce((acc, d) => {
+      acc[d.reason] = (acc[d.reason] || 0) + 1;
+      return acc;
+    }, {});
+    return json({ mode: "dry_run", scope: "single_homologation_phone", sending_enabled: false, database_modified: false, credits_debited: false, events_scanned: events.length, reason_counts, decisions });
   } catch (error) {
     console.error("chatbot_inbound_dry_run_failed", error?.message || "unknown");
     return json({ error: "Inbound inspection unavailable" }, 503);
