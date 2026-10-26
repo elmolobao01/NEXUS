@@ -37,7 +37,7 @@ export async function GET(request) {
     if (!(await getRootContext(token))) return json("Acesso não autorizado.", 403);
     if (!SERVICE_ROLE_KEY) return json("Configuração do servidor incompleta.", 503);
     const params = new URLSearchParams();
-    params.set("select", "id,client_id,number,start_date,end_date,billing_cycle,duration_months,value,gross_value,discount_pct,discount_value,net_value,status,notes,created_at,nexus_clients(legal_name,trade_name),nexus_contract_items(nexus_products(name))");
+    params.set("select", "id,client_id,number,start_date,end_date,payment_due_day,billing_cycle,duration_months,value,gross_value,discount_pct,discount_value,net_value,status,notes,created_at,nexus_clients(legal_name,trade_name),nexus_contract_items(nexus_products(name))");
     params.set("order", "created_at.desc");
     const response = await fetch(`${SUPABASE_URL}/rest/v1/nexus_contracts?${params.toString()}`, { headers: supabaseHeaders(SERVICE_ROLE_KEY), cache: "no-store" });
     const data = await response.json();
@@ -62,10 +62,13 @@ export async function POST(request) {
     const durationMonths = Number(body.durationMonths || 0);
     if (!Number.isInteger(durationMonths) || durationMonths < 1 || durationMonths > 120) return json("Informe um prazo válido.", 400);
     if (body.billingCycle === "annual" && durationMonths % 12 !== 0) return json("Contratos anuais devem usar prazo múltiplo de 12 meses.", 400);
+    const paymentDueDay = body.paymentDueDay === "" || body.paymentDueDay == null ? null : Number(body.paymentDueDay);
+    if (paymentDueDay !== null && (!Number.isInteger(paymentDueDay) || paymentDueDay < 1 || paymentDueDay > 28)) return json("Informe um dia de vencimento entre 1 e 28.", 400);
     const primaryProductId = String(body.primaryProductId || productIds[0]);
     if (!productIds.includes(primaryProductId)) return json("Selecione um produto principal válido.", 400);
     const orderedProductIds = [primaryProductId, ...productIds.filter((id) => id !== primaryProductId)];
     const payload = {
+      p_payment_due_day: paymentDueDay,
       p_client_id: String(body.clientId),
       p_number: "",
       p_start_date: String(body.startDate),
@@ -79,7 +82,7 @@ export async function POST(request) {
       p_manual_discount_reason: String(body.manualDiscountReason || "").trim() || null,
       p_notes: String(body.notes || "").trim() || null,
     };
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/nexus_create_contract_v2`, { method: "POST", headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(payload), cache: "no-store" });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/nexus_create_contract_with_due_day`, { method: "POST", headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(payload), cache: "no-store" });
     const data = await response.json();
     if (!response.ok) {
       const duplicate = String(data?.message || "").includes("nexus_contracts_number_key") || String(data?.details || "").includes("number");
