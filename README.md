@@ -30,3 +30,5 @@ Use `root@nexus.com.br` e a senha real definida no Supabase Authentication.
 ## Deploy
 
 Envie o conteúdo desta pasta para a raiz do repositório GitHub. Cadastre as duas variáveis na Vercel e faça um novo deployment.
+
+Atualização de implantação — outubro de 2026.
