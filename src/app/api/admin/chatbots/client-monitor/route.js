@@ -51,6 +51,10 @@ export async function GET(request) {
     const alerts = [];
     if (!connections.some(x => x.connection_status === "active" && Boolean(x.credential_reference))) alerts.push("connection_not_active");
     if (config?.active !== true) alerts.push("chatbot_inactive");
+    const faq = Array.isArray(config?.faq) ? config.faq : [];
+    const validFaq = faq.filter(item => item && typeof item.question === "string" && item.question.trim() && typeof item.answer === "string" && item.answer.trim());
+    if (config?.active === true && validFaq.length === 0) alerts.push("active_chatbot_without_faq");
+    if (faq.length !== validFaq.length) alerts.push("faq_entries_invalid");
     if (!wallet) alerts.push("wallet_missing");
     else {
       if (!(wallet.cycle_start <= today && today < wallet.cycle_end)) alerts.push("wallet_cycle_inactive");
@@ -61,7 +65,7 @@ export async function GET(request) {
     return respond({
       mode: "root_client_monitor_read_only", organization_id: org,
       connections: connections.map(x => ({ phone_number_id: x.phone_number_id, status: x.connection_status, credential_linked: Boolean(x.credential_reference) })),
-      chatbot: { configured: Boolean(config), active: config?.active === true, faq_entries: Array.isArray(config?.faq) ? config.faq.length : 0 },
+      chatbot: { configured: Boolean(config), active: config?.active === true, faq_entries: faq.length, valid_faq_entries: validFaq.length, faq_ready: validFaq.length > 0 },
       wallet: wallet ? { plan_code: wallet.plan_code, cycle_start: wallet.cycle_start, cycle_end: wallet.cycle_end, included_remaining: wallet.included_remaining, prepaid_remaining: wallet.prepaid_remaining } : { exists: false },
       outbound_operations: statusCounts,
       human_pauses: { total: pauses.length, active: pauses.filter(x => Number.isFinite(Date.parse(x.pause_until)) && Date.parse(x.pause_until) > now).length },
