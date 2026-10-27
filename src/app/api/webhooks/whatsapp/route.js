@@ -43,7 +43,11 @@ export async function POST(request) {
       if (!Array.isArray(entry?.changes) || !entry.changes.length) return response({ error: "Unrecognized changes" }, 422);
       for (const change of entry.changes) {
         const phoneId = change?.value?.metadata?.phone_number_id;
-        if (change?.field !== "messages" || typeof phoneId !== "string" || !/^\d{5,30}$/.test(phoneId)) {
+        // Coexistence: WhatsApp Business app outbound echoes are delivered under
+        // smb_message_echoes. Keep the same verified signature, tenant resolution,
+        // persistence and deduplication as regular messages.
+        const supportedField = change?.field === "messages" || change?.field === "smb_message_echoes";
+        if (!supportedField || typeof phoneId !== "string" || !/^\d{5,30}$/.test(phoneId)) {
           // Never acknowledge unhandled event shapes as successfully stored.
           return response({ error: "Unsupported event shape" }, 422);
         }
