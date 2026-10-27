@@ -24,6 +24,50 @@ export async function GET(request) {
     if (!r.ok) throw new Error(`read_failed_${r.status}`);
     return r.json();
   };
+  // Contract verification mirrors the already homologated tenant-processing preview.
+  // Fail closed on ambiguous, missing or truncated contract relations.
+  const resolvePlan = async (organizationId) => {
+    const org = encodeURIComponent(organizationId);
+    const rows = async (path) => {
+      const data = await get(`${base}/rest/v1/${path}`);
+      if (!Array.isArray(data)) throw new Error("contract_rows_invalid");
+      return data;
+    };
+    const clients = await rows(`nexus_clients?select=id,status&organization_id=eq.${org}&limit=101`);
+    if (clients.length >= 101) throw new Error("clients_truncated");
+    const ids = clients.map(c => c.id);
+    if (!ids.length) return "NONE";
+    const contracts = await rows(`nexus_contracts?select=id,client_id,status,start_date,end_date&client_id=in.(${ids.join(",")})&limit=501`);
+    if (contracts.length >= 501) throw new Error("contracts_truncated");
+    const contractIds = contracts.map(c => c.id);
+    if (!contractIds.length) return "NONE";
+    const items = await rows(`nexus_contract_items?select=contract_id,product_id&contract_id=in.(${contractIds.join(",")})&limit=1001`);
+    if (items.length >= 1001) throw new Error("items_truncated");
+    const productIds = [...new Set(items.map(i => i.product_id))];
+    const products = productIds.length ? await rows(`nexus_products?select=id,code,active&id=in.(${productIds.join(",")})&limit=1001`) : [];
+    if (products.length !== productIds.length) throw new Error("products_incomplete");
+    const productsById = new Map(products.map(x => [x.id, x]));
+    const codes = new Map();
+    for (const item of items) {
+      const product = productsById.get(item.product_id);
+      if (!product) throw new Error("missing_product");
+      if (product.active === true && ["CHATBOT_BASIC", "CHATBOT_AI"].includes(product.code)) {
+        if (!codes.has(item.contract_id)) codes.set(item.contract_id, new Set());
+        codes.get(item.contract_id).add(product.code);
+      }
+    }
+    const clientsById = new Map(clients.map(c => [c.id, c]));
+    const today = new Date().toISOString().slice(0, 10);
+    const active = contracts.filter(c =>
+      String(clientsById.get(c.client_id)?.status).toLowerCase() === "active" &&
+      ["active", "ativo"].includes(String(c.status).toLowerCase()) &&
+      c.start_date && c.start_date <= today && (!c.end_date || c.end_date >= today)
+    );
+    const basic = active.filter(c => codes.get(c.id)?.has("CHATBOT_BASIC")).length;
+    const standard = active.filter(c => codes.get(c.id)?.has("CHATBOT_AI")).length;
+    return basic === 1 && standard === 0 ? "CHATBOT_BASIC" :
+      standard === 1 && basic === 0 ? "CHATBOT_AI" : "NONE";
+  };
   try {
     // Authoritative persisted human-pause state, scoped to the homologation Meta phone.
     // Fail closed on database errors: never silently bypass an unavailable pause gate.
@@ -60,11 +104,7 @@ export async function GET(request) {
           get(rest("nexus_meta_whatsapp_connections", `select=phone_number_id,connection_status,credential_reference&organization_id=eq.${encoded}`)),
           get(rest("nexus_chatbot_configs", `select=active,welcome_message,closing_message,faq&organization_id=eq.${encoded}&limit=1`)),
           get(rest("nexus_chatbot_message_wallets", `select=plan_code,cycle_start,cycle_end,included_remaining,prepaid_remaining&organization_id=eq.${encoded}&limit=1`)),
-          (async () => {
-            const r = await fetch(`${base}/rest/v1/rpc/nexus_chatbot_entitlement`, { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ p_organization_id: org }), cache: "no-store" });
-            if (!r.ok) throw new Error(`entitlement_failed_${r.status}`);
-            return r.json();
-          })(),
+          resolvePlan(org),
         ]);
         tenants.set(org, { connections, config: configs?.[0], wallet: wallets?.[0], entitlement });
       }
@@ -101,7 +141,7 @@ export async function GET(request) {
       acc[d.reason] = (acc[d.reason] || 0) + 1;
       return acc;
     }, {});
-    return json({ mode: "dry_run", scope: "single_homologation_phone", sending_enabled: false, database_modified: false, credits_debited: false, events_scanned: events.length, persisted_pause_records_scanned: pauseRows.length, pause_source: "nexus_chatbot_human_pauses", reason_counts, decisions });
+    return json({ mode: "dry_run", scope: "single_homologation_phone", sending_enabled: false, database_modified: false, credits_debited: false, events_scanned: events.length, persisted_pause_records_scanned: pauseRows.length, pause_source: "nexus_chatbot_human_pauses", reason_counts, decisions, contract_source: "tenant_scoped_contracts_read_only", idempotency_scope: "single_dry_run_invocation", production_ready: false });
   } catch (error) {
     console.error("chatbot_inbound_dry_run_failed", error?.message || "unknown");
     return json({ error: "Inbound inspection unavailable" }, 503);
