@@ -24,6 +24,9 @@ export async function POST(request) {
     if (!c.ok) return NextResponse.json({ message: "Configuração indisponível." }, { status: 503 });
     const body = await request.json();
     if (typeof body.message !== "string" || body.message.length > 1000) return NextResponse.json({ message: "Mensagem inválida (máximo de 1.000 caracteres)." }, { status: 400 });
-    return NextResponse.json({ ...basicReply((await c.json())?.[0], body.message), plan, ai_used: false, preview: true });
+    const result = basicReply((await c.json())?.[0], body.message);
+    return NextResponse.json({ ...result, plan, ai_used: false, preview: true,
+      matched_faq: result.type === "faq", requires_human_review: result.type === "fallback",
+      human_handoff_executed: false, sending_enabled: false, credits_debited: false });
   } catch { return NextResponse.json({ message: "Falha ao testar chatbot." }, { status: 500 }); }
 }
