@@ -37,25 +37,52 @@ export async function POST(request) {
       if (!Array.isArray(data)) throw new Error("unexpected_rows");
       return data;
     };
-    const [configs, wallets, connections, operations, pauses, entitlementResponse] = await Promise.all([
+    const [configs, wallets, connections, operations, pauses, clients] = await Promise.all([
       get(rest("nexus_chatbot_configs", "active,welcome_message,closing_message,faq", "&limit=2")),
       get(rest("nexus_chatbot_message_wallets", "plan_code,cycle_start,cycle_end,included_remaining,prepaid_remaining", "&limit=2")),
       get(rest("nexus_meta_whatsapp_connections", "phone_number_id,connection_status,credential_reference", "&limit=100")),
       get(rest("nexus_chatbot_outbound_operations", "status", "&status=in.(reserved,uncertain)&limit=1000")),
       get(rest("nexus_chatbot_human_pauses", "phone_number_id,contact_phone,pause_until", "&limit=1000")),
-      fetch(`${base}/rest/v1/rpc/nexus_chatbot_entitlement`, {
-        method: "POST", headers: { ...admin, "Content-Type": "application/json" },
-        body: JSON.stringify({ p_organization_id: input.organization_id }), cache: "no-store"
-      })
+      get(rest("nexus_clients", "id,status", "&limit=101"))
     ]);
-    if (!entitlementResponse.ok) return respond({ error: "Entitlement unavailable" }, 503);
-    const entitlement = await entitlementResponse.json();
+    if (clients.length >= 101) return respond({ error: "Client audit truncated" }, 503);
+    const clientIds = clients.map(c => c.id);
+    const contracts = clientIds.length ? await get(`${base}/rest/v1/nexus_contracts?select=id,client_id,status,start_date,end_date&client_id=in.(${clientIds.join(",")})&limit=501`) : [];
+    if (contracts.length >= 501) return respond({ error: "Contract audit truncated" }, 503);
+    const contractIds = contracts.map(c => c.id);
+    const items = contractIds.length ? await get(`${base}/rest/v1/nexus_contract_items?select=contract_id,product_id&contract_id=in.(${contractIds.join(",")})&limit=1001`) : [];
+    if (items.length >= 1001) return respond({ error: "Contract items truncated" }, 503);
+    const productIds = [...new Set(items.map(i => i.product_id))];
+    const products = productIds.length ? await get(`${base}/rest/v1/nexus_products?select=id,code,active&id=in.(${productIds.join(",")})&limit=1001`) : [];
+    if (products.length !== productIds.length) return respond({ error: "Product audit incomplete" }, 503);
+    const productById = new Map(products.map(p => [p.id, p]));
+    const codesByContract = new Map();
+    for (const item of items) {
+      const p = productById.get(item.product_id);
+      if (!p) return respond({ error: "Product reference missing" }, 503);
+      if (p.active === true && ["CHATBOT_BASIC", "CHATBOT_AI"].includes(p.code)) {
+        const codes = codesByContract.get(item.contract_id) || new Set();
+        codes.add(p.code);
+        codesByContract.set(item.contract_id, codes);
+      }
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const clientById = new Map(clients.map(c => [c.id, c]));
+    const eligibleContracts = contracts.filter(c => {
+      const client = clientById.get(c.client_id);
+      return client && String(client.status).toLowerCase() === "active" &&
+        ["active", "ativo"].includes(String(c.status).toLowerCase()) &&
+        c.start_date && c.start_date <= today && (!c.end_date || c.end_date >= today);
+    });
+    const basicContracts = eligibleContracts.filter(c => codesByContract.get(c.id)?.has("CHATBOT_BASIC"));
+    const standardContracts = eligibleContracts.filter(c => codesByContract.get(c.id)?.has("CHATBOT_AI"));
+    const entitlement = basicContracts.length === 1 && standardContracts.length === 0 ? "CHATBOT_BASIC" :
+      standardContracts.length === 1 && basicContracts.length === 0 ? "CHATBOT_AI" : "NONE";
     if (configs.length > 1 || wallets.length > 1 || operations.length >= 1000 || pauses.length >= 1000 || connections.length >= 100)
       return respond({ error: "Ambiguous or truncated tenant data" }, 503);
     const config = configs[0] || null;
     const wallet = wallets[0] || null;
     const rule = basicReply(config, input.message);
-    const today = new Date().toISOString().slice(0, 10);
     const planValid = ["CHATBOT_BASIC", "CHATBOT_AI"].includes(entitlement);
     const walletValid = Boolean(wallet && wallet.plan_code === entitlement && wallet.cycle_start <= today && today < wallet.cycle_end && Number(wallet.included_remaining || 0) + Number(wallet.prepaid_remaining || 0) > 0);
     const linked = connections.filter(c => c.connection_status === "active" && Boolean(c.credential_reference));
@@ -75,7 +102,7 @@ export async function POST(request) {
     // Even with no blockers, a preview cannot establish inbound idempotency or Meta delivery.
     return respond({
       mode: "tenant_processing_preview_read_only", organization_id: input.organization_id,
-      plan: planValid ? entitlement : "NONE", engine: "deterministic_basic",
+      plan: planValid ? entitlement : "NONE", contract_counts: { active_basic: basicContracts.length, active_standard: standardContracts.length }, engine: "deterministic_basic",
       response_type: rule.type, suggested_reply: rule.reply,
       gates: { contract_valid: planValid, config_active: config?.active === true,
         wallet_valid: walletValid, connection_count: linked.length,
