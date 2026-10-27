@@ -1,5 +1,25 @@
 import { timingSafeEqual } from "node:crypto";
-import { planOutbound } from "../../../../lib/chatbot/outbound-plan";
+// Self-contained, synthetic-only planner to avoid cross-file import deployment errors.
+function evaluateHumanPause(rows, nowMs) {
+  if (!Array.isArray(rows) || rows.length > 1 || !Number.isFinite(nowMs)) return { allow: false, reason: "pause_state_invalid" };
+  if (!rows.length) return { allow: true, reason: "no_human_pause" };
+  const at = Date.parse(rows[0].last_human_at);
+  const until = Date.parse(rows[0].pause_until);
+  if (!Number.isFinite(at) || !Number.isFinite(until) || until !== at + 30 * 60 * 1000) return { allow: false, reason: "pause_state_invalid" };
+  return nowMs < until ? { allow: false, reason: "human_pause_30m" } : { allow: true, reason: "human_pause_expired" };
+}
+function planOutbound({ organizationId, phoneNumberId, contactPhone, messageId, connectionActive, contractCode, chatbotActive, wallet, pauseRows, reply, nowMs = Date.now() }) {
+  const deny = reason => ({ eligible: false, reason, send_enabled: false, debit_enabled: false });
+  if (!organizationId || !phoneNumberId || !/^\d{7,20}$/.test(contactPhone || "") || !messageId || typeof messageId !== "string") return deny("invalid_scope_or_message");
+  const pause = evaluateHumanPause(pauseRows, nowMs);
+  if (!pause.allow) return deny(pause.reason);
+  if (!connectionActive) return deny("connection_not_active");
+  if (!["CHATBOT_BASIC", "CHATBOT_AI"].includes(contractCode)) return deny("contract_inactive");
+  if (!chatbotActive) return deny("chatbot_inactive");
+  if (!wallet || wallet.plan_code !== contractCode || !Number.isFinite(Number(wallet.included_remaining)) || !Number.isFinite(Number(wallet.prepaid_remaining)) || Number(wallet.included_remaining) < 0 || Number(wallet.prepaid_remaining) < 0 || Number(wallet.included_remaining) + Number(wallet.prepaid_remaining) <= 0) return deny("wallet_unavailable");
+  if (typeof reply !== "string" || !reply.trim()) return deny("no_reply");
+  return { eligible: true, reason: "eligible_for_future_atomic_claim", send_enabled: false, debit_enabled: false };
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
