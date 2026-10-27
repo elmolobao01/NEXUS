@@ -25,29 +25,26 @@ export async function GET(request) {
     return r.json();
   };
   try {
-    // Real Meta coexistence echoes: read-only pause gate, restricted to the ROOT test phone.
-    // Stored events are the durable source of truth; no additional pause table is required
-    // for this dry-run. Query the last 30 minutes independently of inbound pagination.
-    const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    const echoes = await get(rest("nexus_whatsapp_webhook_events", `select=organization_id,phone_number_id,event_payload,received_at&phone_number_id=eq.${encodeURIComponent(testPhoneId)}&received_at=gte.${encodeURIComponent(cutoff)}&order=received_at.desc&limit=1000`));
-    const lastHumanByContact = new Map();
-    for (const event of echoes) {
-      const changes = event.event_payload?.entry?.flatMap(e => Array.isArray(e.changes) ? e.changes : []) || [];
-      for (const change of changes) {
-        if (change?.field !== "smb_message_echoes") continue;
-        if (change?.value?.metadata?.phone_number_id !== testPhoneId) continue;
-        for (const echo of Array.isArray(change?.value?.message_echoes) ? change.value.message_echoes : []) {
-          const contact = echo?.to;
-          // Phone identifier only; do not log or expose it in diagnostic output.
-          if (typeof contact !== "string" || !/^\d{7,20}$/.test(contact) || !echo?.id) continue;
-          const timestamp = Number(echo.timestamp);
-          // Meta timestamps are Unix seconds. Never use a future timestamp to pause.
-          const eventMs = Number.isFinite(timestamp) && timestamp > 0 ? timestamp * 1000 : NaN;
-          if (!Number.isFinite(eventMs) || eventMs > Date.now() + 60000 || eventMs < Date.now() - 30 * 60 * 1000) continue;
-          const key = `${event.organization_id}:${contact}`;
-          lastHumanByContact.set(key, Math.max(lastHumanByContact.get(key) || 0, eventMs));
-        }
+    // Authoritative persisted human-pause state, scoped to the homologation Meta phone.
+    // Fail closed on database errors: never silently bypass an unavailable pause gate.
+    const pauseRows = await get(rest(
+      "nexus_chatbot_human_pauses",
+      `select=organization_id,phone_number_id,contact_phone,last_human_at,pause_until&phone_number_id=eq.${encodeURIComponent(testPhoneId)}&limit=1000`
+    ));
+    if (!Array.isArray(pauseRows) || pauseRows.length >= 1000) {
+      throw new Error("human_pause_state_unavailable_or_incomplete");
+    }
+    const pauseByContact = new Map();
+    for (const pause of pauseRows) {
+      if (!pause.organization_id || pause.phone_number_id !== testPhoneId ||
+          typeof pause.contact_phone !== "string") continue;
+      const untilMs = Date.parse(pause.pause_until);
+      const atMs = Date.parse(pause.last_human_at);
+      if (!Number.isFinite(untilMs) || !Number.isFinite(atMs) ||
+          untilMs !== atMs + 30 * 60 * 1000) {
+        throw new Error("human_pause_state_invalid");
       }
+      pauseByContact.set(JSON.stringify([pause.organization_id, testPhoneId, pause.contact_phone]), untilMs);
     }
     const events = await get(rest("nexus_whatsapp_webhook_events", `select=id,organization_id,phone_number_id,event_payload&processing_status=eq.received&phone_number_id=eq.${encodeURIComponent(testPhoneId)}&order=received_at.asc&limit=50`));
     if (!Array.isArray(events)) throw new Error("invalid_events");
@@ -92,8 +89,10 @@ export async function GET(request) {
         seenMessageIds.add(message.id);
         const body = message?.type === "text" ? message.text?.body : null;
         const result = typeof body === "string" ? basicReply(config, body) : null;
-        const lastHumanMs = typeof message.from === "string" ? lastHumanByContact.get(`${org}:${message.from}`) : undefined;
-        const pausedByHuman = Number.isFinite(lastHumanMs) && Date.now() < lastHumanMs + 30 * 60 * 1000;
+        const pauseUntilMs = typeof message.from === "string"
+          ? pauseByContact.get(JSON.stringify([org, event.phone_number_id, message.from]))
+          : undefined;
+        const pausedByHuman = Number.isFinite(pauseUntilMs) && Date.now() < pauseUntilMs;
         const reason = pausedByHuman ? "human_pause_30m" : !linked ? "connection_not_active" : !["CHATBOT_BASIC", "CHATBOT_AI"].includes(entitlement) ? "contract_inactive" : !config?.active ? "chatbot_inactive" : !validWallet ? "wallet_unavailable" : !body ? "unsupported_message_type" : !result?.reply ? "no_rule_reply" : "eligible_for_future_processor";
         decisions.push({ event_id: event.id, message_id_present: Boolean(message?.id), reason, response_type: result?.type || null });
       }
@@ -102,7 +101,7 @@ export async function GET(request) {
       acc[d.reason] = (acc[d.reason] || 0) + 1;
       return acc;
     }, {});
-    return json({ mode: "dry_run", scope: "single_homologation_phone", sending_enabled: false, database_modified: false, credits_debited: false, events_scanned: events.length, coexistence_echo_events_scanned: echoes.length, pause_source: "stored_meta_smb_message_echoes", reason_counts, decisions });
+    return json({ mode: "dry_run", scope: "single_homologation_phone", sending_enabled: false, database_modified: false, credits_debited: false, events_scanned: events.length, persisted_pause_records_scanned: pauseRows.length, pause_source: "nexus_chatbot_human_pauses", reason_counts, decisions });
   } catch (error) {
     console.error("chatbot_inbound_dry_run_failed", error?.message || "unknown");
     return json({ error: "Inbound inspection unavailable" }, 503);
