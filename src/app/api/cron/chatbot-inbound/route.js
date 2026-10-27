@@ -10,6 +10,12 @@ const json = (value, status = 200) => Response.json(value, { status, headers: { 
 export async function GET(request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) return json({ error: "Unauthorized" }, 401);
+  return inspectInboundDryRun();
+}
+
+// Shared, read-only inspection. Only invoke from an independently authenticated
+// server-side route; never expose this function through an unauthenticated API.
+export async function inspectInboundDryRun() {
   // Explicit allowlist: homologation is restricted to one Meta phone ID.
   // Never process customer phones from this diagnostic route.
   const testPhoneId = process.env.CHATBOT_HOMOLOGATION_PHONE_NUMBER_ID;
