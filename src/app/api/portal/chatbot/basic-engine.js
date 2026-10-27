@@ -18,6 +18,12 @@ export function basicReply(config, input) {
     const score = exact ? 1 : (a.size && b.size ? overlap / Math.max(a.size, b.size) : 0);
     return { index, answer, score };
   }).filter(Boolean).sort((a,b)=>b.score-a.score || a.index-b.index);
-  if (candidates[0]?.score >= 0.65) return { type: "faq", reply: candidates[0].answer };
+  // Do not guess when two distinct FAQ intents have comparable evidence.
+  // Exact matches retain precedence; partial matches require a clear winner.
+  const best = candidates[0];
+  const runnerUp = candidates.find(c => c.index !== best?.index && c.score > 0);
+  const ambiguous = best && best.score < 1 && runnerUp &&
+    runnerUp.score >= 0.45 && (best.score - runnerUp.score) < 0.20;
+  if (best?.score >= 0.65 && !ambiguous) return { type: "faq", reply: best.answer };
   return { type: "fallback", reply: "Não encontrei uma resposta programada para essa pergunta. Vou encaminhar seu atendimento para um responsável." };
 }
