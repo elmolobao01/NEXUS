@@ -1,7 +1,15 @@
+
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/cron/chatbot-wallets", "schedule": "0 9 * * *" }
+    {
+      "path": "/api/cron/chatbot-wallets",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/chatbot-inbound",
+      "schedule": "0 10 * * *"
+    }
   ]
 }
