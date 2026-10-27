@@ -45,8 +45,10 @@ export async function POST(request) {
       { minute: 2, action: "human_assumed" },
       { minute: 10, action: "incoming", message: "Qual é o horário do check-in?" },
       { minute: 31, action: "incoming", message: "Qual é o horário do check-in?" },
+      { minute: 32, action: "incoming", message: "Qual é o horário do check-in?" },
       { minute: 33, action: "human_assumed" },
       { minute: 62, action: "incoming", message: "Qual é o horário do check-in?" },
+      { minute: 63, action: "incoming", message: "Qual é o horário do check-in?" },
       { minute: 64, action: "incoming", message: "Qual é o horário do check-in?" }
     ];
     let handoffRequested = false;
@@ -75,16 +77,19 @@ export async function POST(request) {
         human_handoff_executed: false
       };
     });
+    const at = (minute) => timeline.find(x => x.minute === minute);
     const checks = {
-      fallback_suggests_handoff: timeline[0].human_handoff_suggested === true,
-      suggestion_does_not_execute_handoff: timeline[0].human_handoff_executed === false,
-      request_distinct_from_assumption: timeline[1].handoff_requested && !timeline[1].human_assumed,
-      human_assumption_starts_30m_pause: timeline[2].pause_until === new Date(baseTime + 32 * 60000).toISOString(),
-      during_pause_blocked: timeline[3].pause_active && !timeline[3].automatic_reply_allowed,
-      prior_pause_expired: !timeline[4].pause_active,
-      second_assumption_renews_pause: timeline[5].pause_until === new Date(baseTime + 63 * 60000).toISOString(),
-      renewed_pause_blocks: timeline[6].pause_active && !timeline[6].automatic_reply_allowed,
-      renewed_pause_expires: !timeline[7].pause_active
+      fallback_suggests_handoff: at(0).human_handoff_suggested === true,
+      suggestion_does_not_execute_handoff: at(0).human_handoff_executed === false,
+      request_distinct_from_assumption: at(1).handoff_requested === true && at(1).human_assumed === false,
+      human_assumption_starts_30m_pause: at(2).pause_until === new Date(baseTime + 32 * 60000).toISOString(),
+      during_pause_blocked: at(10).pause_active === true && at(10).automatic_reply_allowed === false,
+      one_minute_before_expiration_blocked: at(31).pause_active === true && at(31).automatic_reply_allowed === false,
+      first_pause_expires_at_exact_boundary: at(32).pause_active === false && at(32).automatic_reply_allowed === true,
+      second_assumption_renews_pause: at(33).pause_until === new Date(baseTime + 63 * 60000).toISOString(),
+      renewed_pause_blocks: at(62).pause_active === true && at(62).automatic_reply_allowed === false,
+      renewed_pause_expires_at_exact_boundary: at(63).pause_active === false && at(63).automatic_reply_allowed === true,
+      after_expiration_remains_unblocked: at(64).pause_active === false && at(64).automatic_reply_allowed === true
     };
     return json({
       mode: "synthetic_human_handoff_preview_only",
