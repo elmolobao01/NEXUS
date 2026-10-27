@@ -35,6 +35,8 @@ export async function POST(request) {
     const result = basicReply(config, input.message);
     return respond({ mode: "rule_engine_preview_only", organization_id: input.organization_id,
       engine: "deterministic_basic", configured: Boolean(config), response_type: result.type,
+      matched_faq: result.type === "faq", requires_human_review: result.type === "fallback",
+      human_handoff_executed: false, faq_entries: Array.isArray(config?.faq) ? config.faq.length : 0,
       suggested_reply: result.reply, ai_called: false, sending_enabled: false,
       database_modified: false, credits_debited: false, meta_called: false });
   } catch {
