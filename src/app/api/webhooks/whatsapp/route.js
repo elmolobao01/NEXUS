@@ -88,20 +88,39 @@ export async function POST(request) {
     // Optional admission only; does not send or debit. Off until SQL migration
     // and tenant controls are confirmed. Event persistence remains unchanged.
     if (process.env.CHATBOT_INBOUND_QUEUE_ADMISSION_ENABLED === "true") {
-      const hashes = records.filter((r) =>
-        r.event_payload.entry.some((e) => e.changes.some((c) =>
-          c.field === "messages" && Array.isArray(c.value?.messages) &&
-          c.value.messages.length > 0
-        ))
-      ).map((r) => r.event_hash);
-      if (hashes.length) {
-        const admitted = await fetch(`${base}/rest/v1/rpc/nexus_chatbot_inbound_admit_hashes`, {
-          method: "POST", cache: "no-store", headers,
-          body: JSON.stringify({ p_event_hashes: hashes })
-        });
-        if (!admitted.ok) {
-          console.error("whatsapp_inbound_queue_admission_failed", admitted.status);
-          return response({ error: "Inbound admission unavailable" }, 503);
+      // Second, independent admission gate: an explicit allowlist of Meta phone
+      // number IDs. Missing/invalid/empty allowlist fails closed. This only
+      // creates queue jobs; it never claims jobs, sends messages or debits wallets.
+      const rawAllowlist = process.env.CHATBOT_INBOUND_ADMISSION_ALLOWED_PHONE_IDS || "";
+      const allowedIds = rawAllowlist.split(",").map((id) => id.trim()).filter(Boolean);
+      const allowlistValid = allowedIds.length > 0 &&
+        allowedIds.length <= 20 && allowedIds.every((id) => /^\d{5,30}$/.test(id));
+      if (!allowlistValid) {
+        console.warn("whatsapp_inbound_admission_allowlist_missing_or_invalid");
+      } else {
+        const allowlist = new Set(allowedIds);
+        const eligible = records.filter((r) =>
+          allowlist.has(r.phone_number_id) &&
+          r.event_payload.entry.some((e) => e.changes.some((c) =>
+            c.field === "messages" && Array.isArray(c.value?.messages) &&
+            c.value.messages.length > 0
+          ))
+        );
+        // Bound admission workload; fail closed for oversized webhook batches.
+        const messageCount = eligible.reduce((count, r) => count +
+          r.event_payload.entry.reduce((n, e) => n + e.changes.reduce((m, c) =>
+            m + (c.field === "messages" && Array.isArray(c.value?.messages) ? c.value.messages.length : 0), 0), 0), 0);
+        if (messageCount > 25) {
+          console.warn("whatsapp_inbound_admission_batch_too_large");
+        } else if (eligible.length) {
+          const admitted = await fetch(`${base}/rest/v1/rpc/nexus_chatbot_inbound_admit_hashes`, {
+            method: "POST", cache: "no-store", headers,
+            body: JSON.stringify({ p_event_hashes: eligible.map((r) => r.event_hash) })
+          });
+          if (!admitted.ok) {
+            console.error("whatsapp_inbound_queue_admission_failed", admitted.status);
+            return response({ error: "Inbound admission unavailable" }, 503);
+          }
         }
       }
     }
