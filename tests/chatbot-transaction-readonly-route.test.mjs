@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { GET } from '../src/app/api/cron/chatbot-transaction-readonly/route.js';
+
+const originalFetch = globalThis.fetch;
+const originalSecret = process.env.CRON_SECRET;
+const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const id = '11111111-1111-4111-8111-111111111111';
+const org = '22222222-2222-4222-8222-222222222222';
+const eventId = '33333333-3333-4333-8333-333333333333';
+const job = {id,organization_id:org,source_event_id:eventId,phone_number_id:'12345',contact_phone:'5511999999999',message_id:'wamid.123',state:'pending'};
+const event = {id:eventId,organization_id:org,phone_number_id:'12345',event_payload:{entry:[{changes:[{field:'messages',value:{metadata:{phone_number_id:'12345'},messages:[{id:'wamid.123',from:'5511999999999',type:'text',text:{body:'Oi'}}]}}]}]}};
+const request = (url='https://portal.example/api/cron/chatbot-transaction-readonly') => new Request(url,{headers:{authorization:'Bearer local-test-secret'}});
+const restore = () => {globalThis.fetch=originalFetch; if(originalSecret===undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET=originalSecret; if(originalUrl===undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL; else process.env.NEXT_PUBLIC_SUPABASE_URL=originalUrl; if(originalKey===undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY=originalKey;};
+const setup = (jobs) => {process.env.CRON_SECRET='local-test-secret';process.env.NEXT_PUBLIC_SUPABASE_URL='https://supabase.example';process.env.SUPABASE_SERVICE_ROLE_KEY='fake-local-key';const calls=[];globalThis.fetch=async (url, options)=>{calls.push({url:String(url),method:options.method});const u=new URL(url);let data=[];if(u.pathname.endsWith('/nexus_chatbot_inbound_jobs')) data=jobs;else if(u.pathname.endsWith('/nexus_whatsapp_webhook_events')) data=[event];else if(u.pathname.endsWith('/nexus_meta_whatsapp_connections')) data=[{organization_id:org,phone_number_id:'12345',connection_status:'active',credential_reference:'ref'}];else if(u.pathname.endsWith('/nexus_chatbot_configs')) data=[{active:true}];else if(u.pathname.endsWith('/nexus_chatbot_message_wallets')) data=[{plan_code:'CHATBOT_BASIC',cycle_start:'2026-01-01',cycle_end:'2099-01-01',included_remaining:10,prepaid_remaining:0}];else if(u.pathname.endsWith('/rpc/nexus_chatbot_has_active_contract')) data=true;return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});};return calls;};
+test('zero jobs: no contract RPC and no writes',async()=>{const calls=setup([]);try{const r=await GET(request());const body=await r.json();assert.equal(r.status,200);assert.equal(body.scanned,0);assert.equal(body.read_only_contract_rpc_invoked,false);assert.equal(body.automatic_execution_authorized,false);assert.ok(calls.every(c=>c.method==='GET'));}finally{restore();}});
+test('valid UUID accepted, read-only contract RPC used when needed',async()=>{const calls=setup([job]);try{const r=await GET(request());const body=await r.json();assert.equal(r.status,200);assert.equal(body.scanned,1);assert.equal(body.decisions[0].reason,'read_only_candidate');assert.equal(body.read_only_contract_rpc_invoked,true);assert.equal(body.automatic_execution_authorized,false);assert.equal(calls.filter(c=>c.method==='POST').length,1);assert.ok(calls.some(c=>c.url.includes('/rpc/nexus_chatbot_has_active_contract')));assert.ok(!calls.some(c=>/reserve_outbound|finalize_outbound|inbound_claim|inbound_finish/.test(c.url)));}finally{restore();}});
+test('invalid org filter rejected without I/O',async()=>{const calls=setup([]);try{const r=await GET(request('https://portal.example/api/cron/chatbot-transaction-readonly?organization_id=not-a-uuid'));assert.equal(r.status,400);assert.equal(calls.length,0);}finally{restore();}});
+test('missing secret rejects unauthorized',async()=>{const calls=setup([]);try{delete process.env.CRON_SECRET;const r=await GET(request());assert.equal(r.status,401);assert.equal(calls.length,0);}finally{restore();}});
