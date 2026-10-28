@@ -44,9 +44,28 @@ export async function GET(request) {
     }
     const linkedJobsInSample = jobs.filter(j => inboundEventIds.has(j.source_event_id)).length;
     const enabled = process.env.CHATBOT_INBOUND_QUEUE_ADMISSION_ENABLED === "true";
+    const rawIds = process.env.CHATBOT_INBOUND_ADMISSION_ALLOWED_PHONE_IDS || "";
+    const ids = rawIds.split(",").map(id => id.trim()).filter(Boolean);
+    const allowlistValid = ids.length > 0 && ids.length <= 20 &&
+      ids.every(id => /^\d{5,30}$/.test(id));
+    const allowlist = allowlistValid ? new Set(ids) : new Set();
+    const sampleEligibleEvents = events.filter(event =>
+      allowlist.has(event.phone_number_id) &&
+      (event.event_payload?.entry || []).some(entry =>
+        (entry.changes || []).some(change =>
+          change.field === "messages" && Array.isArray(change.value?.messages) && change.value.messages.length > 0
+        )
+      )
+    ).length;
+    const admissionGateOpen = enabled && allowlistValid;
     return json({
       mode: "chatbot_admission_diagnostic_read_only",
       admission_feature_flag_enabled: enabled,
+      admission_allowlist_valid: allowlistValid,
+      admission_allowlist_count: allowlistValid ? allowlist.size : 0,
+      admission_gate_open: admissionGateOpen,
+      sampled_inbound_events_matching_allowlist: sampleEligibleEvents,
+      note: "Configuration snapshot only; does not test a live webhook or authorize admission. No phone IDs or secrets are returned.",
       recent_events_sampled: events.length,
       recent_inbound_events: inboundEvents,
       recent_inbound_messages: inboundMessages,
@@ -58,7 +77,7 @@ export async function GET(request) {
       recent_jobs_linked_to_sampled_inbound_events: linkedJobsInSample,
       sample_limit: 100,
       scope_note: "Samples of latest 100 rows per table, not global totals. Historic events are not automatically admitted when the feature flag changes.",
-      suggested_next_step: !enabled ? "review_feature_flag_before_authorizing_admission" : inboundMessages === 0 ? "inspect_inbound_event_generation" : linkedJobsInSample === 0 ? "review_admission_rpc_and_webhook_logs" : "review_queue_state_and_processing",
+      suggested_next_step: !enabled ? "admission_disabled_as_expected" : !allowlistValid ? "admission_blocked_invalid_allowlist" : inboundMessages === 0 ? "inspect_inbound_event_generation" : linkedJobsInSample === 0 ? "review_admission_rpc_and_webhook_logs" : "review_queue_state_and_processing",
       database_modified: false, admission_rpc_invoked: false, mutation_rpcs_invoked: false,
       credits_debited: false, meta_messages_sent: false, automatic_execution_authorized: false,
     });
