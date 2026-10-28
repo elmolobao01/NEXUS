@@ -21,4 +21,3 @@ export async function GET(request) {
     return respond({ error: 'Orchestration audit unavailable', activation_ready: false }, 503);
   }
 }
-
