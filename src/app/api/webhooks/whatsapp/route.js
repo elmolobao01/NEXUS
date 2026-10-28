@@ -85,6 +85,26 @@ export async function POST(request) {
       console.error("whatsapp_event_persist_failed", { status: stored.status });
       return response({ error: "Event persistence failed" }, 503);
     }
+    // Optional admission only; does not send or debit. Off until SQL migration
+    // and tenant controls are confirmed. Event persistence remains unchanged.
+    if (process.env.CHATBOT_INBOUND_QUEUE_ADMISSION_ENABLED === "true") {
+      const hashes = records.filter((r) =>
+        r.event_payload.entry.some((e) => e.changes.some((c) =>
+          c.field === "messages" && Array.isArray(c.value?.messages) &&
+          c.value.messages.length > 0
+        ))
+      ).map((r) => r.event_hash);
+      if (hashes.length) {
+        const admitted = await fetch(`${base}/rest/v1/rpc/nexus_chatbot_inbound_admit_hashes`, {
+          method: "POST", cache: "no-store", headers,
+          body: JSON.stringify({ p_event_hashes: hashes })
+        });
+        if (!admitted.ok) {
+          console.error("whatsapp_inbound_queue_admission_failed", admitted.status);
+          return response({ error: "Inbound admission unavailable" }, 503);
+        }
+      }
+    }
     return response({ received: true }, 200);
   } catch {
     console.error("whatsapp_webhook_unexpected_error");
