@@ -55,7 +55,10 @@ export function createTransactionalLiveAdapters({
     return { outcome:'uncertain', error_code:`meta_http_${response.status}` };
   };
   const jobAdapters = {
-    revalidate: reader.revalidate, selectReply:reader.selectReply, humanPause,
+    revalidate: async job => allowedPhoneNumberIds.includes(job?.phone_number_id)
+      ? reader.revalidate(job)
+      : { allow:false, reason:'pilot_phone_not_allowed' },
+    selectReply:reader.selectReply, humanPause,
     reserve: async (org,key) => rpc('reserve',{p_organization_id:org,p_idempotency_key:key}),
     finalize: async (id,outcome,metaId,errorCode) => rpc('finalize',{p_operation_id:id,p_outcome:outcome,p_meta_message_id:metaId,p_error_code:errorCode}),
     finish: async (id,token,state,reason) => rpc('finish',{p_job_id:id,p_claim_token:token,p_state:state,p_reason:reason}),
