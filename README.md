@@ -1,34 +1,9 @@
-# NEXUS v1.6 — Supabase ROOT
+# PLENIUM — RPC de claim isolado por organização e número
 
-Versão consolidada do NEXUS com autenticação real via Supabase, perfil NEXUS_ROOT, Centro de Controle e Portal do Cliente.
+**Novos arquivos**: `supabase/migrations/20261029_001_chatbot_claim_isolado.sql`, `src/lib/chatbot/scoped-claim-adapter.js`, `tests/scoped-claim-adapter.test.mjs`.
 
-## Variáveis na Vercel
+O SQL cria uma função **nova** `nexus_chatbot_inbound_claim_scoped`, preservando a RPC legada. Filtra por organização + phone_number_id antes do `FOR UPDATE SKIP LOCKED`, com lease de 5 minutos e até 3 tentativas, e restringe execução a `service_role`.
 
-```text
-NEXT_PUBLIC_SUPABASE_URL=https://sagacqrqaaycyyefovng.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_80XSji7Msl9xjTCfbeKTFw_YMdiF95w
-```
+**Importante:** antes de executar a migração, conferir o esquema real (colunas `attempts`, `created_at`, `updated_at`, `lease_token`, `leased_until`, `source_event_id` e enum/texto de `state`) e verificar a estratégia de leases expirados. Esta versão reivindica apenas `pending`, não recupera automaticamente leases expirados. Nenhum dado existente é migrado.
 
-Remova `NEXUS_DEMO_AUTH`.
-
-## Banco
-
-As tabelas `nexus_organizations` e `nexus_user_profiles` já foram criadas e o usuário `root@nexus.com.br` já foi vinculado ao perfil `NEXUS_ROOT`.
-
-## Acesso
-
-Use `root@nexus.com.br` e a senha real definida no Supabase Authentication.
-
-## Rotas
-
-- `/login` — autenticação
-- `/admin` — Centro de Controle ROOT
-- `/portal` — Portal do Cliente
-- `/api/auth/session` — sessão atual
-- `/api/auth/logout` — encerra sessão
-
-## Deploy
-
-Envie o conteúdo desta pasta para a raiz do repositório GitHub. Cadastre as duas variáveis na Vercel e faça um novo deployment.
-
-Atualização de implantação — outubro de 2026.
+O JS é um adaptador isolado que poderá ser ligado ao `processAlreadyClaimedBatch` após homologação. **Não ativa Cron Jobs, não envia WhatsApp, não debita créditos e não altera a rota de execução.** Os testes usam mocks.
