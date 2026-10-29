@@ -23,6 +23,11 @@ export async function processAlreadyClaimedBatch({ claimBatch, loadJob, jobAdapt
       !Number.isInteger(limit) || limit < 1 || limit > 20) {
     throw new Error('invalid_batch_configuration');
   }
+  // Production wiring MUST provide a response selector; otherwise the executor
+  // could reserve and send without applying the Basic/Standard response policy.
+  if (typeof jobAdapters.selectReply !== 'function') {
+    throw new Error('missing_shared_plan_reply_selector');
+  }
   const rows = await claimBatch(limit);
   if (!Array.isArray(rows) || rows.length > limit) {
     throw new Error('invalid_claim_batch_result_requires_manual_reconciliation');
