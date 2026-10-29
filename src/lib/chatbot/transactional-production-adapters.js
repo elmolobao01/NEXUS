@@ -5,8 +5,8 @@ import { selectChatbotReply } from './plan-response-router';
 import { checkHumanPauseBeforeMetaSend } from './human-pause-send-guard';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DIGITS = /^\\d{5,30}$/;
-const PHONE = /^\\d{7,20}$/;
+const DIGITS = /^\d{5,30}$/;
+const PHONE = /^\d{7,20}$/;
 const valid = j => UUID.test(j?.id || '') && UUID.test(j?.organization_id || '') &&
   UUID.test(j?.source_event_id || '') && DIGITS.test(j?.phone_number_id || '') &&
   PHONE.test(j?.contact_phone || '') && typeof j?.message_id === 'string' && j.message_id.length > 0;
@@ -20,7 +20,7 @@ export function createTransactionalProductionReader({
   if (!supabaseUrl || !serviceRoleKey || !supabaseUrl.startsWith('https://')) {
     throw new Error('supabase_reader_unavailable');
   }
-  const base = supabaseUrl.replace(/\\/$/, '');
+  const base = supabaseUrl.replace(/\/$/, '');
   const headers = { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` };
   const read = async (table, params) => {
     const url = new URL(`${base}/rest/v1/${table}`);
