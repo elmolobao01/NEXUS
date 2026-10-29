@@ -4,6 +4,7 @@ import { createTransactionalProductionReader } from './transactional-production-
 import { processAlreadyClaimedBatch } from './transactional-batch-runner';
 import { validateChatbotRpcPayload } from './transactional-rpc-contract';
 import { createScopedClaimBatch } from './scoped-claim-adapter';
+import { checkHumanPauseBeforeMetaSend } from './human-pause-send-guard';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DIGITS = /^\d{7,20}$/;
@@ -48,8 +49,15 @@ export function createTransactionalLiveAdapters({
   const claimBatch = createScopedClaimBatch({ rpc:scopedRpc, organizationId, phoneNumberId });
   const humanPause = async job => {
     // Fresh validation immediately before reserve and send.
-    const checked = await reader.revalidate(job);
-    return checked.allow === true ? { allow:true } : { allow:false, reason:checked.reason || 'revalidation_failed' };
+    if (job.organization_id !== organizationId || job.phone_number_id !== phoneNumberId)
+      return { allow:false, reason:'pilot_scope_mismatch' };
+    // Do NOT revalidate the wallet/outbound operation here: after reservation
+    // the outbound operation necessarily exists, so that would block every send.
+    const checked = await (pauseCheck || checkHumanPauseBeforeMetaSend)({
+      organizationId:job.organization_id, phoneNumberId:job.phone_number_id,
+      contactPhone:job.contact_phone, fetchImpl, supabaseUrl:base, serviceRoleKey,
+    });
+    return checked?.allow === true ? { allow:true } : { allow:false, reason:checked?.reason || 'human_pause_unavailable' };
   };
   const send = async (job, validated) => {
     if (job.organization_id !== organizationId || job.phone_number_id !== phoneNumberId ||
