@@ -28,9 +28,7 @@ export async function executeClaimedJob(job, adapters) {
       await adapters.finish(job.id, token, 'blocked', validated?.reason || 'revalidation_blocked');
       return { ...STOP, reason: validated?.reason || 'revalidation_blocked' };
     }
-    // Shared Basic/Standard response selection, when the new adapter is supplied.
-    // No credit reservation occurs until the response has been validated.
-    // Existing callers without selectReply retain their previous behavior.
+    // Optional shared response selection; blocks before any credit reservation.
     if (adapters.selectReply !== undefined) {
       assert(typeof adapters.selectReply === 'function', 'invalid_select_reply_adapter');
       const selected = await adapters.selectReply(job, validated);
@@ -40,9 +38,6 @@ export async function executeClaimedJob(job, adapters) {
         await adapters.finish(job.id, token, 'blocked', selected?.reason || 'reply_selection_blocked');
         return { ...STOP, reason: selected?.reason || 'reply_selection_blocked' };
       }
-      // The sender receives the selected reply as part of the validated payload.
-      // An AI response is never generated here; quota reservation must precede
-      // any AI provider call in the injected selectReply adapter.
       validated.selected_reply = selected.reply;
       validated.response_engine = selected.engine;
     }

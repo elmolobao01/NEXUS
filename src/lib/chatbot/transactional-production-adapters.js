@@ -1,7 +1,7 @@
 // Production-bound Supabase reader for the transactional chatbot.
 // Deliberately excludes claim, reserve, finalize, finish and Meta sending.
 // The executor remains locked until explicit approval for financial/send actions.
-import { basicReply } from '../../app/api/portal/chatbot/basic-engine';
+import { selectChatbotReply } from './plan-response-router';
 import { checkHumanPauseBeforeMetaSend } from './human-pause-send-guard';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -103,8 +103,14 @@ export function createTransactionalProductionReader({
       const message = messages[0];
       if (message.type !== 'text' || typeof message.text?.body !== 'string')
         return { allow: false, reason: 'unsupported_message_type' };
-      const result = basicReply(config, message.text.body);
-      if (!result?.reply) return { allow: false, reason: 'no_rule_reply' };
+      // One response policy for both plans; Standard AI fallback remains
+      // blocked until an atomic AI quota reservation is implemented.
+      const result = await selectChatbotReply({
+        planCode: wallet.plan_code, config, message: message.text.body,
+      });
+      if (result?.allow !== true) {
+        return { allow: false, reason: result?.reason || 'response_unavailable' };
+      }
       const pause = await pauseCheck({
         organizationId: job.organization_id,
         phoneNumberId: job.phone_number_id,
@@ -112,12 +118,20 @@ export function createTransactionalProductionReader({
         fetchImpl, supabaseUrl: base, serviceRoleKey,
       });
       if (!pause?.allow) return { allow: false, reason: pause?.reason || 'human_pause_unavailable' };
-      return { allow: true, reply: result.reply, response_type: result.type };
+      return { allow: true, reply: result.reply, response_type: result.type, response_engine: result.engine };
     } catch {
       return { allow: false, reason: 'revalidation_unavailable' };
     }
   };
-  return Object.freeze({ loadJob, revalidate });
+  // No additional I/O. Uses the validated response, never invokes IA here.
+  const selectReply = async (_job, validated) => {
+    if (validated?.allow !== true || typeof validated.reply !== 'string' ||
+        !validated.reply.trim() || !['rules', 'ai'].includes(validated.response_engine)) {
+      return { allow: false, reason: 'validated_response_missing' };
+    }
+    return { allow: true, engine: validated.response_engine, reply: validated.reply };
+  };
+  return Object.freeze({ loadJob, revalidate, selectReply });
 }
 
 // No executable send/financial adapter is exported. Do not add write methods
