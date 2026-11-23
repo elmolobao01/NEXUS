@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const WHATSAPP = "5571999952478";
+const WHATSAPP = "5571999412478";
 
 const productLabels = {
   gestao: "PLENIUM Gestão",
