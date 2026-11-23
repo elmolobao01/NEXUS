@@ -13,10 +13,35 @@ export default function ChatbotsSection() {
   const [state, setState] = useState("loading");
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+  const [activationBusy, setActivationBusy] = useState(false);
+  const [activationResult, setActivationResult] = useState(null);
   const [oauthTestState, setOauthTestState] = useState("idle");
   const [oauthTestMessage, setOauthTestMessage] = useState("");
   const [oauthLaunchState, setOauthLaunchState] = useState("idle");
   const [oauthLaunchMessage, setOauthLaunchMessage] = useState("");
+
+  async function activateOfficialConnection() {
+    if (activationBusy) return;
+    if (!window.confirm("Ativar a conexão oficial +55 71 99941-2478? O servidor revalidará o token na Meta, registrará auditoria e manterá o envio automático desativado.")) return;
+    setActivationBusy(true);
+    setActivationResult(null);
+    try {
+      const response = await fetch("/api/admin/chatbots/meta-activate", {
+        method: "POST", credentials: "same-origin", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "ACTIVATE_META_CONNECTION_NO_SEND" }),
+      });
+      const result = await response.json();
+      setActivationResult({ ...result, request_ok: response.ok });
+      if (response.ok && result.connection_status === "active" && result.audit_recorded === true && result.sending_enabled === false) {
+        setReload(v => v + 1);
+      }
+    } catch {
+      setActivationResult({ error: "Não foi possível concluir a ativação. Verifique os logs do servidor antes de repetir." });
+    } finally {
+      setActivationBusy(false);
+    }
+  }
 
   async function testOAuthSession() {
     setOauthTestState("loading");
@@ -105,7 +130,16 @@ export default function ChatbotsSection() {
         {tab === "Conexões Meta" ? <>
           <p>Conexões WhatsApp Business vinculadas às organizações cadastradas no NEXUS.</p>
           <MetaSystemTokenValidation />
-          <p>A ativação de números WhatsApp permanece indisponível. O teste de autorização Meta exige liberação explícita no servidor e não ativa conexões.</p>
+          <p>A ativação controlada exige credencial previamente importada e vinculada, nova validação na Meta e auditoria. O envio automático permanece desativado.</p>
+          {connections.some(c => c.id === "2c05f573-edd5-48a6-8813-05dcbfbcd9f9" && c.connection_status === "pending") && (
+            <button type="button" onClick={activateOfficialConnection} disabled={activationBusy || state !== "ready"}>
+              {activationBusy ? "Validando e ativando..." : "Ativar conexão oficial (sem habilitar envio)"}
+            </button>
+          )}
+          {activationResult && <div role="status" aria-live="polite" style={{ marginTop: 12 }}>
+            <strong>{activationResult.request_ok ? "Resultado da ativação" : "Ativação não concluída"}</strong>
+            <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(activationResult, null, 2)}</pre>
+          </div>}
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
             <button type="button" onClick={() => setReload((v) => v + 1)} disabled={state === "loading"}>Atualizar listagem</button>
             <button type="button" onClick={testOAuthSession} disabled={oauthTestState === "loading"}>
