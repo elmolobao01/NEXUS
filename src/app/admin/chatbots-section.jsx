@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import MetaSystemTokenValidation from "./meta-system-token-validation";
+import WhatsAppConversations from "./whatsapp-conversations";
 
 const sections = ["Visão geral", "Conexões Meta", "Chatbots", "Conversas", "Clientes", "Monitoramento", "Configurações"];
 const activeStatuses = new Set(["active", "connected"]);
@@ -162,7 +163,7 @@ export default function ChatbotsSection() {
               </tr>)}</tbody>
             </table>
           </div>}
-        </> : tab === "Visão geral" ? <p>Central administrativa em implantação. As conexões serão gerenciadas na aba Conexões Meta; as demais operações serão habilitadas gradualmente.</p> :
+        </> : tab === "Conversas" ? <WhatsAppConversations /> : tab === "Visão geral" ? <p>Central administrativa em implantação. As conexões serão gerenciadas na aba Conexões Meta; as demais operações serão habilitadas gradualmente.</p> :
           <p>Área preparada para integração com os dados e as permissões do NEXUS. As operações ainda não estão habilitadas.</p>}
       </div>
     </section>
