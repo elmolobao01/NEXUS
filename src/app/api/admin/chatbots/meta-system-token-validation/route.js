@@ -1,8 +1,8 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const ORG = "7ca2ee92-6b12-4f54-ba7b-986bab2f9434";
-const WABA = "1639299021541980";
-const PHONE = "1295394797000036";
+const WABA = "1494371125908048";
+const PHONE = "1453993444467017";
 const response = (body, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store", "Pragma": "no-cache", "Referrer-Policy": "no-referrer" } });
 
 // Controlled read-only validation. No token is stored, logged or echoed.
@@ -64,7 +64,7 @@ export async function POST(request) {
       const rpc = await fetch(`${base}/rest/v1/rpc/nexus_meta_import_system_credential`, {
         method: "POST", cache: "no-store",
         headers: { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ p_organization_id: ORG, p_connection_id: "8cf2e98b-18f8-4a80-b73f-110b8d012d42", p_initiated_by: user.id, p_encrypted_token: encrypted, p_token_type: "bearer" }),
+        body: JSON.stringify({ p_organization_id: ORG, p_connection_id: "2c05f573-edd5-48a6-8813-05dcbfbcd9f9", p_initiated_by: user.id, p_encrypted_token: encrypted, p_token_type: "bearer" }),
       });
       if (!rpc.ok) return response({ valid: true, error: "Atomic import unavailable or connection already linked; no partial import", database_modified: false, sending_enabled: false }, 409);
       return response({ valid: true, credential_imported: true, credential_linked: true, credential_status: "pending_verification", connection_status: "pending", sending_enabled: false });
