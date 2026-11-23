@@ -2,10 +2,10 @@ import { createDecipheriv } from "node:crypto";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const ORG = "7ca2ee92-6b12-4f54-ba7b-986bab2f9434";
-const CONN = "8cf2e98b-18f8-4a80-b73f-110b8d012d42";
-const CRED = "3e9f5776-613f-49b6-9e46-c13cafc5e38e";
-const WABA = "1639299021541980";
-const PHONE = "1295394797000036";
+const CONN = "2c05f573-edd5-48a6-8813-05dcbfbcd9f9";
+
+const WABA = "1494371125908048";
+const PHONE = "1453993444467017";
 const respond = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
 export async function POST(request) {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,13 +29,16 @@ export async function POST(request) {
     if (!Array.isArray(profiles) || !profiles.some(p => p.profile === "NEXUS_ROOT" && p.active === true && p.organization_id === ORG)) return respond({ error: "Forbidden" }, 403);
     const payload = await request.json();
     if (payload?.confirm !== "ACTIVATE_META_CONNECTION_NO_SEND") return respond({ error: "Explicit confirmation required" }, 400);
-    const [connRes, credRes] = await Promise.all([
-      fetch(`${base}/rest/v1/nexus_meta_whatsapp_connections?select=id,organization_id,waba_id,phone_number_id,connection_status,credential_reference,connected_at&id=eq.${CONN}&organization_id=eq.${ORG}`, { headers: admin, cache: "no-store" }),
-      fetch(`${base}/rest/v1/nexus_meta_oauth_credentials?select=id,organization_id,status,encrypted_token&id=eq.${CRED}&organization_id=eq.${ORG}`, { headers: admin, cache: "no-store" })
-    ]);
-    if (!connRes.ok || !credRes.ok) return respond({ error: "Database lookup unavailable" }, 503);
-    const [connections, credentials] = await Promise.all([connRes.json(), credRes.json()]);
-    const c = connections?.[0], credential = credentials?.[0];
+    const connRes = await fetch(`${base}/rest/v1/nexus_meta_whatsapp_connections?select=id,organization_id,waba_id,phone_number_id,connection_status,credential_reference,connected_at&id=eq.${CONN}&organization_id=eq.${ORG}`, { headers: admin, cache: "no-store" });
+    if (!connRes.ok) return respond({ error: "Database lookup unavailable" }, 503);
+    const connections = await connRes.json();
+    const c = connections?.[0];
+    if (!c?.credential_reference) return respond({ error: "Connection credential not linked" }, 409);
+    const CRED = c.credential_reference;
+    const credRes = await fetch(`${base}/rest/v1/nexus_meta_oauth_credentials?select=id,organization_id,status,encrypted_token&id=eq.${encodeURIComponent(CRED)}&organization_id=eq.${ORG}`, { headers: admin, cache: "no-store" });
+    if (!credRes.ok) return respond({ error: "Database lookup unavailable" }, 503);
+    const credentials = await credRes.json();
+    const credential = credentials?.[0];
     if (!c || !credential || c.waba_id !== WABA || c.phone_number_id !== PHONE || c.credential_reference !== CRED || c.connection_status !== "pending" || c.connected_at != null || credential.status !== "pending_verification") return respond({ error: "Activation preconditions not met" }, 409);
     const envelope = credential.encrypted_token;
     if (envelope?.algorithm !== "aes-256-gcm" || !["iv", "tag", "ciphertext"].every(k => typeof envelope[k] === "string")) return respond({ error: "Invalid encrypted credential" }, 422);
