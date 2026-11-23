@@ -19,7 +19,7 @@ const products = [
   },
 ];
 
-const whatsappNumber = (process.env.NEXT_PUBLIC_NEXUS_WHATSAPP || "5571999952478").replace(/\D/g, "");
+const whatsappNumber = (process.env.NEXT_PUBLIC_NEXUS_WHATSAPP || "5571999412478").replace(/\D/g, "");
 
 function whatsappUrl(message) {
   return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
