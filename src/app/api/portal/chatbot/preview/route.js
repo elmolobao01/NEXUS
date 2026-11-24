@@ -1,3 +1,4 @@
+import { master, OPERATION, sameOrigin } from "@/lib/auth/master-context";
 import { NextResponse } from "next/server";
 import { basicReply } from "../basic-engine";
 
@@ -6,15 +7,19 @@ const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 export async function POST(request) {
   try {
+    const institutional = request.headers.get("X-Plenium-Context") === "operation";
+    const ctx = institutional ? await master(request.cookies) : null;
+    if (institutional && (!ctx || ctx.organizationId !== OPERATION || !sameOrigin(request))) return NextResponse.json({message:"Acesso negado."},{status:403});
     const token = request.cookies.get("nexus_access_token")?.value;
     if (!URL || !KEY || !token) return NextResponse.json({ message: "Não autorizado." }, { status: 401 });
-    const headers = { apikey: KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    let headers = { apikey: KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     const auth = await fetch(`${URL}/auth/v1/user`, { headers, cache: "no-store" });
     if (!auth.ok) return NextResponse.json({ message: "Sessão inválida." }, { status: 401 });
     const user = await auth.json();
     const p = await fetch(`${URL}/rest/v1/nexus_user_profiles?select=organization_id,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&limit=1`, { headers, cache: "no-store" });
     if (!p.ok) return NextResponse.json({ message: "Perfil indisponível." }, { status: 503 });
-    const org = (await p.json())?.[0]?.organization_id;
+    const org = institutional ? OPERATION : (await p.json())?.[0]?.organization_id;
+    if (institutional) headers = ctx.headers;
     if (!org) return NextResponse.json({ message: "Organização não encontrada." }, { status: 403 });
     const e = await fetch(`${URL}/rest/v1/rpc/nexus_chatbot_entitlement`, { method: "POST", headers, body: JSON.stringify({ p_organization_id: org }), cache: "no-store" });
     if (!e.ok) return NextResponse.json({ message: "Não foi possível validar o contrato." }, { status: 503 });
