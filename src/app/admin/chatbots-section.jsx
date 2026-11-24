@@ -70,7 +70,7 @@ export default function ChatbotsSection() {
   }
 
   async function launchControlledOAuth() {
-    if (!window.confirm("Iniciar o teste de autorização com a Meta? Isso abrirá a Meta e poderá solicitar permissões. Nenhum número WhatsApp será ativado automaticamente no NEXUS.")) return;
+    if (!window.confirm("Iniciar o teste de autorização com a Meta? Isso abrirá a Meta e poderá solicitar permissões. Nenhum número WhatsApp será ativado automaticamente na PLENIUM.")) return;
     setOauthLaunchState("loading");
     setOauthLaunchMessage("");
     try {
@@ -129,7 +129,7 @@ export default function ChatbotsSection() {
         <small style={{ color: "#416da4", fontWeight: 700 }}>PLENIUM CHATBOTS</small>
         <h3 style={{ marginTop: 8 }}>{tab}</h3>
         {tab === "Conexões Meta" ? <>
-          <p>Conexões WhatsApp Business vinculadas às organizações cadastradas no NEXUS.</p>
+          <p>Conexões WhatsApp Business vinculadas às organizações cadastradas na PLENIUM.</p>
           <MetaSystemTokenValidation />
           <p>A ativação controlada exige credencial previamente importada e vinculada, nova validação na Meta e auditoria. O envio automático permanece desativado.</p>
           {connections.some(c => c.id === "2c05f573-edd5-48a6-8813-05dcbfbcd9f9" && c.connection_status === "pending") && (
@@ -164,7 +164,7 @@ export default function ChatbotsSection() {
             </table>
           </div>}
         </> : tab === "Conversas" ? <WhatsAppConversations /> : tab === "Visão geral" ? <p>Central administrativa em implantação. As conexões serão gerenciadas na aba Conexões Meta; as demais operações serão habilitadas gradualmente.</p> :
-          <p>Área preparada para integração com os dados e as permissões do NEXUS. As operações ainda não estão habilitadas.</p>}
+          <p>Área preparada para integração com os dados e as permissões da PLENIUM. As operações ainda não estão habilitadas.</p>}
       </div>
     </section>
   );
