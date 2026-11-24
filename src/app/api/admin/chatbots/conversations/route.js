@@ -11,7 +11,7 @@ export async function GET(request) {
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!base || !anon || !service) return reply({ message: "Serviço não configurado." }, 503);
   const token = request.cookies.get("nexus_access_token")?.value;
-  if (!token) return reply({ message: "Faça login no NEXUS." }, 401);
+  if (!token) return reply({ message: "Faça login na PLENIUM." }, 401);
   try {
     const identity = await fetch(`${base}/auth/v1/user`, {
       headers: { apikey: anon, Authorization: `Bearer ${token}` }, cache: "no-store",
