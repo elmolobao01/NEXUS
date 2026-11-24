@@ -8,7 +8,7 @@ export const metadata = {
 
 const sections = [
   { title: "1. Quem somos e a quem se aplica", paragraphs: [
-    "A PLENIUM oferece soluções digitais de gestão empresarial, inteligência artificial, integração e atendimento, incluindo o ecossistema NEXUS e recursos de comunicação por WhatsApp Business. Esta política descreve o tratamento de dados pessoais realizado no website, no cadastro comercial e no uso de nossos serviços.",
+    "A PLENIUM oferece soluções digitais de gestão empresarial, inteligência artificial, integração e atendimento, incluindo o ecossistema PLENIUM e recursos de comunicação por WhatsApp Business. Esta política descreve o tratamento de dados pessoais realizado no website, no cadastro comercial e no uso de nossos serviços.",
     "Dependendo da atividade, a PLENIUM atua como controladora dos dados relacionados à sua própria operação e como operadora quando processa dados pessoais em nome de empresas clientes, conforme as instruções e contratos aplicáveis. As empresas clientes podem atuar como controladoras dos dados de seus usuários e contatos."
   ] },
   { title: "2. Quais dados podem ser tratados", paragraphs: [
