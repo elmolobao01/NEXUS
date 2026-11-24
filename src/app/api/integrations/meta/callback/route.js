@@ -59,7 +59,7 @@ export async function GET(request) {
     if (!update.ok) return reply("Falha ao validar sessão de autorização.", 503);
     const rows = await update.json();
     if (!Array.isArray(rows) || rows.length !== 1) return reply("Autorização já utilizada, inexistente ou expirada.", 400);
-    if (params.has("error")) return reply("Autorização cancelada. Retorne ao NEXUS.", 400);
+    if (params.has("error")) return reply("Autorização cancelada. Retorne à PLENIUM.", 400);
     const code = params.get("code");
     if (!code || code.length > 4096) return reply("Código de autorização ausente ou inválido.", 400);
     const tokenUrl = new URL("https://graph.facebook.com/v26.0/oauth/access_token");
