@@ -13,7 +13,7 @@ export async function POST(request) {
   const configId = process.env.META_EMBEDDED_SIGNUP_CONFIG_ID;
   if (![url, anon, service, secret, appId, configId].every(Boolean)) return json("Integração Meta ainda não configurada.", 503);
   const bearer = request.cookies.get("nexus_access_token")?.value;
-  if (!bearer) return json("Faça login no NEXUS.", 401);
+  if (!bearer) return json("Faça login na PLENIUM.", 401);
   const userHeaders = { apikey: anon, Authorization: `Bearer ${bearer}` };
   try {
     const auth = await fetch(`${url}/auth/v1/user`, { headers: userHeaders, cache: "no-store" });
