@@ -1,3 +1,4 @@
+import { master, OPERATION } from "@/lib/auth/master-context";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const reply = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -24,7 +25,10 @@ export async function GET(request) {
     const organizations = [...new Set(allowed.map(p => p.organization_id))];
     if (!organizations.length) return reply({ message: "Acesso não autorizado." }, 403);
     if (organizations.length !== 1) return reply({ message: "Múltiplas organizações: seleção explícita necessária antes de consultar a conexão." }, 409);
-    const organizationId = organizations[0];
+    const institutional = request.headers.get("X-Plenium-Context") === "operation";
+    const ctx = institutional ? await master(request.cookies) : null;
+    if (institutional && (!ctx || ctx.organizationId !== OPERATION)) return reply({message:"Acesso negado."},403);
+    const organizationId = institutional ? OPERATION : organizations[0];
     const orgResponse = await fetch(`${base}/rest/v1/nexus_organizations?select=id,status&id=eq.${encodeURIComponent(organizationId)}&limit=1`, { headers: adminHeaders, cache: "no-store" });
     if (!orgResponse.ok) return reply({ message: "Falha ao validar organização." }, 503);
     const org = (await orgResponse.json())?.[0];
@@ -33,6 +37,6 @@ export async function GET(request) {
     if (!connectionResponse.ok) return reply({ message: "Não foi possível consultar conexões." }, 503);
     const connections = await connectionResponse.json();
     if (!Array.isArray(connections)) return reply({ message: "Resposta inválida." }, 503);
-    return reply({ connections, authorization_mode: process.env.META_OAUTH_CONTROLLED_TEST_ENABLED === "true" ? "controlled_test" : "disabled", sending_enabled: false });
+    return reply({ connections, authorization_mode: !institutional && process.env.META_OAUTH_CONTROLLED_TEST_ENABLED === "true" ? "controlled_test" : "disabled", sending_enabled: false });
   } catch { return reply({ message: "Falha ao consultar conexão." }, 500); }
 }
