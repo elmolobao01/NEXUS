@@ -1,5 +1,6 @@
 "use client";
 
+import MasterContextSelector from "./master-context-selector";
 import Image from "next/image";
 import { useState } from "react";
 import ClientsSection from "./clients-section";
@@ -97,6 +98,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="root2-user-area">
+            <MasterContextSelector />
             <button
               type="button"
               className="root2-alert-button"
