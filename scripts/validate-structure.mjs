@@ -24,7 +24,7 @@ const required = [
 
 const missing = required.filter((path) => !existsSync(path));
 if (missing.length) {
-  console.error("Estrutura NEXUS incompleta:\n" + missing.map((item) => `- ${item}`).join("\n"));
+  console.error("Estrutura PLENIUM incompleta:\n" + missing.map((item) => `- ${item}`).join("\n"));
   process.exit(1);
 }
-console.log("Estrutura NEXUS 2.0 validada com sucesso.");
+console.log("Estrutura PLENIUM 2.0 validada com sucesso.");
