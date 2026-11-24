@@ -3,12 +3,12 @@ import Link from "next/link";
 const header = <header style={{background:"#071f3c",padding:"18px 24px"}}><div style={{maxWidth:920,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16}}><Link href="/" aria-label="PLENIUM - página inicial"><img src="/branding/plenium-brand-horizontal.png" alt="PLENIUM" style={{width:170,maxWidth:"45vw",height:"auto"}} /></Link><Link href="/" style={{color:"white",fontSize:14,textDecoration:"none"}}>Página inicial</Link></div></header>;
 function LegalPage({ eyebrow, title, intro, sections }) {return <main style={{minHeight:"100vh",background:"#f4f7fb",color:"#15263e",fontFamily:"Arial, Helvetica, sans-serif"}}>{header}<article style={{maxWidth:920,margin:"0 auto",padding:"48px 24px 72px",lineHeight:1.75}}><p style={{color:"#2462a0",fontWeight:700,fontSize:13,letterSpacing:1.5}}>{eyebrow}</p><h1 style={{fontSize:"clamp(30px, 5vw, 44px)",lineHeight:1.2,margin:"8px 0 12px"}}>{title}</h1><p style={{color:"#5b6d80",marginBottom:34}}>Última atualização: 22 de outubro de 2026</p><p>{intro}</p>{sections.map(({title, paragraphs})=><section key={title} style={{marginTop:34}}><h2 style={{fontSize:21,lineHeight:1.35,marginBottom:10}}>{title}</h2>{paragraphs.map(p=><p key={p} style={{margin:"10px 0"}}>{p}</p>)}</section>)}<section style={{marginTop:34}}><h2 style={{fontSize:21}}>Contato</h2><p>Para esclarecimentos e solicitações, escreva para <a href="mailto:admin@pleniumgestao.com.br" style={{color:"#1266a8"}}>admin@pleniumgestao.com.br</a>.</p></section><footer style={{borderTop:"1px solid #d7e0e9",paddingTop:20,marginTop:48,color:"#5b6d80",fontSize:13}}>© PLENIUM — Ecossistema de Soluções · <Link href="/politica-de-privacidade">Política de Privacidade</Link> · <Link href="/termos-de-servico">Termos de Serviço</Link> · <Link href="/exclusao-de-dados">Exclusão de Dados</Link></footer></article></main>}
 
-export const metadata = { title: "Termos de Serviço | PLENIUM", description: "Condições gerais de utilização dos serviços PLENIUM e NEXUS.", robots: {index:true,follow:true} };
+export const metadata = { title: "Termos de Serviço | PLENIUM", description: "Condições gerais de utilização dos serviços PLENIUM.", robots: {index:true,follow:true} };
 const sections = [
   {
     "title": "1. Sobre o serviço",
     "paragraphs": [
-      "A PLENIUM disponibiliza soluções digitais de gestão empresarial e atendimento, incluindo o ecossistema NEXUS e o PLENIUM Chatbot. As funcionalidades disponíveis dependem do produto, do plano contratado e das integrações efetivamente habilitadas."
+      "A PLENIUM disponibiliza soluções digitais de gestão empresarial e atendimento, incluindo o ecossistema PLENIUM e o PLENIUM Chatbot. As funcionalidades disponíveis dependem do produto, do plano contratado e das integrações efetivamente habilitadas."
     ]
   },
   {
