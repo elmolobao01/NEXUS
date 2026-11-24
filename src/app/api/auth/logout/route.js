@@ -8,6 +8,7 @@ export async function POST(request) {
     "nexus_refresh_token",
     "nexus_profile",
     "nexus_organization",
+    "plenium_master_context",
   ]) {
     response.cookies.set(name, "", {
       httpOnly: true,
