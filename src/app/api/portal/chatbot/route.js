@@ -1,3 +1,4 @@
+import { master, OPERATION, sameOrigin } from "@/lib/auth/master-context";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -5,6 +6,11 @@ const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const response = (message, status) => NextResponse.json({ message }, { status });
 async function authorize(request) {
+  if (request.headers.get("X-Plenium-Context") === "operation") {
+    const ctx = await master(request.cookies);
+    if (!ctx || ctx.organizationId !== OPERATION) return null;
+    return { headers: ctx.headers, profile: { organization_id: OPERATION, profile: "NEXUS_ROOT" }, institutional: true };
+  }
   const token = request.cookies.get("nexus_access_token")?.value;
   if (!URL || !KEY || !token) return null;
   const headers = { apikey: KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -44,7 +50,8 @@ export async function PUT(request) {
   try {
     const ctx = await authorize(request);
     if (!ctx) return response("Acesso não autorizado.", 401);
-    if (ctx.profile.profile !== "MANAGER") return response("Somente o gestor ativo da organização pode configurar o chatbot.", 403);
+    if (ctx.institutional && !sameOrigin(request)) return response("Origem inválida.", 403);
+    if (!ctx.institutional && ctx.profile.profile !== "MANAGER") return response("Somente o gestor ativo da organização pode configurar o chatbot.", 403);
     const license = await entitlement(ctx);
     if (license.error) return response("Não foi possível verificar a contratação do chatbot.", 503);
     if (license.plan === "NONE") return response("Chatbot não contratado ou contrato inativo.", 403);
