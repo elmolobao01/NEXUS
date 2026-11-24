@@ -12,7 +12,7 @@ Remova `NEXUS_DEMO_AUTH`.
 ## Ordem
 
 1. Execute `20260806_001_auth_definitivo.sql`.
-2. Crie `root@nexus.com.br` em Authentication > Users e defina uma senha forte.
+2. Crie `admin@pleniumgestao.com.br` em Authentication > Users e defina uma senha forte.
 3. Execute `20260806_002_bootstrap_root.sql`.
 4. Cadastre as duas variáveis na Vercel.
 5. Faça novo deployment.
