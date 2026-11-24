@@ -20,7 +20,7 @@ const sections = [
   {
     "title": "3. Dados de empresas clientes",
     "paragraphs": [
-      "Se seus dados foram coletados ou tratados por uma empresa que utiliza o NEXUS ou o PLENIUM Chatbot, essa empresa pode ser a controladora responsável. Nesse caso, a PLENIUM poderá orientar o contato com a empresa ou encaminhar o pedido à responsável, conforme o contrato e a legislação."
+      "Se seus dados foram coletados ou tratados por uma empresa que utiliza o ecossistema PLENIUM ou o PLENIUM Chatbot, essa empresa pode ser a controladora responsável. Nesse caso, a PLENIUM poderá orientar o contato com a empresa ou encaminhar o pedido à responsável, conforme o contrato e a legislação."
     ]
   },
   {
