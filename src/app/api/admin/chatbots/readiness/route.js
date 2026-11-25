@@ -20,8 +20,8 @@ export async function GET(request) {
     const profileRes = await fetch(`${base}/rest/v1/nexus_user_profiles?select=profile,active,organization_id&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true`, { headers: adminHeaders, cache: "no-store" });
     if (!profileRes.ok) return json({ error: "Authorization unavailable" }, 503);
     const profiles = await profileRes.json();
-    if (!Array.isArray(profiles) || !profiles.some(p => p.profile === "NEXUS_ROOT" && p.active === true)) return json({ error: "Forbidden" }, 403);
-    const org = profiles.find(p => p.profile === "NEXUS_ROOT" && p.active === true)?.organization_id;
+    if (!Array.isArray(profiles) || !profiles.some(p => p.profile === "NEXUS_ROOT" && p.active === true && p.organization_id === "7ca2ee92-6b12-4f54-ba7b-986bab2f9434")) return json({ error: "Forbidden" }, 403);
+    const org = "11de735a-4dfb-4b8d-b817-bda83d6df03a";
     if (!org) return json({ error: "Organization unavailable" }, 503);
     const encodedOrg = encodeURIComponent(org);
     const [connRes, configRes, walletRes, planRes] = await Promise.all([
