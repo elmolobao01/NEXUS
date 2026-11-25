@@ -1,3 +1,4 @@
+import { OPERATION, PLATFORM } from "@/lib/auth/master-context";
 import { NextResponse } from "next/server";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -37,7 +38,7 @@ export async function GET(request) {
     if (!(await getRootContext(token))) return json("Acesso não autorizado.", 403);
     if (!SERVICE_ROLE_KEY) return json("Configuração do servidor incompleta.", 503);
     const params = new URLSearchParams();
-    params.set("select", "id,client_id,number,start_date,end_date,payment_due_day,billing_cycle,duration_months,value,gross_value,discount_pct,discount_value,net_value,status,notes,created_at,nexus_clients(legal_name,trade_name),nexus_contract_items(nexus_products(name))");
+    params.set("select", "id,client_id,number,start_date,end_date,payment_due_day,billing_cycle,duration_months,contract_type,billing_exempt,indefinite_term,value,gross_value,discount_pct,discount_value,net_value,status,notes,created_at,nexus_clients(legal_name,trade_name),nexus_contract_items(nexus_products(name))");
     params.set("order", "created_at.desc");
     const response = await fetch(`${SUPABASE_URL}/rest/v1/nexus_contracts?${params.toString()}`, { headers: supabaseHeaders(SERVICE_ROLE_KEY), cache: "no-store" });
     const data = await response.json();
@@ -57,6 +58,9 @@ export async function POST(request) {
     if (!(await getRootContext(token))) return json("Acesso não autorizado.", 403);
     if (!SERVICE_ROLE_KEY) return json("Configure SUPABASE_SERVICE_ROLE_KEY na Vercel para cadastrar contratos.", 503);
     const body = await request.json();
+    const clientCheck = await fetch(`${SUPABASE_URL}/rest/v1/nexus_clients?select=organization_id&id=eq.${encodeURIComponent(String(body.clientId || ""))}&limit=1`, { headers: supabaseHeaders(SERVICE_ROLE_KEY), cache: "no-store" });
+    if (!clientCheck.ok) return json("Não foi possível validar o cliente.", 503);
+    if ((await clientCheck.json())?.[0]?.organization_id === OPERATION) return json("A contratação institucional é provisionada separadamente pelo MASTER.", 403);
     const productIds = Array.isArray(body.productIds) ? [...new Set(body.productIds.map(String).filter(Boolean))] : [];
     if (!body.clientId || !body.startDate || !productIds.length) return json("Cliente, data inicial e produto são obrigatórios.", 400);
     const durationMonths = Number(body.durationMonths || 0);
@@ -105,6 +109,14 @@ export async function PATCH(request) {
     if (!/^[0-9a-f-]{36}$/i.test(String(body.contractId || ""))) return json("Contrato inválido.", 400);
     const reason = String(body.reason || "").trim();
     if (reason.length < 10 || reason.length > 2000) return json("Informe uma justificativa com 10 a 2000 caracteres.", 400);
+    const check = await fetch(`${SUPABASE_URL}/rest/v1/nexus_contracts?select=contract_type&id=eq.${encodeURIComponent(body.contractId)}&limit=1`, { headers: supabaseHeaders(SERVICE_ROLE_KEY), cache: "no-store" });
+    if (!check.ok) return json("Não foi possível validar o contrato.", 503);
+    const contract = (await check.json())?.[0];
+    if (!contract) return json("Contrato não encontrado.", 404);
+    if (contract.contract_type === "institutional") {
+      if (actor.profile !== "NEXUS_ROOT" || actor.organization_id !== PLATFORM) return json("Operação exclusiva do MASTER.", 403);
+      if (action === "renew") return json("Contrato institucional possui vigência indeterminada.", 400);
+    }
     const payload = {
       p_contract_id: body.contractId,
       p_action: action,
