@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 const reply = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const officialPhoneId = "1453993444467017";
-const officialOrgId = "7ca2ee92-6b12-4f54-ba7b-986bab2f9434";
+const officialOrgId = "11de735a-4dfb-4b8d-b817-bda83d6df03a";
 
 export async function GET(request) {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -20,10 +20,10 @@ export async function GET(request) {
     const user = await identity.json();
     if (!user?.id) return reply({ message: "Sessão inválida." }, 401);
     const headers = { apikey: service, Authorization: `Bearer ${service}` };
-    const membership = await fetch(`${base}/rest/v1/nexus_user_profiles?select=profile,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true`, { headers, cache: "no-store" });
+    const membership = await fetch(`${base}/rest/v1/nexus_user_profiles?select=profile,active,organization_id&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true`, { headers, cache: "no-store" });
     if (!membership.ok) return reply({ message: "Não foi possível validar permissões." }, 503);
     const profiles = await membership.json();
-    if (!Array.isArray(profiles) || !profiles.some((p) => p.profile === "NEXUS_ROOT" && p.active === true)) {
+    if (!Array.isArray(profiles) || !profiles.some((p) => p.profile === "NEXUS_ROOT" && p.active === true && p.organization_id === "7ca2ee92-6b12-4f54-ba7b-986bab2f9434")) {
       return reply({ message: "Acesso ROOT necessário." }, 403);
     }
     const params = new URLSearchParams({
