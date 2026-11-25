@@ -191,7 +191,7 @@ export default function ContractsSection() {
       total: contracts.length,
       active: contracts.filter((item) => item.status === "active").length,
       mrr: contracts
-        .filter((item) => item.status === "active")
+        .filter((item) => item.status === "active" && !item.billing_exempt)
         .reduce((total, item) => total + Number(item.net_value || item.value || 0) / Math.max(1, Number(item.duration_months || 1)), 0),
       ending: contracts.filter((item) => {
         if (!item.end_date || item.status !== "active") return false;
@@ -305,20 +305,20 @@ export default function ContractsSection() {
             <tbody>
               {!loading && !filteredContracts.length ? <tr><td colSpan="10">Nenhum contrato encontrado para os filtros selecionados.</td></tr> : filteredContracts.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.number}</td>
+                  <td>{item.number}{item.contract_type === "institutional" && <small> · Institucional</small>}</td>
                   <td>{item.client_name || "—"}</td>
                   <td>{item.product_names?.join(", ") || "—"}</td>
-                  <td>{formatDate(item.start_date)} → {formatDate(item.end_date)}</td>
-                  <td>{item.duration_months || "—"} meses</td>
+                  <td>{formatDate(item.start_date)} → {item.indefinite_term ? "Indeterminado" : formatDate(item.end_date)}</td>
+                  <td>{item.indefinite_term ? "Indeterminado" : `${item.duration_months || "—"} meses`}</td>
                   <td>{money(item.gross_value || item.value)}</td>
                   <td>{Number(item.discount_pct || 0).toFixed(2)}%</td>
-                  <td>{money(item.net_value || item.value)}</td>
+                  <td>{item.billing_exempt ? "Isento" : money(item.net_value || item.value)}</td>
                   <td>{STATUS.find((status) => status[0] === item.status)?.[1] || item.status}</td>
                   <td><div className="nexus-contract-actions">
                     <button type="button" onClick={() => openAction(item, "details")}>Detalhes</button>
                     {item.status === "active" && <button type="button" onClick={() => openAction(item, "suspend")}>Suspender</button>}
                     {item.status === "suspended" && <button type="button" onClick={() => openAction(item, "reactivate")}>Reativar</button>}
-                    {["active", "suspended"].includes(item.status) && <button type="button" onClick={() => openAction(item, "renew")}>Renovar</button>}
+                    {!item.indefinite_term && ["active", "suspended"].includes(item.status) && <button type="button" onClick={() => openAction(item, "renew")}>Renovar</button>}
                     {["active", "suspended", "draft"].includes(item.status) && <button type="button" onClick={() => openAction(item, "cancel")}>Cancelar</button>}
                   </div></td>
                 </tr>
@@ -335,9 +335,9 @@ export default function ContractsSection() {
             {operation === "details" ? <div className="nexus-contract-detail">
               <p><strong>Cliente:</strong> {selectedContract.client_name}</p>
               <p><strong>Produtos:</strong> {selectedContract.product_names?.join(", ") || "—"}</p>
-              <p><strong>Vencimento financeiro:</strong> {selectedContract.payment_due_day ? `Dia ${selectedContract.payment_due_day}` : "Não definido"}</p>
+              <p><strong>Vencimento financeiro:</strong> {selectedContract.billing_exempt ? "Isento" : selectedContract.payment_due_day ? `Dia ${selectedContract.payment_due_day}` : "Não definido"}</p>
               <p><strong>Renovação da franquia:</strong> Pela data de início da vigência, independente do vencimento financeiro.</p>
-              <p><strong>Vigência:</strong> {formatDate(selectedContract.start_date)} a {formatDate(selectedContract.end_date)}</p>
+              <p><strong>Vigência:</strong> {formatDate(selectedContract.start_date)} a {selectedContract.indefinite_term ? "prazo indeterminado" : formatDate(selectedContract.end_date)}</p>
               <p><strong>Status:</strong> {STATUS.find((status) => status[0] === selectedContract.status)?.[1] || selectedContract.status}</p>
               <p><strong>Bruto:</strong> {money(selectedContract.gross_value)}</p>
               <p><strong>Desconto:</strong> {Number(selectedContract.discount_pct || 0).toFixed(2)}%</p>
@@ -368,7 +368,7 @@ export default function ContractsSection() {
                 <label className="span-2"><span>Cliente *</span>
                   <select required value={form.clientId} onChange={(event) => setForm({ ...form, clientId: event.target.value })}>
                     <option value="">Selecione</option>
-                    {clients.map((client) => <option key={client.id} value={client.id}>{client.trade_name || client.legal_name || client.name}</option>)}
+                    {clients.filter(client => client.id !== "3361a9a4-dce1-48af-b5ec-2a2db2aaa6ea").map((client) => <option key={client.id} value={client.id}>{client.trade_name || client.legal_name || client.name}</option>)}
                   </select>
                 </label>
 
