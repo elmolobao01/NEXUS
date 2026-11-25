@@ -19,12 +19,12 @@ export async function POST(request) {
     const p = await fetch(`${URL}/rest/v1/nexus_user_profiles?select=organization_id,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&limit=1`, { headers, cache: "no-store" });
     if (!p.ok) return NextResponse.json({ message: "Perfil indisponível." }, { status: 503 });
     const org = institutional ? OPERATION : (await p.json())?.[0]?.organization_id;
-    if (institutional) headers = ctx.headers;
     if (!org) return NextResponse.json({ message: "Organização não encontrada." }, { status: 403 });
     const e = await fetch(`${URL}/rest/v1/rpc/nexus_chatbot_entitlement`, { method: "POST", headers, body: JSON.stringify({ p_organization_id: org }), cache: "no-store" });
     if (!e.ok) return NextResponse.json({ message: "Não foi possível validar o contrato." }, { status: 503 });
     const plan = await e.json();
     if (!["CHATBOT_BASIC", "CHATBOT_AI"].includes(plan)) return NextResponse.json({ message: "Chatbot não contratado." }, { status: 403 });
+    if (institutional) headers = ctx.headers;
     const c = await fetch(`${URL}/rest/v1/nexus_chatbot_configs?organization_id=eq.${encodeURIComponent(org)}&select=active,welcome_message,closing_message,faq&limit=1`, { headers, cache: "no-store" });
     if (!c.ok) return NextResponse.json({ message: "Configuração indisponível." }, { status: 503 });
     const body = await request.json();
