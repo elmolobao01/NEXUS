@@ -1,3 +1,4 @@
+import { OPERATION } from "@/lib/auth/master-context";
 import { NextResponse } from "next/server";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -186,7 +187,7 @@ export async function GET(request) {
     rest("nexus_ai_costs?select=*&order=created_at.desc&limit=5000", {}, ctx.token),
     rest("nexus_organizations?select=id,name,legal_name&order=name.asc", {}, ctx.token),
     rest("nexus_clients?select=id,organization_id,legal_name,trade_name,status&order=created_at.desc", {}, ctx.token),
-    rest("nexus_contracts?select=id,client_id,duration_months,value,net_value,status,start_date,end_date", {}, ctx.token),
+    rest("nexus_contracts?select=id,client_id,duration_months,value,net_value,billing_exempt,status,start_date,end_date", {}, ctx.token),
   ]);
 
   // v0.7.4.1: não atribuir toda falha à migration inicial.
@@ -248,7 +249,7 @@ export async function GET(request) {
   const clientById = Object.fromEntries(clientRows.map(c => [c.id, c]));
   const clientByOrg = Object.fromEntries(clientRows.map(c => [c.organization_id, c]));
   const monthlyRevenueByOrg = {};
-  for (const c of contractRows.filter(c => c.status === "active")) {
+  for (const c of contractRows.filter(c => c.status === "active" && !c.billing_exempt)) {
     const client = clientById[c.client_id];
     if (!client?.organization_id) continue;
     const monthly = Number(c.net_value ?? c.value ?? 0) / Math.max(1, Number(c.duration_months || 1));
@@ -261,6 +262,7 @@ export async function GET(request) {
     const persisted = String(op?.economic_scope || "").toUpperCase();
     if (persisted === "INTERNAL") return { scope: "INTERNAL" };
     const client = op?.client_id ? clientById[op.client_id] : clientByOrg[op?.organization_id];
+    if (op?.organization_id === OPERATION || client?.organization_id === OPERATION) return { scope: "INTERNAL" };
     if (persisted === "CLIENT" && client) return { scope: "CLIENT", client };
     if (client) return { scope: "CLIENT", client };
     // Histórico anterior à v0.9.3 sem cliente correspondente é custo interno PLENIUM,
