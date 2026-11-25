@@ -9,7 +9,7 @@ async function authorize(request) {
   if (request.headers.get("X-Plenium-Context") === "operation") {
     const ctx = await master(request.cookies);
     if (!ctx || ctx.organizationId !== OPERATION) return null;
-    return { headers: ctx.headers, profile: { organization_id: OPERATION, profile: "NEXUS_ROOT" }, institutional: true };
+    return { headers: ctx.headers, entitlementHeaders: { apikey: KEY, Authorization: `Bearer ${ctx.token}`, "Content-Type": "application/json" }, profile: { organization_id: OPERATION, profile: "NEXUS_ROOT" }, institutional: true };
   }
   const token = request.cookies.get("nexus_access_token")?.value;
   if (!URL || !KEY || !token) return null;
@@ -26,7 +26,7 @@ async function authorize(request) {
 }
 async function entitlement(ctx) {
   const r = await fetch(`${URL}/rest/v1/rpc/nexus_chatbot_entitlement`, {
-    method: "POST", headers: ctx.headers,
+    method: "POST", headers: ctx.entitlementHeaders || ctx.headers,
     body: JSON.stringify({ p_organization_id: ctx.profile.organization_id }), cache: "no-store"
   });
   if (!r.ok) return { error: true, plan: "NONE" };
