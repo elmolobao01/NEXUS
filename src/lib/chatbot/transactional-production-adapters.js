@@ -1,9 +1,9 @@
-import { institutionalCatalogReply } from './institutional-catalog.js';
+import { INSTITUTIONAL_ORG, institutionalCatalogReply } from './institutional-catalog.js';
 // Production-bound Supabase reader for the transactional chatbot.
 // Deliberately excludes claim, reserve, finalize, finish and Meta sending.
 // The executor remains locked until explicit approval for financial/send actions.
-import { selectChatbotReply } from './plan-response-router';
-import { checkHumanPauseBeforeMetaSend } from './human-pause-send-guard';
+import { selectChatbotReply } from './plan-response-router.js';
+import { checkHumanPauseBeforeMetaSend } from './human-pause-send-guard.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DIGITS = /^\d{5,30}$/;
@@ -107,9 +107,18 @@ export function createTransactionalProductionReader({
       // One response policy for both plans; Standard AI fallback remains
       // blocked until an atomic AI quota reservation is implemented.
       const catalog = await institutionalCatalogReply({ organizationId: job.organization_id, planCode: wallet.plan_code, config, message: message.text.body, base, headers, fetchImpl });
-      const result = catalog ? { ...catalog, allow: true, engine: 'rules' } : await selectChatbotReply({
+      let result = catalog ? { ...catalog, allow: true, engine: 'rules' } : await selectChatbotReply({
         planCode: wallet.plan_code, config, message: message.text.body,
       });
+      // Only the official institutional number may use this local fallback.
+      // Never transmit inbound text to the free Gemini preview provider.
+      if (job.organization_id === INSTITUTIONAL_ORG &&
+          job.phone_number_id === '1453993444467017' &&
+          wallet.plan_code === 'CHATBOT_AI' &&
+          result?.reason === 'ai_not_authorized_or_budget_exhausted') {
+        result = { allow: true, engine: 'rules', type: 'institutional_fallback',
+          reply: 'A PLENIUM oferece soluções de gestão, websites, comércio eletrônico e automação de atendimento. Para conhecer os planos, informe o segmento ou produto de seu interesse. Para atendimento humano, entre em contato pelo e-mail contato@pleniumgestao.com.br.' };
+      }
       if (result?.allow !== true) {
         return { allow: false, reason: result?.reason || 'response_unavailable' };
       }

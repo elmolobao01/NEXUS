@@ -1,6 +1,6 @@
 // Shared response router: Basic and Standard use the same transactional pipeline.
 // No provider call, wallet mutation or Meta transport is performed on import.
-import { basicReply } from '../../app/api/portal/chatbot/basic-engine';
+import { basicReply } from '../../app/api/portal/chatbot/basic-engine.js';
 
 export const CHATBOT_PLANS = Object.freeze({
   CHATBOT_BASIC: Object.freeze({ engine: 'rules', included_messages: 1000 }),
