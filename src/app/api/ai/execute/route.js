@@ -1,3 +1,4 @@
+import { OPERATION } from "@/lib/auth/master-context";
 import { NextResponse } from "next/server";
 import { normalizeAiRequest } from "@/core/ia/config";
 import { executeProvider } from "@/core/ia/router";
@@ -55,7 +56,7 @@ async function context(request){
 }
 async function economicAttribution(ctx, metadata = {}){
   // Benchmark e operações ROOT pertencem ao custo interno da própria PLENIUM.
-  if(metadata?.benchmark === true || ctx?.profile === "NEXUS_ROOT") {
+  if(metadata?.benchmark === true || ctx?.profile === "NEXUS_ROOT" || ctx?.organizationId === OPERATION) {
     return { economicScope: "INTERNAL", clientId: null };
   }
   try {
