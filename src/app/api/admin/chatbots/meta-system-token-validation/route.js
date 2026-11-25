@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const ORG = "7ca2ee92-6b12-4f54-ba7b-986bab2f9434";
+const PLATFORM_ORG = "7ca2ee92-6b12-4f54-ba7b-986bab2f9434";
+const ORG = "11de735a-4dfb-4b8d-b817-bda83d6df03a";
 const WABA = "1494371125908048";
 const PHONE = "1453993444467017";
 const response = (body, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store", "Pragma": "no-cache", "Referrer-Policy": "no-referrer" } });
@@ -22,7 +23,7 @@ export async function POST(request) {
     const profilesResponse = await fetch(`${base}/rest/v1/nexus_user_profiles?select=profile,active,organization_id&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true`, { headers: { apikey: service, Authorization: `Bearer ${service}` }, cache: "no-store" });
     if (!profilesResponse.ok) return response({ error: "Authorization unavailable" }, 503);
     const profiles = await profilesResponse.json();
-    if (!Array.isArray(profiles) || !profiles.some(p => p.profile === "NEXUS_ROOT" && p.active === true && p.organization_id === ORG)) return response({ error: "Forbidden" }, 403);
+    if (!Array.isArray(profiles) || !profiles.some(p => p.profile === "NEXUS_ROOT" && p.active === true && p.organization_id === PLATFORM_ORG)) return response({ error: "Forbidden" }, 403);
     if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) return response({ error: "JSON required" }, 415);
     const length = Number(request.headers.get("content-length") || 0);
     if (length > 20000) return response({ error: "Payload too large" }, 413);
