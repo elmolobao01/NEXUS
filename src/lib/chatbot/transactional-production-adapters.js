@@ -1,3 +1,4 @@
+import { institutionalCatalogReply } from './institutional-catalog.js';
 // Production-bound Supabase reader for the transactional chatbot.
 // Deliberately excludes claim, reserve, finalize, finish and Meta sending.
 // The executor remains locked until explicit approval for financial/send actions.
@@ -105,7 +106,8 @@ export function createTransactionalProductionReader({
         return { allow: false, reason: 'unsupported_message_type' };
       // One response policy for both plans; Standard AI fallback remains
       // blocked until an atomic AI quota reservation is implemented.
-      const result = await selectChatbotReply({
+      const catalog = await institutionalCatalogReply({ organizationId: job.organization_id, planCode: wallet.plan_code, config, message: message.text.body, base, headers, fetchImpl });
+      const result = catalog ? { ...catalog, allow: true, engine: 'rules' } : await selectChatbotReply({
         planCode: wallet.plan_code, config, message: message.text.body,
       });
       if (result?.allow !== true) {
