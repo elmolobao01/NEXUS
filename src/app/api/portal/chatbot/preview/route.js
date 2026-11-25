@@ -1,3 +1,4 @@
+import { geminiPreview } from "@/lib/chatbot/gemini-preview";
 import { institutionalCatalogReply } from "@/lib/chatbot/institutional-catalog";
 import { master, OPERATION, sameOrigin } from "@/lib/auth/master-context";
 import { NextResponse } from "next/server";
@@ -32,8 +33,10 @@ export async function POST(request) {
     if (typeof body.message !== "string" || body.message.length > 1000) return NextResponse.json({ message: "Mensagem inválida (máximo de 1.000 caracteres)." }, { status: 400 });
     const config = (await c.json())?.[0];
     const catalog = institutional ? await institutionalCatalogReply({ organizationId: org, planCode: plan, config, message: body.message, base: URL, headers }) : null;
-    const result = catalog || basicReply(config, body.message);
-    return NextResponse.json({ ...result, plan, ai_used: false, preview: true,
+    const rules = catalog || basicReply(config, body.message);
+    const ai = institutional && plan === "CHATBOT_AI" && config?.active && rules.type === "fallback" ? await geminiPreview({ topic: body.message, base: URL, headers }) : null;
+    const result = ai || rules;
+    return NextResponse.json({ ...result, plan, ai_used: Boolean(ai), preview: true,
       matched_faq: result.type === "faq", requires_human_review: result.type === "fallback",
       human_handoff_executed: false, sending_enabled: false, credits_debited: false });
   } catch { return NextResponse.json({ message: "Falha ao testar chatbot." }, { status: 500 }); }
