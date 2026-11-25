@@ -87,7 +87,9 @@ export async function POST(request) {
     }
     // Optional admission only; does not send or debit. Off until SQL migration
     // and tenant controls are confirmed. Event persistence remains unchanged.
-    if (process.env.CHATBOT_INBOUND_QUEUE_ADMISSION_ENABLED === "true") {
+    const admissionEnabled = process.env.CHATBOT_INBOUND_QUEUE_ADMISSION_ENABLED === "true";
+    console.info("whatsapp_inbound_admission_gate", { enabled: admissionEnabled, storedEvents: records.length });
+    if (admissionEnabled) {
       // Second, independent admission gate: an explicit allowlist of Meta phone
       // number IDs. Missing/invalid/empty allowlist fails closed. This only
       // creates queue jobs; it never claims jobs, sends messages or debits wallets.
@@ -110,9 +112,11 @@ export async function POST(request) {
         const messageCount = eligible.reduce((count, r) => count +
           r.event_payload.entry.reduce((n, e) => n + e.changes.reduce((m, c) =>
             m + (c.field === "messages" && Array.isArray(c.value?.messages) ? c.value.messages.length : 0), 0), 0), 0);
+        console.info("whatsapp_inbound_admission_selection", { eligibleEvents: eligible.length, messageCount });
         if (messageCount > 25) {
           console.warn("whatsapp_inbound_admission_batch_too_large");
         } else if (eligible.length) {
+          console.info("whatsapp_inbound_admission_rpc_start", { eventCount: eligible.length });
           const admitted = await fetch(`${base}/rest/v1/rpc/nexus_chatbot_inbound_admit_hashes`, {
             method: "POST", cache: "no-store", headers,
             body: JSON.stringify({ p_event_hashes: eligible.map((r) => r.event_hash) })
@@ -121,6 +125,13 @@ export async function POST(request) {
             console.error("whatsapp_inbound_queue_admission_failed", admitted.status);
             return response({ error: "Inbound admission unavailable" }, 503);
           }
+          const result = await admitted.json();
+          const summary = Array.isArray(result) ? result[0] : result;
+          if (!summary || ![summary.inserted, summary.already_present, summary.skipped].every(n => Number.isInteger(n) && n >= 0)) {
+            console.error("whatsapp_inbound_admission_invalid_result");
+            return response({ error: "Inbound admission unavailable" }, 503);
+          }
+          console.info("whatsapp_inbound_admission_result", { inserted: summary.inserted, alreadyPresent: summary.already_present, skipped: summary.skipped });
         }
       }
     }
