@@ -2,7 +2,7 @@ import { createDecipheriv } from "node:crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const ORGANIZATION_ID = "7ca2ee92-6b12-4f54-ba7b-986bab2f9434";
+const ORGANIZATION_ID = "11de735a-4dfb-4b8d-b817-bda83d6df03a";
 const respond = (body, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store", "Pragma": "no-cache" } });
 const rest = (base, table, query) => `${base}/rest/v1/${table}?${query}`;
 
@@ -20,23 +20,21 @@ export async function GET(request) {
     if (!identity.ok) return respond({ error: "Unauthorized" }, 401);
     const user = await identity.json();
     if (!user?.id) return respond({ error: "Unauthorized" }, 401);
-    const profileResponse = await fetch(rest(base, "nexus_user_profiles", `select=profile,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true`), { headers: serviceHeaders, cache: "no-store" });
+    const profileResponse = await fetch(rest(base, "nexus_user_profiles", `select=profile,active,organization_id&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true`), { headers: serviceHeaders, cache: "no-store" });
     if (!profileResponse.ok) return respond({ error: "Authorization unavailable" }, 503);
     const profiles = await profileResponse.json();
-    if (!Array.isArray(profiles) || !profiles.some((p) => p.profile === "NEXUS_ROOT" && p.active === true)) return respond({ error: "Forbidden" }, 403);
+    if (!Array.isArray(profiles) || !profiles.some((p) => p.profile === "NEXUS_ROOT" && p.active === true && p.organization_id === "7ca2ee92-6b12-4f54-ba7b-986bab2f9434")) return respond({ error: "Forbidden" }, 403);
 
     const org = encodeURIComponent(ORGANIZATION_ID);
-    const [credentialsResponse, connectionsResponse] = await Promise.all([
-      fetch(rest(base, "nexus_meta_oauth_credentials", `select=id,encrypted_token,status,created_at&organization_id=eq.${org}&order=created_at.desc&limit=10`), { headers: serviceHeaders, cache: "no-store" }),
-      fetch(rest(base, "nexus_meta_whatsapp_connections", `select=id,waba_id,phone_number_id,credential_reference,connection_status&organization_id=eq.${org}&limit=10`), { headers: serviceHeaders, cache: "no-store" }),
-    ]);
-    if (!credentialsResponse.ok || !connectionsResponse.ok) return respond({ error: "Database lookup unavailable" }, 503);
+    const connectionsResponse = await fetch(rest(base, "nexus_meta_whatsapp_connections", `select=id,waba_id,phone_number_id,credential_reference,connection_status&organization_id=eq.${org}&id=eq.2c05f573-edd5-48a6-8813-05dcbfbcd9f9&limit=1`), { headers: serviceHeaders, cache: "no-store" });
+    if (!connectionsResponse.ok) return respond({ error: "Database lookup unavailable" }, 503);
+    const connection = (await connectionsResponse.json())?.[0];
+    if (!connection?.credential_reference || connection.waba_id !== "1494371125908048" || connection.phone_number_id !== "1453993444467017") return respond({ valid: false, reason: "credential_or_connection_missing", sending_enabled: false });
+    const credentialsResponse = await fetch(rest(base, "nexus_meta_oauth_credentials", `select=id,encrypted_token,status,created_at&organization_id=eq.${org}&id=eq.${encodeURIComponent(connection.credential_reference)}&limit=1`), { headers: serviceHeaders, cache: "no-store" });
+    if (!credentialsResponse.ok) return respond({ error: "Database lookup unavailable" }, 503);
     const credentials = await credentialsResponse.json();
-    const connections = await connectionsResponse.json();
-    if (!Array.isArray(credentials) || !Array.isArray(connections)) return respond({ error: "Unexpected database response" }, 503);
-    const credential = credentials.find((c) => c.status === "pending_verification");
-    const connection = connections.find((c) => c.phone_number_id && c.waba_id);
-    if (!credential || !connection) return respond({ valid: false, reason: "credential_or_connection_missing", sending_enabled: false });
+    const credential = credentials?.[0];
+    if (!credential || !["pending_verification", "verified"].includes(credential.status)) return respond({ valid: false, reason: "credential_or_connection_missing", sending_enabled: false });
 
     let accessToken;
     try {
