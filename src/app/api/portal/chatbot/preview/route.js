@@ -27,15 +27,15 @@ export async function POST(request) {
     const plan = await e.json();
     if (!["CHATBOT_BASIC", "CHATBOT_AI"].includes(plan)) return NextResponse.json({ message: "Chatbot não contratado." }, { status: 403 });
     if (institutional) headers = ctx.headers;
-    const c = await fetch(`${URL}/rest/v1/nexus_chatbot_configs?organization_id=eq.${encodeURIComponent(org)}&select=active,welcome_message,closing_message,faq&limit=1`, { headers, cache: "no-store" });
+    const c = await fetch(`${URL}/rest/v1/nexus_chatbot_configs?organization_id=eq.${encodeURIComponent(org)}&select=active,welcome_message,closing_message,faq,tone&limit=1`, { headers, cache: "no-store" });
     if (!c.ok) return NextResponse.json({ message: "Configuração indisponível." }, { status: 503 });
     const body = await request.json();
     if (typeof body.message !== "string" || body.message.length > 1000) return NextResponse.json({ message: "Mensagem inválida (máximo de 1.000 caracteres)." }, { status: 400 });
     const config = (await c.json())?.[0];
     const catalog = institutional ? await institutionalCatalogReply({ organizationId: org, planCode: plan, config, message: body.message, base: URL, headers }) : null;
     const rules = catalog || basicReply(config, body.message);
-    const ai = institutional && plan === "CHATBOT_AI" && config?.active && rules.type === "fallback" ? await geminiPreview({ topic: body.message, base: URL, headers }) : null;
-    const result = ai?.type === "ai" ? ai : rules;
+    const ai = institutional && plan === "CHATBOT_AI" && config?.active && rules.type === "fallback" ? await geminiPreview({ topic: body.message, publicApproved: body.public_preview === true, tone: config.tone, base: URL, headers }) : null;
+    const result = ai?.type === "ai" ? ai : institutional && rules.type === "fallback" ? {...rules, reply:"Não encontrei uma resposta confirmada. Para atendimento humano, utilize contato@pleniumgestao.com.br."} : rules;
     const diagnostic = institutional ? ai?.diagnostic : undefined;
     return NextResponse.json({ ...result, plan, ai_used: ai?.type === "ai", ...(diagnostic ? { ai_diagnostic: diagnostic } : {}), preview: true,
       matched_faq: result.type === "faq", requires_human_review: result.type === "fallback",
