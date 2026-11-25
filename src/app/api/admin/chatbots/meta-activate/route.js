@@ -1,7 +1,8 @@
 import { createDecipheriv } from "node:crypto";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const ORG = "7ca2ee92-6b12-4f54-ba7b-986bab2f9434";
+const PLATFORM_ORG = "7ca2ee92-6b12-4f54-ba7b-986bab2f9434";
+const ORG = "11de735a-4dfb-4b8d-b817-bda83d6df03a";
 const CONN = "2c05f573-edd5-48a6-8813-05dcbfbcd9f9";
 
 const WABA = "1494371125908048";
@@ -26,7 +27,7 @@ export async function POST(request) {
     const profileRes = await fetch(`${base}/rest/v1/nexus_user_profiles?select=profile,active,organization_id&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true`, { headers: admin, cache: "no-store" });
     if (!profileRes.ok) return respond({ error: "Authorization unavailable" }, 503);
     const profiles = await profileRes.json();
-    if (!Array.isArray(profiles) || !profiles.some(p => p.profile === "NEXUS_ROOT" && p.active === true && p.organization_id === ORG)) return respond({ error: "Forbidden" }, 403);
+    if (!Array.isArray(profiles) || !profiles.some(p => p.profile === "NEXUS_ROOT" && p.active === true && p.organization_id === PLATFORM_ORG)) return respond({ error: "Forbidden" }, 403);
     const payload = await request.json();
     if (payload?.confirm !== "ACTIVATE_META_CONNECTION_NO_SEND") return respond({ error: "Explicit confirmation required" }, 400);
     const connRes = await fetch(`${base}/rest/v1/nexus_meta_whatsapp_connections?select=id,organization_id,waba_id,phone_number_id,connection_status,credential_reference,connected_at&id=eq.${CONN}&organization_id=eq.${ORG}`, { headers: admin, cache: "no-store" });
