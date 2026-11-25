@@ -35,8 +35,9 @@ export async function POST(request) {
     const catalog = institutional ? await institutionalCatalogReply({ organizationId: org, planCode: plan, config, message: body.message, base: URL, headers }) : null;
     const rules = catalog || basicReply(config, body.message);
     const ai = institutional && plan === "CHATBOT_AI" && config?.active && rules.type === "fallback" ? await geminiPreview({ topic: body.message, base: URL, headers }) : null;
-    const result = ai || rules;
-    return NextResponse.json({ ...result, plan, ai_used: Boolean(ai), preview: true,
+    const result = ai?.type === "ai" ? ai : rules;
+    const diagnostic = institutional ? ai?.diagnostic : undefined;
+    return NextResponse.json({ ...result, plan, ai_used: ai?.type === "ai", ...(diagnostic ? { ai_diagnostic: diagnostic } : {}), preview: true,
       matched_faq: result.type === "faq", requires_human_review: result.type === "fallback",
       human_handoff_executed: false, sending_enabled: false, credits_debited: false });
   } catch { return NextResponse.json({ message: "Falha ao testar chatbot." }, { status: 500 }); }
