@@ -1,7 +1,11 @@
+import { after } from "next/server";
+import { runInstitutionalExecution } from "../../../../lib/chatbot/institutional-execution";
+import { automaticDispatchAllowed, dispatchInstitutionalJobs } from "../../../../lib/chatbot/institutional-auto-dispatch";
 import { createHmac, createHash, timingSafeEqual } from "node:crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 const response = (body, status) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const safeEqual = (a, b) => {
   const x = Buffer.from(a || "");
@@ -132,6 +136,16 @@ export async function POST(request) {
             return response({ error: "Inbound admission unavailable" }, 503);
           }
           console.info("whatsapp_inbound_admission_result", { inserted: summary.inserted, alreadyPresent: summary.already_present, skipped: summary.skipped });
+          if (automaticDispatchAllowed(process.env, eligible, summary.inserted)) {
+            after(async () => {
+              try {
+                await dispatchInstitutionalJobs({run:runInstitutionalExecution, inserted:summary.inserted,
+                  log:result=>console.info("whatsapp_institutional_auto_result", result)});
+              } catch {
+                console.error("whatsapp_institutional_auto_requires_review");
+              }
+            });
+          }
         }
       }
     }
