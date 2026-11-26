@@ -1,3 +1,4 @@
+import {isPortalEntry} from './institutional-catalog.js';
 import {liveOffers,eligible,money,norm} from '../commercial/portfolio.js';
 const families={CHATBOT:/\b(chatbot|chat bot|chat boot|whatsapp)\b/,WEBSITE:/\b(site|website)\b/,GESTAO:/\bgestao\b/,IA:/\b(inteligencia artificial|inteligencia e ia|ia)\b/};
 const scope=j=>({organization_id:j.organization_id,phone_number_id:j.phone_number_id,contact_phone:j.contact_phone});
@@ -8,7 +9,10 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  const r=await fetchImpl(url.toString(),{headers,cache:'no-store'});if(!r.ok)throw Error('commercial_memory_read');
  const rows=await r.json();if(!Array.isArray(rows)||rows.length>1)throw Error('commercial_memory_invalid');
  const state=rows[0]||{codes:[],revision:0};
- const q=norm(message);const reset=/^(nova proposta|limpar proposta|reiniciar proposta)$/.test(q);
+ const q=norm(message);
+ // Portal entries and explicit proposals must reach the catalog before any edit.
+ if(isPortalEntry(q)||/\bproposta plenium\b/.test(q))return {state,key};
+ const reset=/^(nova proposta|limpar proposta|reiniciar proposta)$/.test(q);
  const show=/^(minha proposta|ver proposta|quanto ficou|qual o total|total da proposta)$/.test(q);
  const edit=/\b(adicionar|adicione|incluir|inclua|quero|retirar|remover|excluir|trocar|substituir|mudar|upgrade)\b/.test(q)||/^e se eu quiser\b/.test(q);
  const remove=/\b(retirar|remover|excluir|sem)\b/.test(q)&&!/\bsem ia\b/.test(q);
