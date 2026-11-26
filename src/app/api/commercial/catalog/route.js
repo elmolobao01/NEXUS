@@ -1,1 +1,3 @@
-
+import { liveOffers } from '../../../../lib/commercial/portfolio.js';
+export const dynamic='force-dynamic';
+export async function GET(){try{const base=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!base||!key)throw Error();const r=await fetch(`${base.replace(/\/$/,'')}/rest/v1/nexus_products?select=code,monthly_price,active,standalone&active=eq.true&limit=501`,{headers:{apikey:key,Authorization:`Bearer ${key}`},cache:'no-store'});if(!r.ok)throw Error();const rows=await r.json();if(!Array.isArray(rows)||rows.length>500)throw Error();return Response.json({offers:liveOffers(rows)},{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Catálogo temporariamente indisponível'},{status:503});}}
