@@ -17,7 +17,7 @@ export default function HomePage() {
           <img className="plenium-brand-horizontal" src="/branding/plenium-brand-horizontal.png" alt="PLENIUM — Ecossistema de Soluções" />
         </Link>
         <nav className="nexus-home-nav" aria-label="Navegação principal">
-          <details className="premium-nav"><summary>Produtos</summary><div className="premium-nav-panel">{portfolio.map(p=><a key={p.id} href={`/produtos/${slug(p.name)}`}>{p.name}</a>)}</div></details>
+          <details className="premium-nav"><summary>Produtos <span aria-hidden="true">⌄</span></summary><div className="premium-nav-panel">{[{title:"Gestão empresarial",ids:["GESTAO"]},{title:"Operação especializada",ids:portfolio.filter(p=>!["GESTAO","WEBSITE","CHATBOT","IA"].includes(p.id)).map(p=>p.id)},{title:"Soluções digitais",ids:["WEBSITE","CHATBOT","IA"]}].map(g=><div className="premium-nav-group" key={g.title}><strong>{g.title}</strong><div>{portfolio.filter(p=>g.ids.includes(p.id)).map(p=><a key={p.id} href={`/produtos/${slug(p.name)}`} style={{color:p.color}}><span className="premium-nav-dot" aria-hidden="true"/><span>{p.name}</span></a>)}</div></div>)}</div></details>
           <a href="#como-funciona">Como funciona</a>
           <a href="#planos">Planos</a>
           <a href="#atendimento">Fale conosco</a>
