@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {portfolio} from "../lib/commercial/portfolio.js";
 import CommercialExperience from "./commercial-experience";
 
 const whatsappNumber = (process.env.NEXT_PUBLIC_NEXUS_WHATSAPP || "5571999412478").replace(/\D/g, "");
@@ -15,7 +16,7 @@ export default function HomePage() {
           <img className="plenium-brand-horizontal" src="/branding/plenium-brand-horizontal.png" alt="PLENIUM — Ecossistema de Soluções" />
         </Link>
         <nav className="nexus-home-nav" aria-label="Navegação principal">
-          <a href="#produtos">Produtos</a>
+          <details className="premium-nav"><summary>Produtos</summary><div className="premium-nav-panel">{portfolio.map(p=><a key={p.id} href={`#produto-${p.id}`}>{p.name}</a>)}</div></details>
           <a href="#como-funciona">Como funciona</a>
           <a href="#planos">Planos</a>
           <a href="#atendimento">Fale conosco</a>
@@ -36,7 +37,7 @@ export default function HomePage() {
         </div>
         <div className="home-hero-visual" aria-hidden="true">
           <div className="home-orbit orbit-one" /><div className="home-orbit orbit-two" />
-          <div className="home-brand-showcase"><img src="/branding/plenium-instagram.png" alt="PLENIUM — Ecossistema de Soluções" /></div>
+          <div className="premium-ecosystem"><span>ECOSSISTEMA PLENIUM</span><img src="/branding/plenium-brand-horizontal-dark.png" alt=""/><div className="premium-nodes">{["Gestão empresarial","Operação especializada","Presença digital","Atendimento inteligente","Inteligência & IA","Integração modular"].map(n=><div key={n}><span>◆</span>{n}</div>)}</div><small>Soluções hoje. Grandes amanhãs.</small></div>
         </div>
       </section>
 
@@ -58,7 +59,7 @@ export default function HomePage() {
           <span>© 2026 PLENIUM. Todos os direitos reservados.</span>
         </div>
       </footer>
-      <a className="home-whatsapp-float" href={whatsappUrl("Olá! Vim pelo site da PLENIUM e gostaria de atendimento.")} target="_blank" rel="noreferrer" aria-label="Falar com a PLENIUM pelo WhatsApp">WA</a>
+      <a className="home-whatsapp-float" href={whatsappUrl("Olá! Vim pelo site da PLENIUM e gostaria de atendimento.")} target="_blank" rel="noreferrer" aria-label="Falar com a PLENIUM pelo WhatsApp"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.7 7.4L3 20l1.2-4.5A8.5 8.5 0 1 1 20.5 11.5Z"/><path d="M8 7c-2 2 3 8 6 8l2-2-3-1-1 1-3-3 1-1-2-2Z"/></svg></a>
     </main>
   );
 }
