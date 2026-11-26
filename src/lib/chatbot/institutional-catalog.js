@@ -8,7 +8,9 @@ const validPrice = n => n !== null && n !== undefined && n !== '' && Number.isFi
 export async function institutionalCatalogReply({organizationId,planCode,config,message,base,headers,fetchImpl=fetch}) {
   if (organizationId!==INSTITUTIONAL_ORG || planCode!=='CHATBOT_AI' || !config?.active || typeof message!=='string' || message.length>1000) return null;
   const q=norm(message);
-  if (!priceIntent.test(q)) return null;
+  // A standalone segment name is an explicit catalog selection (including follow-up).
+  const standalone = niches.some(([,pattern]) => { const m=q.match(pattern); return m?.[0]===q; });
+  if (!priceIntent.test(q) && !standalone) return null;
   const answer=reply=>({type:'catalog',reply});
   const matches=niches.filter(([,pattern])=>pattern.test(q));
   if (/\b(desconto|descontos|recarga|recargas|anual|implantacao|agregado|agregada|combo)\b/.test(q)) return answer('Essa condição comercial depende da modalidade contratada. Confirme os valores e condições com contato@pleniumgestao.com.br.');
