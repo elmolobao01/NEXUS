@@ -64,11 +64,13 @@ export function createTransactionalLiveAdapters({
         !allowedPhoneNumberIds.includes(job.phone_number_id) || !DIGITS.test(job.contact_phone) ||
         typeof validated?.selected_reply !== 'string' || !validated.selected_reply.trim() ||
         validated.selected_reply.length > 4096) return { outcome:'rejected', error_code:'invalid_send_payload' };
+    const options = validated.options;
+    const interactive = job.organization_id === '11de735a-4dfb-4b8d-b817-bda83d6df03a' && job.phone_number_id === '1453993444467017' && Array.isArray(options) && options.length>0 && options.length<=10 && validated.selected_reply.length<=1024 && options.every(o=>typeof o.id==='string'&&o.id.startsWith('pl:')&&o.id.length<=200&&typeof o.title==='string'&&o.title.length<=24);
+    const payload = interactive ? {type:'interactive',interactive:{type:'list',body:{text:validated.selected_reply},action:{button:'Selecionar opção',sections:[{title:'PLENIUM',rows:options}]}}} : {type:'text',text:{body:validated.selected_reply,preview_url:false}};
     // A timeout or malformed response is uncertain: NEVER retry automatically.
     const response = await fetchImpl(`https://graph.facebook.com/${metaApiVersion}/${job.phone_number_id}/messages`, {
       method:'POST', cache:'no-store', headers:{ Authorization:`Bearer ${metaAccessToken}`, 'Content-Type':'application/json' },
-      body:JSON.stringify({ messaging_product:'whatsapp', to:job.contact_phone, type:'text',
-        text:{ body:validated.selected_reply, preview_url:false } }),
+      body:JSON.stringify({ messaging_product:'whatsapp', to:job.contact_phone, ...payload }),
     });
     const data = await response.json().catch(()=>null);
     const metaId = data?.messages?.[0]?.id;

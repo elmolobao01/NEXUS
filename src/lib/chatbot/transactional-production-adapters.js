@@ -102,13 +102,15 @@ export function createTransactionalProductionReader({
         (wallet.included_remaining > 0 || wallet.prepaid_remaining > 0)))
         return { allow: false, reason: 'wallet_unavailable' };
       const message = messages[0];
-      if (message.type !== 'text' || typeof message.text?.body !== 'string')
+      const institutional = job.organization_id === INSTITUTIONAL_ORG && job.phone_number_id === '1453993444467017' && wallet.plan_code === 'CHATBOT_AI';
+      const body = message.type === 'text' ? message.text?.body : institutional && message.type === 'interactive' ? (message.interactive?.list_reply?.id || message.interactive?.button_reply?.id) : null;
+      if (typeof body !== 'string' || (message.type !== 'text' && !body.startsWith('pl:')))
         return { allow: false, reason: 'unsupported_message_type' };
       // One response policy for both plans; Standard AI fallback remains
       // blocked until an atomic AI quota reservation is implemented.
-      const catalog = await institutionalCatalogReply({ organizationId: job.organization_id, planCode: wallet.plan_code, config, message: message.text.body, base, headers, fetchImpl });
+      const catalog = await institutionalCatalogReply({ organizationId: job.organization_id, planCode: wallet.plan_code, config, message: body, base, headers, fetchImpl });
       let result = catalog ? { ...catalog, allow: true, engine: 'rules' } : await selectChatbotReply({
-        planCode: wallet.plan_code, config, message: message.text.body,
+        planCode: wallet.plan_code, config, message: body,
       });
       // Only the official institutional number may use this local fallback.
       // Never transmit inbound text to the free Gemini preview provider.
@@ -129,7 +131,7 @@ export function createTransactionalProductionReader({
         fetchImpl, supabaseUrl: base, serviceRoleKey,
       });
       if (!pause?.allow) return { allow: false, reason: pause?.reason || 'human_pause_unavailable' };
-      return { allow: true, reply: result.reply, response_type: result.type, response_engine: result.engine };
+      return { allow: true, reply: result.reply, response_type: result.type, response_engine: result.engine, options: institutional ? result.options : undefined };
     } catch {
       return { allow: false, reason: 'revalidation_unavailable' };
     }
