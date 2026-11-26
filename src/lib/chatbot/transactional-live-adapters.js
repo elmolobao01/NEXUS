@@ -1,3 +1,4 @@
+import { saveCommercialMemory } from './commercial-memory.js';
 // Real transport adapters, deliberately NOT connected to a route or scheduler.
 // Caller must inject authorization and secrets. Importing this file has no side effects.
 import { createTransactionalProductionReader } from './transactional-production-adapters';
@@ -93,6 +94,7 @@ export function createTransactionalLiveAdapters({
       return finished;
     },
     send,
+    saveCommercialContext: (job,context) => saveCommercialMemory({job,context,base,headers,fetchImpl}),
   };
   const runPilotBatch = async ({ limit = 1 } = {}) => {
     if (!Number.isInteger(limit) || limit !== 1) throw new Error('pilot_limit_must_be_one');

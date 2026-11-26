@@ -73,7 +73,11 @@ export async function executeClaimedJob(job, adapters) {
     await adapters.finalize(operationId, outcome,
       outcome === 'accepted' ? delivery.meta_message_id : null,
       outcome === 'accepted' ? null : (delivery?.error_code || 'unconfirmed_meta_outcome'));
-    await adapters.finish(job.id, token, outcome === 'accepted' ? 'completed' : 'blocked', `meta_${outcome}`);
+    let memorySaved;
+    if (outcome === 'accepted' && validated.commercialContext && adapters.saveCommercialContext) {
+      try { memorySaved = await adapters.saveCommercialContext(job, validated.commercialContext); } catch { memorySaved = false; }
+    }
+    await adapters.finish(job.id, token, outcome === 'accepted' ? 'completed' : 'blocked', memorySaved === false ? 'meta_accepted_memory_conflict' : `meta_${outcome}`);
     return { state: outcome === 'accepted' ? 'completed' : 'blocked', outcome, send_attempted: true };
   } catch (error) {
     // Never automatically refund or retry after any potentially ambiguous send.

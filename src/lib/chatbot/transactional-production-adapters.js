@@ -1,3 +1,4 @@
+import { commercialMemory } from './commercial-memory.js';
 import { INSTITUTIONAL_ORG, institutionalCatalogReply } from './institutional-catalog.js';
 // Production-bound Supabase reader for the transactional chatbot.
 // Deliberately excludes claim, reserve, finalize, finish and Meta sending.
@@ -108,7 +109,8 @@ export function createTransactionalProductionReader({
         return { allow: false, reason: 'unsupported_message_type' };
       // One response policy for both plans; Standard AI fallback remains
       // blocked until an atomic AI quota reservation is implemented.
-      const catalog = await institutionalCatalogReply({ organizationId: job.organization_id, planCode: wallet.plan_code, config, message: body, base, headers, fetchImpl });
+      const memory = institutional && process.env.CHATBOT_COMMERCIAL_MEMORY_ENABLED === 'true' ? await commercialMemory({job,message:body,base,headers,fetchImpl}) : null;
+      const catalog = memory?.result || await institutionalCatalogReply({ organizationId: job.organization_id, planCode: wallet.plan_code, config, message: body, base, headers, fetchImpl });
       let result = catalog ? { ...catalog, allow: true, engine: 'rules' } : await selectChatbotReply({
         planCode: wallet.plan_code, config, message: body,
       });
@@ -131,7 +133,7 @@ export function createTransactionalProductionReader({
         fetchImpl, supabaseUrl: base, serviceRoleKey,
       });
       if (!pause?.allow) return { allow: false, reason: pause?.reason || 'human_pause_unavailable' };
-      return { allow: true, reply: result.reply, response_type: result.type, response_engine: result.engine, options: institutional ? result.options : undefined };
+      return { allow: true, reply: result.reply, response_type: result.type, response_engine: result.engine, options: institutional ? result.options : undefined, commercialContext: memory && Array.isArray(result.proposalCodes) ? {revision:memory.state.revision,codes:result.proposalCodes} : undefined };
     } catch {
       return { allow: false, reason: 'revalidation_unavailable' };
     }
