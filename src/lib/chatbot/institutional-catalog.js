@@ -1,31 +1,16 @@
-// Server-side, read-only commercial catalog. Never accepts an organization from message text.
-export const INSTITUTIONAL_ORG = '11de735a-4dfb-4b8d-b817-bda83d6df03a';
-const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-const niches = [ ['website', /\b(site|sites|website|websites|landing page)\b/], ['saude', /\b(saude|clinica|clinicas|consultorio|consultorios)\b/], ['hotelaria', /\b(hotelaria|hotel|hoteis|pousada|pousadas|hostel)\b/], ['restaurante', /\b(restaurante|restaurantes|pizzaria|hamburgueria|lanchonete)\b/], ['delivery', /\b(delivery|entregas)\b/], ['educacao', /\b(educacao|escola|escolas|creche)\b/], ['juridico', /\b(juridico|advocacia|advogado)\b/], ['imobiliario', /\b(imobiliario|imobiliaria|corretor)\b/], ['varejo', /\b(varejo|loja fisica)\b/], ['pet', /\b(pet|petshop|pet shop)\b/], ['profissao', /\b(profissao|autonomo|autonoma)\b/], ['ecommerce', /\b(e commerce|ecommerce|loja virtual)\b/], ['ia', /\b(ia|inteligencia artificial|inteligencia e ia)\b/], ['chatbot', /\b(chatbot|chat bot)\b/] ];
-const priceIntent = /\b(preco|precos|valor|valores|custa|custam|mensalidade|mensalidades|quanto|planos|plano|desconto|descontos|recarga|recargas)\b/;
-const money = n => Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const validPrice = n => n !== null && n !== undefined && n !== '' && Number.isFinite(Number(n)) && Number(n)>=0;
-export async function institutionalCatalogReply({organizationId,planCode,config,message,base,headers,fetchImpl=fetch}) {
-  if (organizationId!==INSTITUTIONAL_ORG || planCode!=='CHATBOT_AI' || !config?.active || typeof message!=='string' || message.length>1000) return null;
-  const q=norm(message);
-  // A standalone segment name is an explicit catalog selection (including follow-up).
-  const standalone = niches.some(([,pattern]) => { const m=q.match(pattern); return m?.[0]===q; });
-  if (!priceIntent.test(q) && !standalone) return null;
-  const answer=reply=>({type:'catalog',reply});
-  const matches=niches.filter(([,pattern])=>pattern.test(q));
-  if (/\b(desconto|descontos|recarga|recargas|anual|implantacao|agregado|agregada|combo)\b/.test(q)) return answer('Essa condição comercial depende da modalidade contratada. Confirme os valores e condições com contato@pleniumgestao.com.br.');
-  if(matches.length!==1) return answer('Qual produto da PLENIUM você deseja consultar? Informe o segmento ou o nome do produto para verificarmos os planos e valores.');
-  try {
-    const url=new URL(`${base.replace(/\/$/,'')}/rest/v1/nexus_products`);
-    url.search=new URLSearchParams({select:'id,code,name,segment,monthly_price,standalone,active',active:'eq.true',standalone:'eq.true',order:'name.asc,id.asc',limit:'501'}).toString();
-    const res=await fetchImpl(url.toString(),{headers,cache:'no-store',method:'GET'});
-    if(!res.ok) throw Error('catalog_unavailable');
-    const rows=await res.json();
-    if(!Array.isArray(rows)||rows.length>500) throw Error('catalog_incomplete');
-    const [key,pattern]=matches[0];
-    const requestedPlan=q.match(/\b(core|eco|integra|basico|standard|profissional)\b/)?.[1];
-    const products=rows.filter(r=>r.active===true && r.standalone===true && validPrice(r.monthly_price) && Number(r.monthly_price)>0 && (pattern.test(norm(r.name)) || pattern.test(norm(r.segment)) || (key==='ecommerce' && /ecommerce/.test(norm(r.code))) || (key==='chatbot' && /^CHATBOT_(AI|BASIC)$/.test(r.code))) && (!requestedPlan || norm(r.name).split(' ').includes(requestedPlan)));
-    if(!products.length || products.length>8) return answer('Não encontrei uma oferta mensal inequívoca no catálogo para essa consulta. Nossa equipe comercial pode confirmar em contato@pleniumgestao.com.br.');
-    return answer('Valores mensais cadastrados no catálogo PLENIUM:\n'+products.map(r=>`${String(r.name).replace(/[\r\n]/g,' ').slice(0,120)}: ${money(r.monthly_price)}/mês`).join('\n')+'\nCondições de contratação e personalização sujeitas à confirmação comercial.');
-  } catch { return answer('O catálogo comercial está temporariamente indisponível. Para confirmar valores atualizados, entre em contato: contato@pleniumgestao.com.br.'); }
+import {portfolio,liveOffers,eligible,money,norm} from '../commercial/portfolio.js';
+export const INSTITUTIONAL_ORG='11de735a-4dfb-4b8d-b817-bda83d6df03a';
+const aliases={HOTELARIA:/\b(hotelaria|hotel|hoteis|pousada|pousadas|hostel)\b/,SAUDE:/\b(saude|clinica|clinicas|consultorio)\b/,RESTAURANTE:/\b(restaurante|restaurantes|pizzaria|hamburgueria|lanchonete)\b/,DELIVERY:/\b(delivery|entregas)\b/,EDUCACAO:/\b(educacao|escola|escolas|creche)\b/,JURIDICO:/\b(juridico|advocacia|advogado)\b/,IMOBILIARIO:/\b(imobiliario|imobiliaria|corretor)\b/,VAREJO:/\b(varejo|loja fisica)\b/,PET:/\b(pet|petshop|pet shop)\b/,PROFISSAO:/\b(profissao|autonomo|autonoma)\b/,ECOMMERCE:/\b(e commerce|ecommerce|loja virtual)\b/,IA:/\b(ia|inteligencia artificial|inteligencia e ia)\b/,WEBSITE:/\b(website|site|sites)\b/,CHATBOT:/\b(chatbot|chat bot|chat boot)\b/,GESTAO:/\b(gestao administrativa|gestao empresarial|plenium gestao|gestao)\b/};
+const answer=reply=>({type:'catalog',reply});const closing='\nConsulte nossas ofertas e condições comerciais especiais. Escopo e personalização sujeitos à confirmação comercial.';
+export async function institutionalCatalogReply({organizationId,planCode,config,message,base,headers,fetchImpl=fetch}){
+ if(organizationId!==INSTITUTIONAL_ORG||planCode!=='CHATBOT_AI'||!config?.active||typeof message!=='string'||message.length>3500)return null;
+ const q=norm(message);const proposal=/\bproposta plenium\b/.test(q);const explicit=message.match(/\b(?:GESTAO|HOTELARIA|SAUDE|RESTAURANTE|DELIVERY|EDUCACAO|JURIDICO|IMOBILIARIO|VAREJO|PET|PROFISSAO|ECOMMERCE|IA|WEBSITE|CHATBOT)_(?:AGREGADO_)?(?:CORE|ECO|INTEGRA|BASIC|AI|PRO|INTEGRADO)\b/g)||[];
+ const clean=q.replace(/vim pelo site plenium/g,'');let families=portfolio.filter(p=>aliases[p.id].test(clean));if(families.length>1&&families.some(p=>p.id!=='GESTAO'))families=families.filter(p=>p.id!=='GESTAO'||/plenium gestao|gestao administrativa/.test(clean));
+ if(!proposal&&!explicit.length&&!/\b(preco|precos|valor|valores|custa|custam|mensalidade|quanto|planos|plano|desconto|descontos|recarga|recargas|informacoes|funcionalidades|recursos|ofertas|conhecer)\b/.test(q)&&!families.some(p=>aliases[p.id].exec(q)?.[0]===q))return null;
+ if(!proposal&&!explicit.length&&/\b(recarga|recargas|anual|implantacao)\b/.test(q))return answer('Confirme essa condição comercial com contato@pleniumgestao.com.br.');
+ if(!proposal&&!explicit.length&&!families.length)return answer('Qual produto da PLENIUM você deseja consultar? Informe o segmento ou o nome do produto para verificarmos os planos e valores.');
+ try{const r=await fetchImpl(`${base.replace(/\/$/,'')}/rest/v1/nexus_products?select=code,monthly_price,active,standalone&active=eq.true&limit=501`,{headers,cache:'no-store',method:'GET'});if(!r.ok)throw Error();const rows=await r.json();if(!Array.isArray(rows)||rows.length>500)throw Error();const live=liveOffers(rows);
+ if(explicit.length){const codes=[...new Set(explicit)];const selected=codes.map(c=>live.find(o=>o.code===c));if(selected.some(o=>!o)||selected.some(o=>!eligible(o,selected)))return answer('Recebi seu interesse pelo site. Precisamos confirmar a disponibilidade e elegibilidade da composição com contato@pleniumgestao.com.br.');if(new Set(selected.map(o=>o.family)).size!==selected.length)return answer('Recebi sua simulação. Confirme um plano por produto para calcularmos o investimento.');return answer('Recebi sua '+(proposal?'simulação':'consulta')+' pelo site PLENIUM. Valores vigentes:\n'+selected.map(o=>`${o.name}: ${money(o.price)}/mês`).join('\n')+'\nTotal estimado: '+money(selected.reduce((s,o)=>s+o.price,0))+'/mês.'+closing);}
+ const level=q.match(/\b(core|eco|integra|basico|standard|profissional)\b/)?.[1];const selected=live.filter(o=>o.standalone&&families.some(p=>p.id===o.family)&&(!level||norm(o.level)===level));if(!selected.length)return answer('Não encontrei uma oferta mensal inequívoca no catálogo para essa consulta. Nossa equipe comercial pode confirmar em contato@pleniumgestao.com.br.');return answer('Valores mensais cadastrados no catálogo PLENIUM:\n'+selected.slice(0,12).map(o=>{const p=portfolio.find(x=>x.id===o.family);return `${o.name}: ${money(o.price)}/mês`+(level?`\n${o.index>0?'Todos os recursos dos planos anteriores + ':''}${p.features[o.index].filter(Boolean).join(', ')}`:'');}).join('\n')+closing);
+ }catch{return answer('O catálogo comercial está temporariamente indisponível. Para confirmar valores atualizados, entre em contato: contato@pleniumgestao.com.br.');}
 }
