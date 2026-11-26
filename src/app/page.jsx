@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {portfolio} from "../lib/commercial/portfolio.js";
+import {slug} from "../lib/commercial/navigation.js";
 import CommercialExperience from "./commercial-experience";
 
 const whatsappNumber = (process.env.NEXT_PUBLIC_NEXUS_WHATSAPP || "5571999412478").replace(/\D/g, "");
@@ -16,7 +17,7 @@ export default function HomePage() {
           <img className="plenium-brand-horizontal" src="/branding/plenium-brand-horizontal.png" alt="PLENIUM — Ecossistema de Soluções" />
         </Link>
         <nav className="nexus-home-nav" aria-label="Navegação principal">
-          <details className="premium-nav"><summary>Produtos</summary><div className="premium-nav-panel">{portfolio.map(p=><a key={p.id} href={`#produto-${p.id}`}>{p.name}</a>)}</div></details>
+          <details className="premium-nav"><summary>Produtos</summary><div className="premium-nav-panel">{portfolio.map(p=><a key={p.id} href={`/produtos/${slug(p.name)}`}>{p.name}</a>)}</div></details>
           <a href="#como-funciona">Como funciona</a>
           <a href="#planos">Planos</a>
           <a href="#atendimento">Fale conosco</a>
@@ -35,9 +36,9 @@ export default function HomePage() {
           </div>
           <div className="home-trust-row"><span>✓ Contratação modular</span><span>✓ Benefício multiproduto</span><span>✓ Evolução sob demanda</span></div>
         </div>
-        <div className="home-hero-visual" aria-hidden="true">
+        <div className="home-hero-visual">
           <div className="home-orbit orbit-one" /><div className="home-orbit orbit-two" />
-          <div className="premium-ecosystem"><span>ECOSSISTEMA PLENIUM</span><img src="/branding/plenium-brand-horizontal-dark.png" alt=""/><div className="premium-nodes">{["Gestão empresarial","Operação especializada","Presença digital","Atendimento inteligente","Inteligência & IA","Integração modular"].map(n=><div key={n}><span>◆</span>{n}</div>)}</div><small>Soluções hoje. Grandes amanhãs.</small></div>
+          <div className="premium-ecosystem"><span>ECOSSISTEMA PLENIUM</span><img src="/branding/plenium-brand-horizontal-dark.png" alt=""/><div className="premium-nodes">{[["Gestão empresarial","/produtos/gestao"],["Operação especializada","#segmentos"],["Presença digital","/produtos/website"],["Atendimento inteligente","/produtos/chatbot"],["Inteligência & IA","/produtos/inteligencia-ia"],["Integração modular","#configurador"]].map(([n,url])=><a key={n} href={url}><span>◆</span>{n} ↗</a>)}</div><small>Soluções hoje. Grandes amanhãs.</small></div>
         </div>
       </section>
 
