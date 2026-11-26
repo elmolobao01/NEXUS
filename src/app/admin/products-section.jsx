@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import "./products.css";
 
 const TYPES = ["PRODUTO", "PLANO", "MODULO", "ADICIONAL", "FACILITY"];
-const SEGMENTS = ["Todos", "Governamental", "Educação", "Saúde", "Hotelaria", "Restaurantes", "Jurídico", "Imobiliário"];
+const SEGMENTS = ["Todos", "Governamental", "Educação", "Saúde", "Hotelaria", "Restaurantes", "Restaurante", "Jurídico", "Imobiliário", "Gestão", "Delivery", "Varejo", "Pet", "Profissão", "E-commerce", "Inteligência & IA", "Website", "Chatbot"];
 const INITIAL = { code:"", name:"", productType:"PRODUTO", segment:"Todos", description:"", monthlyPrice:"", annualPrice:"", implementationFee:"", standalone:true, comboEligible:true, active:true };
 
 function money(value){return new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(value||0));}
