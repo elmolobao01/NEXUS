@@ -1,4 +1,4 @@
-import { geminiCommercialSandbox } from "@/lib/chatbot/gemini-commercial";
+import { geminiCommercialSandbox } from "@/lib/chatbot/gemini-commercial.js";
 import { geminiPreview } from "@/lib/chatbot/gemini-preview";
 import { institutionalCatalogReply } from "@/lib/chatbot/institutional-catalog";
 import { master, OPERATION, sameOrigin } from "@/lib/auth/master-context";
