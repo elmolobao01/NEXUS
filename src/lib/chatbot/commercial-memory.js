@@ -1,6 +1,6 @@
-import {isPortalEntry} from './institutional-catalog.js';
+import {isPortalEntry,aliases} from './institutional-catalog.js';
 import {liveOffers,eligible,money,norm} from '../commercial/portfolio.js';
-const families={CHATBOT:/\b(chatbot|chat bot|chat boot|whatsapp)\b/,WEBSITE:/\b(site|website)\b/,GESTAO:/\bgestao\b/,IA:/\b(inteligencia artificial|inteligencia e ia|ia)\b/};
+const families={...aliases,CHATBOT:/\b(chatbot|chat bot|chat boot|whatsapp)\b/};
 const scope=j=>({organization_id:j.organization_id,phone_number_id:j.phone_number_id,contact_phone:j.contact_phone});
 export async function commercialMemory({job,message,base,headers,fetchImpl=fetch}){
  const key=scope(job), url=new URL(base+'/rest/v1/nexus_chatbot_commercial_memory');
@@ -11,15 +11,15 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  const state=rows[0]||{codes:[],revision:0};
  const q=norm(message);
  // Portal entries and explicit proposals must reach the catalog before any edit.
- if(isPortalEntry(q)||/\bproposta plenium\b/.test(q))return {state,key};
+ if(isPortalEntry(q)||/\bproposta plenium\b/.test(q)||message.startsWith('pl:'))return {state,key};
  const reset=/^(nova proposta|limpar proposta|reiniciar proposta)$/.test(q);
- const show=/^(minha proposta|ver proposta|quanto ficou|qual o total|total da proposta)$/.test(q);
- const edit=/\b(adicionar|adicione|incluir|inclua|quero|retirar|remover|excluir|trocar|substituir|mudar|upgrade)\b/.test(q)||/^e se eu quiser\b/.test(q);
+ const show=/^(minha proposta|ver proposta|quanto ficou|qual o total|total da proposta|qual e a minha proposta atual|qual minha proposta|minha proposta atual|qual e a minha proposta|qual o valor total)$/.test(q);
+ const edit=/\b(adicionar|adicione|incluir|inclua|acrescentar|contratar|quero|retirar|remover|excluir|trocar|substituir|mudar|upgrade)\b/.test(q)||/^e se eu quiser\b/.test(q);
  const remove=/\b(retirar|remover|excluir|sem)\b/.test(q)&&!/\bsem ia\b/.test(q);
- let family=Object.keys(families).filter(k=>families[k].test(q));if(family.includes('CHATBOT'))family=family.filter(k=>k!=='IA');
+ let family=Object.keys(families).filter(k=>families[k].test(q));if(family.includes('CHATBOT')&&!/\b(?:e|mais) (?:ia|inteligencia artificial)\b/.test(q))family=family.filter(k=>k!=='IA');
  const level=q.match(/\b(core|eco|integra|basico|standard|profissional)\b/)?.[1];
  if(!family.length&&level&&state.codes.length===1)family=[state.codes[0].split('_')[0]];
- if(!reset&&!show&&!(edit&&state.codes.length&&family.length))return {state,key};
+ if(!reset&&!show&&!(edit&&family.length&&!/\b(?:nao quero|nao preciso|nao incluir|nao adicionar|nao contratar)\b/.test(q)&&(!/\d/.test(q)||level)))return {state,key};
  const response=(reply,codes)=>({type:'catalog',reply,options:[{id:'pl:home',title:'Menu principal'},{id:'pl:offers',title:'Consultar ofertas'}],...(codes?{proposalCodes:codes}:{})});
  if(reset)return {state,key,result:response('*Nova proposta*\n\nComposição anterior limpa. Informe seu segmento e necessidades.',[])};
  const rr=await fetchImpl(base+'/rest/v1/nexus_products?select=code,monthly_price,active,standalone&active=eq.true&limit=501',{headers,cache:'no-store'});if(!rr.ok)throw Error('commercial_catalog_read');const data=await rr.json();if(!Array.isArray(data)||data.length>500)throw Error('commercial_catalog_invalid');const live=liveOffers(data);
