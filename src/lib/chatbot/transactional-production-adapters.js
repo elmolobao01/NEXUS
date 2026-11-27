@@ -1,3 +1,4 @@
+import { commercialGuidance, guidanceKind } from './gemini-guidance.js';
 import { operationalGemini } from './gemini-operational.js';
 import { commercialMemory } from './commercial-memory.js';
 import { INSTITUTIONAL_ORG, institutionalCatalogReply } from './institutional-catalog.js';
@@ -141,6 +142,14 @@ export function createTransactionalProductionReader({
         fetchImpl, supabaseUrl: base, serviceRoleKey,
       });
       if (!pause?.allow) return { allow: false, reason: pause?.reason || 'human_pause_unavailable' };
+      // Optional public-fixture guidance; never changes commercial state or prices.
+      const kind = institutional && message.type === 'text' ? guidanceKind(result) : null;
+      if (kind) {
+        const phrase = await commercialGuidance({job,planCode:wallet.plan_code,config,kind,base,headers,fetchImpl});
+        if (phrase && result.reply.length + phrase.length + 2 <= 4096) {
+          result = {...result, reply: phrase + '\n\n' + result.reply, engine:'ai'};
+        }
+      }
       return { allow: true, reply: result.reply, response_type: result.type, response_engine: result.engine, options: institutional ? result.options : undefined, commercialContext: memory && Array.isArray(result.proposalCodes) ? {revision:memory.state.revision,codes:result.proposalCodes,profile:memory.profile} : undefined };
     } catch {
       return { allow: false, reason: 'revalidation_unavailable' };
