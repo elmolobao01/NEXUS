@@ -8,7 +8,7 @@ export function profileTurn(message,previous={}) {
  if(!p||!Object.keys(p.limits).length)return null;
  const quantities={...(previous.family===p.id?previous.quantities:{})};let found=false;
  for(const k of Object.keys(p.limits)){const m=q.match(new RegExp('(?:^| )([0-9]{1,7}) (?:'+terms[k]+')(?: |$)'));if(m&&Number(m[1])>0){quantities[k]=Number(m[1]);found=true;}}
- if(!found)return null;
+ if(!found&&!(candidates.length===1&&/\b(tenho|preciso|busco|gostaria|sistema|solucao)\b/.test(q)&&!/\b(nao|sem|suporte|cancelar|problema|atendente|humano|preco|valor|planos|plano|adicionar|contratar)\b/.test(q)))return null;
  const features=p.features.flat().filter(f=>q.includes(norm(f))&&!/\b(sem|nao)\b/.test(q));
  const needs=[...new Set([...(previous.family===p.id?previous.needs||[]:[]),...features])];
  const extras=new Set(previous.family===p.id?previous.extras||[]:[]);

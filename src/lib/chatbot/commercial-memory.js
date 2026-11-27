@@ -1,4 +1,4 @@
-import {isPortalEntry,aliases} from './institutional-catalog.js';
+import {isPortalEntry,aliases,planSummary} from './institutional-catalog.js';
 import {profileTurn} from './commercial-profile.js';
 import {portfolio,recommend,liveOffers,eligible,money,norm} from '../commercial/portfolio.js';
 const families={...aliases,CHATBOT:/\b(chatbot|chat bot|chat boot|whatsapp)\b/};
@@ -28,7 +28,7 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  let items=state.codes.map(c=>live.find(o=>o.code===c));if(items.some(x=>!x))return {state,key,result:response('Sua composição contém ofertas indisponíveis. Digite nova proposta para recomeçar ou consulte nossa equipe.')};
  if(profile){
  const p=portfolio.find(x=>x.id===profile.family);const missing=Object.keys(p.limits).filter(k=>!profile.quantities[k]);
- if(missing.length)return {state,key,profile,result:response('*SEU PLANO IDEAL*\n\nJá registrei: '+Object.entries(profile.quantities).map(([k,v])=>v+' '+k).join(', ')+'. Informe apenas: '+missing.join(', ')+'.',state.codes)};
+ if(missing.length)return {state,key,profile,result:response('*PLENIUM | '+p.name.toUpperCase()+'*\n\n'+(Object.keys(profile.quantities).length?'Já registrei: '+Object.entries(profile.quantities).map(([k,v])=>v+' '+k).join(', ')+'. ':'Podemos orientar sua escolha. '+live.filter(o=>o.family===p.id&&o.standalone).map(o=>planSummary(p,o)).join('\n\n')+'\n\n')+'Informe apenas: '+missing.join(', ')+'. Escopo sujeito à confirmação comercial.',state.codes)};
  const i=recommend(p,profile.quantities,profile.needs);const offer=live.find(o=>o.family===p.id&&o.index===i&&o.standalone);const extras=profile.extras.map(c=>live.find(o=>o.code===c));
  if(!offer||extras.some(o=>!o))return {state,key,profile,result:response('Seu perfil precisa de confirmação comercial.',state.codes)};
  const additions=[offer,...extras];items=[...items.filter(o=>!additions.some(a=>a.family===o.family)),...additions];
@@ -42,7 +42,7 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  if(seen.size!==family.length)return {state,key,result:response('Não consegui identificar todos os produtos solicitados.')};
  }
  if(items.some(o=>!eligible(o,items)))return {state,key,result:response('A alteração deixaria um produto agregado sem seu requisito. Consulte nossa equipe antes de alterar.')};
- return {state,key,profile,result:response('*SUA PROPOSTA PLENIUM*\n\n'+(items.length?items.map(o=>'✓ '+o.name+' — '+money(o.price)+'/mês').join('\n'):'Nenhum produto selecionado.')+'\n\n*Investimento mensal: '+money(items.reduce((s,o)=>s+o.price,0))+'*\n\nConsulte nossas ofertas e condições comerciais especiais. Escopo sujeito à confirmação comercial.',show?undefined:items.map(o=>o.code))};
+ return {state,key,profile,result:response('*SUA PROPOSTA PLENIUM*\n\n'+(items.length?items.map(o=>'✓ '+o.name+' — '+money(o.price)+'/mês'+(profile&&o.family===profile.family?'\n'+planSummary(portfolio.find(p=>p.id===o.family),o):'')).join('\n'):'Nenhum produto selecionado.')+'\n\n*Investimento mensal: '+money(items.reduce((s,o)=>s+o.price,0))+'*\n\nConsulte nossas ofertas e condições comerciais especiais. Escopo sujeito à confirmação comercial.',show?undefined:items.map(o=>o.code))};
 }
 export async function saveCommercialMemory({job,context,base,headers,fetchImpl=fetch}){
  const r=await fetchImpl(base+'/rest/v1/rpc/nexus_save_commercial_profile',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_job_id:job.id,p_revision:context.revision,p_codes:context.codes,p_profile:context.profile??null})});return r.ok&&(await r.json())===true;
