@@ -19,6 +19,7 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  if(isPortalEntry(q)||/\bproposta plenium\b/.test(q)||message.startsWith('pl:'))return {state,key};
  const simulation=/\b(simular|simulacao|quanto ficaria|quanto custaria|quanto sairia|qual seria|e se|se eu|beneficios de|vale a pena)\b/.test(q);
  const inquiry=!simulation&&/^(?:quais|qual|quanto|como|o que|me explique|gostaria de saber|quero saber)\b/.test(q);
+ const objection=/\b(?:caro|cara|elevado|elevada|muito alto|muito alta|reduzir (?:os |meus )?custos|melhorar (?:meu |o )?faturamento|aumentar (?:meu |o )?faturamento|vantagens de contratar|vale a pena)\b/.test(q)&&! /^(?:adicione|inclua|remova|retire|quero adicionar|quero remover)\b/.test(q);
  const reset=/^(nova proposta|limpar proposta|reiniciar proposta)$/.test(q);
  const integrated=/\b(?:valor promocional|valores promocionais|preco integrado|aplicar promocao|configurar ecossistema)\b/.test(q);
  const show=/^(minha proposta|ver proposta|quanto ficou|qual o total|total da proposta|qual e a minha proposta atual|qual minha proposta|minha proposta atual|qual e a minha proposta|qual o valor total)$/.test(q);
@@ -32,7 +33,7 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  const level=q.match(/\b(core|eco|integra|basico|standard|profissional)\b/)?.[1];
  if(!family.length&&level&&state.codes.length===1)family=[state.codes[0].split('_')[0]];
  if(/\b(suporte|reclamacao|cancelar|atendente|humano)\b/.test(q))return {state,key};
- if(!profile&&!reset&&!show&&!integrated&&!simulation&&!inquiry&&!(edit&&family.length&&!/\b(?:nao quero|nao preciso|nao incluir|nao adicionar|nao contratar)\b/.test(q)&&(!/\d/.test(q)||level)))return {state,key};
+ if(!objection&&!profile&&!reset&&!show&&!integrated&&!simulation&&!inquiry&&!(edit&&family.length&&!/\b(?:nao quero|nao preciso|nao incluir|nao adicionar|nao contratar)\b/.test(q)&&(!/\d/.test(q)||level)))return {state,key};
  const response=(reply,codes)=>({type:'catalog',reply,options:[{id:'pl:home',title:'Menu principal'},{id:'pl:offers',title:'Consultar ofertas'}],...(codes?{proposalCodes:codes}:{})});
  if(/\b(nao quero|nao preciso|nao incluir|nao adicionar|nao contratar)\b/.test(q))return {state,key,result:response('Tudo bem. Mantive sua proposta sem alterações.',state.codes)};
  if(/\b(retirar|remover|excluir)\b/.test(q)&&/\b(adicionar|incluir|acrescentar)\b/.test(q))return {state,key,result:response('Para evitar alterações incorretas, informe primeiro os produtos a retirar e depois os que deseja adicionar.')};
@@ -40,6 +41,13 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  const rr=await fetchImpl(base+'/rest/v1/nexus_products?select=code,monthly_price,active,standalone&active=eq.true&limit=501',{headers,cache:'no-store'});if(!rr.ok)throw Error('commercial_catalog_read');const data=await rr.json();if(!Array.isArray(data)||data.length>500)throw Error('commercial_catalog_invalid');const live=liveOffers(data);
  let items=state.codes.map(c=>live.find(o=>o.code===c));if(items.some(x=>!x))return {state,key,result:response('Sua composição contém ofertas indisponíveis. Digite nova proposta para recomeçar ou consulte nossa equipe.')};
  const originalTotal=items.reduce((sum,o)=>sum+o.price,0);
+ if(objection&&items.length){
+ const primary=items.find(o=>o.family===state.profile?.family)||items.find(o=>!['GESTAO','IA','CHATBOT','WEBSITE'].includes(o.family));
+ const benefits=items.map(o=>{const p=portfolio.find(x=>x.id===o.family);const features=p.features.slice(0,(o.index??0)+1).flat();return '• '+o.name+': '+features.slice(0,5).join(', ')+'.';}).join('\n');
+ const comparison=primary?'\nApenas '+primary.name+': '+money(primary.price)+'/mês. O conjunto custa '+money(originalTotal)+'/mês, diferença de '+money(originalTotal-primary.price)+'/mês.':'';
+ const reply='Entendo sua preocupação com o investimento. Cada solução deve contribuir para sua operação.\n\n'+benefits+'\n\n'+comparison+'\nEsses recursos podem apoiar a produtividade, o controle de despesas e o atendimento, mas os resultados financeiros dependem da utilização e da realidade do negócio. Podemos priorizar as soluções essenciais sem alterar sua proposta agora.'+(state.profile?.pendingWebsite?' O Website solicitado continua pendente de orçamento.':'')+'\n\nQual sua prioridade: reduzir custos, melhorar o atendimento ou ampliar as vendas?\n\nSeja Plenium. Um ecossistema inteiro para o seu negócio.\nwww.pleniumgestao.com.br';
+ return {state,key,result:{...response(reply),commercialIntent:'objection'}};
+ }
  if(inquiry&&!integrated&&!show&&family.length){
  const details=family.map(f=>{const p=portfolio.find(x=>x.id===f);return live.filter(o=>o.family===f&&o.standalone).map(o=>planSummary(p,o)).join('\n\n');}).join('\n\n');
  return {state,key,result:response(details+'\n\nSua proposta permanece sem alterações.')};

@@ -145,11 +145,12 @@ export function createTransactionalProductionReader({
       // Optional public-fixture guidance; never changes commercial state or prices.
       const kind = institutional && message.type === 'text' ? guidanceKind(result) : null;
       if (kind) {
-        const phrase = await commercialGuidance({job,planCode:wallet.plan_code,config,kind,base,headers,fetchImpl});
+        const phrase = await commercialGuidance({job,planCode:wallet.plan_code,config,kind,base,headers,fetchImpl,audit:details=>console.info('gemini_commercial_guidance',details)});
         if (phrase && result.reply.length + phrase.length + 2 <= 4096) {
           result = {...result, reply: phrase + '\n\n' + result.reply, engine:'ai'};
         }
       }
+      if(institutional) console.info('gemini_commercial_response',{response_engine:result.engine,commercial_intent:kind||'other',gemini_enabled:process.env.CHATBOT_GEMINI_OPERATIONAL_ENABLED==='true'});
       return { allow: true, reply: result.reply, response_type: result.type, response_engine: result.engine, options: institutional ? result.options : undefined, commercialContext: memory && Array.isArray(result.proposalCodes) ? {revision:memory.state.revision,codes:result.proposalCodes,profile:memory.profile} : undefined };
     } catch {
       return { allow: false, reason: 'revalidation_unavailable' };
