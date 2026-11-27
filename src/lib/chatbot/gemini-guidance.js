@@ -3,7 +3,7 @@ import { INSTITUTIONAL_ORG } from './institutional-catalog.js';
 const guidance=Object.freeze({
  simulation:Object.freeze(['Podemos comparar as alternativas antes de você decidir.','Vamos avaliar o investimento e os benefícios de cada alternativa.']),
  proposal:Object.freeze(['Podemos personalizar as soluções conforme as necessidades do seu negócio.','Vamos avaliar juntos quais soluções fazem sentido para sua operação.']),
- objection:Object.freeze(['Podemos começar pelas soluções prioritárias e ampliar o ecossistema conforme a necessidade.','Vale comparar o investimento adicional com as tarefas e oportunidades que cada solução pode apoiar.']),
+ objection:Object.freeze(['Podemos começar pelas soluções prioritárias e ampliar o ecossistema conforme a necessidade.','Vale comparar o investimento adicional com as tarefas e oportunidades que cada solução pode apoiar.','Uma contratação gradual permite avaliar quais recursos são prioritários antes de ampliar o investimento.','Podemos comparar alternativas de composição sem modificar sua proposta atual.']),
  consultation:Object.freeze(['Podemos ajudar você a escolher a solução mais adequada ao seu negócio.','Vamos conhecer suas necessidades para orientar sua escolha.'])
 });
 export async function commercialGuidance({job,planCode,config,kind,base,headers,fetchImpl=fetch,key=process.env.GEMINI_API_KEY,model=process.env.GEMINI_MODEL,audit=()=>{},enabled=process.env.CHATBOT_GEMINI_OPERATIONAL_ENABLED==='true'}={}){
@@ -15,7 +15,7 @@ export async function commercialGuidance({job,planCode,config,kind,base,headers,
  const quota=await fetchImpl(`${base}/rest/v1/rpc/nexus_reserve_gemini_commercial_sandbox`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:'{}',cache:'no-store',signal:AbortSignal.timeout(5000)});
  if(!quota.ok||await quota.json()!==true)return finish('quota_unavailable_or_exhausted');
  attempted=true;
- const r=await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'x-goog-api-key':key,'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Cenário comercial fictício: '+kind+'. Escolha a frase de orientação mais natural: '+JSON.stringify(guidance[kind])+'. Retorne apenas JSON {"choice":0} ou {"choice":1}.'}]}],generationConfig:{temperature:0,maxOutputTokens:256,responseMimeType:'application/json'}}),cache:'no-store',signal:AbortSignal.timeout(10000)});
+ const r=await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'x-goog-api-key':key,'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Cenário comercial fictício: '+kind+'. Escolha a frase de orientação mais natural: '+JSON.stringify(guidance[kind])+'. Retorne apenas JSON com a chave choice e o índice inteiro de uma das alternativas apresentadas.'}]}],generationConfig:{temperature:0,maxOutputTokens:256,responseMimeType:'application/json'}}),cache:'no-store',signal:AbortSignal.timeout(10000)});
  http=r.status??null; if(!r.ok)return finish('provider_unavailable');const c=(await r.json()).candidates?.[0];if(c?.finishReason!=='STOP')return finish('provider_incomplete');
  const p=JSON.parse(c.content?.parts?.filter(x=>!x.thought).map(x=>x.text||'').join('')||'');
  return Object.keys(p).length===1&&Number.isInteger(p.choice)&&Object.hasOwn(guidance[kind],p.choice)?finish(null,guidance[kind][p.choice]):finish('invalid_choice');
