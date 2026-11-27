@@ -133,7 +133,7 @@ export function createTransactionalProductionReader({
         fetchImpl, supabaseUrl: base, serviceRoleKey,
       });
       if (!pause?.allow) return { allow: false, reason: pause?.reason || 'human_pause_unavailable' };
-      return { allow: true, reply: result.reply, response_type: result.type, response_engine: result.engine, options: institutional ? result.options : undefined, commercialContext: memory && Array.isArray(result.proposalCodes) ? {revision:memory.state.revision,codes:result.proposalCodes} : undefined };
+      return { allow: true, reply: result.reply, response_type: result.type, response_engine: result.engine, options: institutional ? result.options : undefined, commercialContext: memory && Array.isArray(result.proposalCodes) ? {revision:memory.state.revision,codes:result.proposalCodes,profile:memory.profile} : undefined };
     } catch {
       return { allow: false, reason: 'revalidation_unavailable' };
     }
