@@ -1,3 +1,4 @@
+import { geminiCommercialSandbox } from "@/lib/chatbot/gemini-commercial";
 import { geminiPreview } from "@/lib/chatbot/gemini-preview";
 import { institutionalCatalogReply } from "@/lib/chatbot/institutional-catalog";
 import { master, OPERATION, sameOrigin } from "@/lib/auth/master-context";
@@ -32,6 +33,12 @@ export async function POST(request) {
     const body = await request.json();
     if (typeof body.message !== "string" || body.message.length > 1000) return NextResponse.json({ message: "Mensagem inválida (máximo de 1.000 caracteres)." }, { status: 400 });
     const config = (await c.json())?.[0];
+    if (Object.hasOwn(body, 'synthetic_case')) {
+      if (!institutional || plan !== 'CHATBOT_AI' || !config?.active || body.public_preview !== true) return NextResponse.json({message:'Acesso negado.'},{status:403});
+      const sandbox = await geminiCommercialSandbox({caseId:body.synthetic_case,organizationId:org,planCode:plan,config,base:URL,headers});
+      const fallback = sandbox.ai_used ? null : await institutionalCatalogReply({organizationId:org,planCode:plan,config,message:'pl:home',base:URL,headers});
+      return NextResponse.json({...fallback,...sandbox,plan,preview:true,sending_enabled:false,credits_debited:false,human_handoff_executed:false});
+    }
     const catalog = institutional ? await institutionalCatalogReply({ organizationId: org, planCode: plan, config, message: body.message, base: URL, headers }) : null;
     const rules = catalog || basicReply(config, body.message);
     const ai = institutional && plan === "CHATBOT_AI" && config?.active && rules.type === "fallback" ? await geminiPreview({ topic: body.message, publicApproved: body.public_preview === true, tone: config.tone, base: URL, headers }) : null;
