@@ -1,3 +1,4 @@
+import { operationalGemini } from './gemini-operational.js';
 import { commercialMemory } from './commercial-memory.js';
 import { INSTITUTIONAL_ORG, institutionalCatalogReply } from './institutional-catalog.js';
 // Production-bound Supabase reader for the transactional chatbot.
@@ -114,8 +115,15 @@ export function createTransactionalProductionReader({
       let result = catalog ? { ...catalog, allow: true, engine: 'rules' } : await selectChatbotReply({
         planCode: wallet.plan_code, config, message: body,
       });
+      // Only the official institutional number may use the bounded classifier.
+      // Check human pause before spending provider quota; final guard remains intact.
+      if (institutional && message.type === 'text' && result?.reason === 'ai_not_authorized_or_budget_exhausted' && process.env.CHATBOT_GEMINI_OPERATIONAL_ENABLED === 'true') {
+        const prePause = await pauseCheck({organizationId:job.organization_id,phoneNumberId:job.phone_number_id,contactPhone:job.contact_phone,fetchImpl,supabaseUrl:base,serviceRoleKey});
+        if (!prePause?.allow) return {allow:false,reason:prePause?.reason || 'human_pause_unavailable'};
+        const ai = await operationalGemini({job,planCode:wallet.plan_code,config,message:body,base,headers,fetchImpl});
+        if (ai) result = ai;
+      }
       // Only the official institutional number may use this local fallback.
-      // Never transmit inbound text to the free Gemini preview provider.
       if (job.organization_id === INSTITUTIONAL_ORG &&
           job.phone_number_id === '1453993444467017' &&
           wallet.plan_code === 'CHATBOT_AI' &&
