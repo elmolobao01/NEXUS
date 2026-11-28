@@ -19,6 +19,7 @@ export async function simulateTransactionalBatch(processAlreadyClaimedBatch, { r
     loadJob: async row => { record('load_job', { job_id: row.job_id }); return byId.get(row.job_id) || null; },
     jobAdapters: {
       revalidate: async job => { record('revalidate', { job_id: job.id }); return scenario === 'invalid_contract' ? { allow: false, reason: 'contract_inactive' } : { allow: true, reply: 'Resposta simulada' }; },
+      selectReply: async (job, validated) => { record('select_reply', { job_id: job.id }); return { allow: true, reply: validated.reply, engine: 'rules' }; },
       humanPause: async job => { record('human_pause', { job_id: job.id }); return scenario === 'pause' ? { allow: false, reason: 'human_pause' } : { allow: true }; },
       reserve: async (organizationId, key) => {
         record('reserve_simulated', { organization_id: organizationId, idempotency_key: key });
