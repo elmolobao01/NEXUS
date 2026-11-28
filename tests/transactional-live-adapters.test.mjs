@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTransactionalLiveAdapters } from '../src/lib/chatbot/transactional-live-adapters.js';
-const opts={supabaseUrl:'https://example.supabase.co',serviceRoleKey:'test',metaAccessToken:'test',allowedPhoneNumberIds:['1295394797000036']};
+const opts={organizationId:'22222222-2222-4222-8222-222222222222',phoneNumberId:'1295394797000036',supabaseUrl:'https://example.supabase.co',serviceRoleKey:'test',metaAccessToken:'test',allowedPhoneNumberIds:['1295394797000036']};
 test('no authorization cannot construct transport',()=>{
  let calls=0;
  assert.throws(()=>createTransactionalLiveAdapters({...opts,fetchImpl:async()=>{calls++;},authorization:{approved:true}}),/explicit_pilot_authorization_required/);

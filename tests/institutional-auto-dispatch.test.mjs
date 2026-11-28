@@ -27,7 +27,15 @@ test('dispatch stops on empty queue, error or elapsed budget',async()=>{
  let calls=0,t=0;await dispatchInstitutionalJobs({inserted:3,log:()=>{},now:()=>{t+=36000;return t;},run:async()=>{calls++;}});assert.equal(calls,0);
 });
 test('standalone product selection retrieves current catalog; no other tenant access',async()=>{
- let calls=0;const args={organizationId:INSTITUTIONAL_ORG,planCode:'CHATBOT_AI',config:{active:true},message:'Hotelaria',base:'https://example.com',headers:{},fetchImpl:async()=>{calls++;return {ok:true,json:async()=>[{name:'Hotelaria CORE',segment:'Hotelaria',active:true,standalone:true,monthly_price:89.9}]};}};
+ let calls=0;const args={organizationId:INSTITUTIONAL_ORG,planCode:'CHATBOT_AI',config:{active:true},message:'Hotelaria',base:'https://example.com',headers:{},fetchImpl:async()=>{calls++;return {ok:true,json:async()=>[{code:'HOTELARIA_CORE',name:'Hotelaria CORE',segment:'Hotelaria',active:true,standalone:true,monthly_price:89.9}]};}};
  const result=await institutionalCatalogReply(args);assert.equal(result.type,'catalog');assert.match(result.reply,/89,90/);
  assert.equal(await institutionalCatalogReply({...args,organizationId:'other'}),null);assert.equal(calls,1);
+});
+
+test('catalog uses current price and rejects ambiguous or inactive offers',async()=>{
+ const row={code:'HOTELARIA_CORE',active:true,standalone:true,monthly_price:97.35};
+ const args={organizationId:INSTITUTIONAL_ORG,planCode:'CHATBOT_AI',config:{active:true},message:'Hotelaria',base:'https://example.com',headers:{}};
+ const query=async rows=>institutionalCatalogReply({...args,fetchImpl:async()=>({ok:true,json:async()=>rows})});
+ assert.match((await query([row])).reply,/97,35/);
+ for(const rows of [[row,row],[{...row,active:false}],[{...row,standalone:false}]]) assert.match((await query(rows)).reply,/Não encontrei uma oferta mensal inequívoca/);
 });
