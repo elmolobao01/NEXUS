@@ -1,5 +1,5 @@
 // Pure decision engine: no Meta calls, wallet debits or database mutations.
-import { evaluateHumanPause } from "./human-pause-send-guard";
+import { evaluateHumanPause } from "./human-pause-send-guard.js";
 
 const PLAN_CODES = new Set(["CHATBOT_BASIC", "CHATBOT_AI"]);
 export function planOutbound({ organizationId, phoneNumberId, contactPhone, messageId,

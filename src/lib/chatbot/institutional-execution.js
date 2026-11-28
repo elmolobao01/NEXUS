@@ -1,5 +1,5 @@
 import { createDecipheriv } from 'node:crypto';
-import { createTransactionalLiveAdapters } from './transactional-live-adapters';
+import { createTransactionalLiveAdapters } from './transactional-live-adapters.js';
 
 // Resolve the verified credential before claiming any job or reserving credit.
 async function resolveInstitutionalToken(organizationId, phoneNumberId) {

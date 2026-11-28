@@ -1,11 +1,11 @@
 import { saveCommercialMemory } from './commercial-memory.js';
 // Real transport adapters, deliberately NOT connected to a route or scheduler.
 // Caller must inject authorization and secrets. Importing this file has no side effects.
-import { createTransactionalProductionReader } from './transactional-production-adapters';
-import { processAlreadyClaimedBatch } from './transactional-batch-runner';
-import { validateChatbotRpcPayload } from './transactional-rpc-contract';
-import { createScopedClaimBatch } from './scoped-claim-adapter';
-import { checkHumanPauseBeforeMetaSend } from './human-pause-send-guard';
+import { createTransactionalProductionReader } from './transactional-production-adapters.js';
+import { processAlreadyClaimedBatch } from './transactional-batch-runner.js';
+import { validateChatbotRpcPayload } from './transactional-rpc-contract.js';
+import { createScopedClaimBatch } from './scoped-claim-adapter.js';
+import { checkHumanPauseBeforeMetaSend } from './human-pause-send-guard.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DIGITS = /^\d{7,20}$/;

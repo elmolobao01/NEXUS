@@ -2,7 +2,7 @@
 // Pure dependency-injected module: importing it never calls Supabase or Meta.
 // DO NOT connect to a production route until RPC adapters, lease expiry,
 // reconciliation, and Meta send authorization have been reviewed.
-import { executeClaimedJob } from './transactional-executor';
+import { executeClaimedJob } from './transactional-executor.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const validId = value => typeof value === 'string' && UUID.test(value);

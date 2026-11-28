@@ -35,16 +35,18 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  const level=q.match(/\b(core|eco|integra|basico|standard|profissional)\b/)?.[1];
  if(!family.length&&level&&state.codes.length===1)family=[state.codes[0].split('_')[0]];
  if(/\b(suporte|reclamacao|cancelar|atendente|humano)\b/.test(q))return {state,key};
- const refused=/\b(nao quero|nao preciso|nao incluir|nao adicionar|nao contratar|dispenso)\b/.test(q);
+ const refused=/\b(nao quero|nao preciso|nao incluir|nao adicionar|nao contratar|nao tenho interesse|nao estou interessado|nao desejo|dispenso)\b/.test(q);
  const budget=message.match(/(?:orçamento|orcamento|até|ate|no máximo|no maximo|posso pagar|limite de)\s*(?:de |é |e )?(?:R\$\s*)?(\d+(?:\.\d{3})*(?:,\d{1,2})?)(?![\d.,])/i);
- const closing=/^(?:quero contratar|desejo contratar|vamos contratar|confirmo a contratacao|quero fechar)(?: (?:a |essa |esta |minha )?proposta| o ecossistema)?$/.test(q);
+ const closing=/\b(?:quero contratar|desejo contratar|vamos contratar|confirmo a contratacao|quero fechar)\b/.test(q)&&!refused&&!simulation&&!family.length;
+ const exclusive=/^(?:quero|desejo|vou) (?:ficar|continuar|seguir) (?:apenas|somente|so) com\b/.test(q);
+ if(exclusive)profile=null;
  const compare=/\b(comparar|comparacao|diferenca|diferencas)\b/.test(q)&&!explicitEdit;
  const customize=/\b(personalizar|personalizacao|customizar|customizacao)\b/.test(q)&&!explicitEdit;
- if(!refused&&!budget&&!closing&&!compare&&!customize&&!objection&&!profile&&!reset&&!show&&!integrated&&!simulation&&!inquiry&&!(edit&&family.length&&!/\b(?:nao quero|nao preciso|nao incluir|nao adicionar|nao contratar)\b/.test(q)&&(!/\d/.test(q)||level)))return {state,key};
+ if(!exclusive&&!refused&&!budget&&!closing&&!compare&&!customize&&!objection&&!profile&&!reset&&!show&&!integrated&&!simulation&&!inquiry&&!(edit&&family.length&&!/\b(?:nao quero|nao preciso|nao incluir|nao adicionar|nao contratar)\b/.test(q)&&(!/\d/.test(q)||level)))return {state,key};
  const response=(reply,codes)=>({type:'catalog',reply,options:[{id:'pl:home',title:'Menu principal'},{id:'pl:offers',title:'Consultar ofertas'}],...(codes?{proposalCodes:codes}:{})});
  const prior=state.profile||{};
  const declined=Array.isArray(prior.declinedFamilies)?prior.declinedFamilies:[];
- if(refused){const next=[...new Set([...declined,...family])];return {state,key,profile:{...prior,declinedFamilies:next},result:response('Tudo bem. Respeitaremos sua preferência e mantivemos sua proposta sem alterações. Caso queira retirar um produto já selecionado, informe qual.',state.codes)};}
+ if(refused){const next=[...new Set([...declined,...family])];return {state,key,profile:{...prior,declinedFamilies:next,pendingWebsite:family.includes('WEBSITE')?false:prior.pendingWebsite},result:response('Tudo bem. Respeitaremos sua preferência e mantivemos sua proposta sem alterações. Caso queira retirar um produto já selecionado, informe qual.',state.codes)};}
 
  if(/\b(retirar|remover|excluir)\b/.test(q)&&/\b(adicionar|incluir|acrescentar)\b/.test(q))return {state,key,result:response('Para evitar alterações incorretas, informe primeiro os produtos a retirar e depois os que deseja adicionar.')};
  if(reset)return {state,key,profile:{},result:response('*Nova proposta*\n\nComposição anterior limpa. Informe seu segmento e necessidades.',[])};
@@ -56,7 +58,7 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  if(compare){const fs=family.length?family:[prior.family||items[0]?.family].filter(Boolean);return {state,key,result:response(fs.map(f=>live.filter(o=>o.family===f&&o.standalone).map(o=>planSummary(portfolio.find(p=>p.id===f),o)).join('\n\n')).join('\n\n')+'\nSua proposta permanece sem alterações.')};}
  if(budget){const amount=Number(budget[1].replace(/\./g,'').replace(',','.'));const primary=items.find(o=>o.family===prior.family)||items.find(o=>!['GESTAO','IA','CHATBOT','WEBSITE'].includes(o.family))||items[0];if(!primary)return {state,key,result:response('Qual seu segmento e quais recursos são essenciais para recomendar uma opção dentro do orçamento?')};const baseOffer=primary.standalone?primary:live.find(o=>o.family===primary.family&&o.index===primary.index&&o.standalone);let choice=baseOffer?[baseOffer]:[];if(!choice.length||baseOffer.price>amount)return {state,key,result:response('O plano principal selecionado não cabe no orçamento de '+money(amount)+'. Precisamos revisar suas necessidades sem reduzir a capacidade automaticamente. Sua proposta permanece sem alterações.')};for(const o of items){if(o.family===primary.family||declined.includes(o.family))continue;const candidate=eligible(o,choice)?o:live.find(x=>x.family===o.family&&x.index===o.index&&x.standalone);if(candidate&&choice.reduce((a,x)=>a+x.price,0)+candidate.price<=amount)choice.push(candidate);}return {state,key,result:response('*Simulação por orçamento — sem alterar sua proposta*\n'+choice.map(o=>o.name+' — '+money(o.price)+'/mês').join('\n')+'\nTotal: '+money(choice.reduce((a,o)=>a+o.price,0))+'/mês. Orçamento: '+money(amount)+'/mês.\nInforme expressamente os produtos que deseja manter ou retirar.')};}
 
- if(objection&&items.length){
+ if(objection&&!exclusive&&items.length){
  const primary=items.find(o=>o.family===state.profile?.family)||items.find(o=>!['GESTAO','IA','CHATBOT','WEBSITE'].includes(o.family));
  const benefits=items.map(o=>'• '+o.name+': '+benefitFor(o)).join('\n');
  const comparison=primary?'\nApenas '+primary.name+': '+money(primary.price)+'/mês. O conjunto custa '+money(originalTotal)+'/mês, diferença de '+money(originalTotal-primary.price)+'/mês.':'';
@@ -70,7 +72,12 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  const details=family.map(f=>{const p=portfolio.find(x=>x.id===f);return live.filter(o=>o.family===f&&o.standalone).map(o=>planSummary(p,o)).join('\n\n');}).join('\n\n');
  return {state,key,result:response(details+'\n\nSua proposta permanece sem alterações.')};
  }
- if(profile){
+ if(exclusive){
+ if(!family.length)return {state,key,result:response('Informe os produtos que deseja manter.')};
+ items=items.filter(o=>family.includes(o.family));
+ if(family.some(f=>!items.some(o=>o.family===f)))return {state,key,result:response('Algum produto solicitado não está na proposta. Confirme o plano desejado antes de alterar.')};
+ profile={...prior,extras:[],pendingWebsite:false,declinedFamilies:[...new Set([...declined,...state.codes.map(c=>live.find(o=>o.code===c)?.family).filter(f=>f&&!family.includes(f)),...(!family.includes('WEBSITE')?['WEBSITE']:[])])].filter(f=>!family.includes(f))};
+ }else if(profile){
  const p=portfolio.find(x=>x.id===profile.family);const missing=Object.keys(p.limits).filter(k=>!profile.quantities[k]);
  if(missing.length)return {state,key,profile,result:response('*PLENIUM | '+p.name.toUpperCase()+'*\n\n'+(Object.keys(profile.quantities).length?'Já registrei: '+Object.entries(profile.quantities).map(([k,v])=>v+' '+(v===1&&k==='unidades'?'estabelecimento':names[k]||k)).join(', ')+'. ':'Temos soluções para organizar sua operação. Conheça os planos e seus recursos:\n\n'+live.filter(o=>o.family===p.id&&o.standalone).map(o=>planSummary(p,o)).join('\n\n')+'\n\n')+'Para recomendar o plano adequado, poderia informar a quantidade de '+missing.map(k=>names[k]||k).join(' e ')+'?',state.codes)};
  const i=recommend(p,profile.quantities,profile.needs);const offer=live.find(o=>o.family===p.id&&o.index===i&&o.standalone);const extras=profile.extras.map(c=>live.find(o=>o.code===c));
@@ -87,19 +94,20 @@ export async function commercialMemory({job,message,base,headers,fetchImpl=fetch
  if(seen.size!==family.length)return {state,key,result:response('Não consegui identificar todos os produtos solicitados.')};
  }
  if(integrated){items=items.map(o=>{const candidate=live.find(x=>!x.standalone&&x.family===o.family&&(x.index===o.index||(o.family==='WEBSITE'&&o.index===0&&x.index===null))&&eligible(x,items)&&x.price<o.price);return candidate||o;});}
+ if(exclusive||remove){items=items.map(o=>eligible(o,items)?o:live.find(x=>x.family===o.family&&x.index===o.index&&x.standalone)||o);}
  if(items.some(o=>!eligible(o,items)))return {state,key,result:response('A alteração deixaria um produto agregado sem seu requisito. Consulte nossa equipe antes de alterar.')};
  const activeProfile=profile||state.profile;
  const primary=portfolio.find(p=>p.id===activeProfile?.family);
  const pendingWebsite=edit&&family.includes('WEBSITE')&&!remove&&/\b(reservas online|agendamento online|pedidos online)\b/.test(q);
- const suggestions=[['WEBSITE',webUses[primary?.id]||'Website profissional'],['CHATBOT','Chatbot para automatizar o atendimento pelo WhatsApp'],['IA','Inteligência & IA para otimizar processos']].filter(([f])=>!declined.includes(f)&&!items.some(o=>o.family===f)&&!(f==='WEBSITE'&&(pendingWebsite||state.profile?.pendingWebsite))&&live.some(o=>o.family===f&&o.standalone));
+ const suggestions=[['WEBSITE',webUses[primary?.id]||'Website profissional'],['CHATBOT','Chatbot para automatizar o atendimento pelo WhatsApp'],['IA','Inteligência & IA para otimizar processos']].filter(([f])=>!(exclusive?profile.declinedFamilies:declined).includes(f)&&!items.some(o=>o.family===f)&&!(f==='WEBSITE'&&(pendingWebsite||state.profile?.pendingWebsite))&&live.some(o=>o.family===f&&o.standalone));
  const total=items.reduce((s,o)=>s+o.price,0);
  const individual=items.reduce((s,o)=>s+(live.find(x=>x.family===o.family&&x.standalone&&(o.family==='WEBSITE'&&o.index===null?x.index===0:x.index===o.index))?.price??o.price),0);
  const promo=individual>total?'\nValor individual de referência: '+money(individual)+'\nEconomia mensal: '+money(individual-total)+' | anual: '+money((individual-total)*12):'';
  const hypothetical=simulation||inquiry;
- const pending=Boolean(pendingWebsite||state.profile?.pendingWebsite)&&!(remove&&family.includes('WEBSITE'));
+ const pending=!exclusive&&Boolean(pendingWebsite||state.profile?.pendingWebsite)&&!(remove&&family.includes('WEBSITE'));
  if(!hypothetical&&!show&&(pending||state.profile?.pendingWebsite))profile={...(profile||state.profile||{}),pendingWebsite:pending};
  const facilities=items.length&&suggestions.length?'\n\n*Configure seu ecossistema PLENIUM*\n'+suggestions.map(([,label])=>'• '+label).join('\n')+'\nConfigure suas soluções integradas e aproveite nossos valores promocionais, conforme as condições de cada produto. Recursos e integrações sujeitos à confirmação e personalização. Quer adicionar alguma solução?':'';
- if(!hypothetical&&!show){profile={...prior,...(profile||{}),declinedFamilies:declined.filter(f=>!(explicitEdit&&!remove&&family.includes(f)))};}
+ if(!exclusive&&!hypothetical&&!show){profile={...prior,...(profile||{}),declinedFamilies:declined.filter(f=>!(explicitEdit&&!remove&&family.includes(f)))};}
  const rationale=profile&&primary&&profile.quantities?'Com base nas informações do seu negócio ('+Object.entries(profile.quantities).map(([k,v])=>v+' '+(v===1&&k==='unidades'?'estabelecimento':names[k]||k)).join(', ')+'), recomendamos um plano adequado à sua estrutura.\n\n':'';
  return {state,key,profile,result:response((hypothetical?'*SIMULAÇÃO PLENIUM* — sem alterar sua proposta\n\n':'*SUA PROPOSTA PLENIUM*\n\n')+rationale+(items.length?items.map(o=>o.index!=null?planSummary(portfolio.find(p=>p.id===o.family),o):'✓ '+o.name+' — '+money(o.price)+'/mês').join('\n\n'):'Nenhum produto selecionado.')+'\n\n*Investimento mensal: '+money(total)+'*'+promo+(hypothetical?'\nProposta atual: '+money(originalTotal)+'/mês. '+(total>=originalTotal?'Acréscimo':'Redução')+': '+money(Math.abs(total-originalTotal))+'/mês. Nenhuma alteração foi realizada. Deseja confirmar a inclusão?':'')+(pending?'\n\n*Website solicitado:* precisamos confirmar o plano e a integração necessária para reservas ou agendamentos online. A integração solicitada ainda não está orçada; o total considera apenas os planos já selecionados.':'')+(integrated&&!items.some(o=>!o.standalone)?'\n\nOs produtos selecionados ainda não atendem aos requisitos das ofertas agregadas. Website e IA promocionais exigem Gestão; podemos apresentar essa opção sem adicioná-la automaticamente.':'')+facilities+'\n\nSeja Plenium. Um ecossistema inteiro para o seu negócio.\nwww.pleniumgestao.com.br',show||hypothetical?undefined:items.map(o=>o.code))};
 }
